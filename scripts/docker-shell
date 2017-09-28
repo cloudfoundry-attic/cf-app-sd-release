@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e -u
+
+ROOT_DIR_PATH="$(cd $(dirname $0)/.. && pwd)"
+cd ${ROOT_DIR_PATH}
+
+db=${DB:-"postgres"} # if not set, default to postgres
+
+kernelversion="$(docker run -t -i alpine:latest uname -r | tr -d '\r\n' | tr -d '\-moby')"
+docker_image=c2cnetworking/dev-$db
+if [ $db = "none" ] || [ $db = "postgres" ]; then
+  docker_image=c2cnetworking/dev-postgres-ifb:$kernelversion
+fi
+
+export SQL_FLAVOR=$db
+
+docker run \
+   --rm \
+   -it \
+   --privileged \
+   -v ${PWD}:/cf-networking-release \
+   -e GOPATH=/cf-networking-release \
+   -e DB=$db \
+   -e SQL_FLAVOR=$db \
+   --cap-add ALL \
+   -w / \
+   $docker_image \
+   /bin/bash "$@"
+

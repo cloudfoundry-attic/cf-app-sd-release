@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e -u
+
+cd "$(dirname "$0")"
+./docker-shell ./service-discovery-release/scripts/unit-and-integration-tests.sh "$@"
+
