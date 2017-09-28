@@ -1,0 +1,8 @@
+---
+name: bosh-dns-adapter
+
+dependencies:
+  - golang
+
+files:
+  - bosh-dns-adapter/*.go # gosub

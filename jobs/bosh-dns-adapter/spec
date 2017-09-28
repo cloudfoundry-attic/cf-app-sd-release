@@ -1,0 +1,16 @@
+---
+name: bosh-dns-adapter
+
+templates:
+  bosh-dns-adapter_ctl.erb:     bin/bosh-dns-adapter_ctl
+  bosh-dns-adapter_as_vcap.erb: bin/bosh-dns-adapter_as_vcap
+  config.json.erb:              config/config.json
+
+packages:
+  - bosh-dns-adapter
+  - sd-ctl-utils
+
+properties:
+  bosh_dns_adapter.port:
+    description: "Port which bosh-dns-adapter will listen on."
+    default: 22253
