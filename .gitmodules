@@ -19,3 +19,12 @@
 [submodule "src/github.com/vito/gosub"]
 	path = src/github.com/vito/gosub
 	url = https://github.com/vito/gosub
+[submodule "src/gopkg.in/yaml.v2"]
+	path = src/gopkg.in/yaml.v2
+	url = https://gopkg.in/yaml.v2
+[submodule "src/golang.org/x/net"]
+	path = src/golang.org/x/net
+	url = https://go.googlesource.com/net
+[submodule "src/golang.org/x/text"]
+	path = src/golang.org/x/text
+	url = https://go.googlesource.com/text
