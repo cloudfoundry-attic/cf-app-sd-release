@@ -1,18 +1,9 @@
-[submodule "src/code.cloudfoundry.org/route-emitter"]
-	path = src/code.cloudfoundry.org/route-emitter
-	url = https://github.com/cloudfoundry/route-emitter
-[submodule "src/service-discovery-controller/src/code.cloudfoundry.org/bbs"]
-	path = src/service-discovery-controller/src/code.cloudfoundry.org/bbs
-	url = https://github.com/cloudfoundry/bbs
 [submodule "src/github.com/onsi/ginkgo"]
 	path = src/github.com/onsi/ginkgo
 	url = https://github.com/onsi/ginkgo
 [submodule "src/github.com/onsi/gomega"]
 	path = src/github.com/onsi/gomega
 	url = https://github.com/onsi/gomega
-[submodule "src/code.cloudfoundry.org/consuladapter"]
-	path = src/code.cloudfoundry.org/consuladapter
-	url = https://github.com/cloudfoundry/consuladapter
 [submodule "src/github.com/codegangsta/cli"]
 	path = src/github.com/codegangsta/cli
 	url = https://github.com/codegangsta/cli
