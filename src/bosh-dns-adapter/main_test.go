@@ -63,7 +63,15 @@ var _ = Describe("Main", func() {
 							"type": 1
 						}
 					],
-					"Answer": [ ],
+					"Answer":
+					[
+						{
+							"name": "app-id.internal.local.",
+							"type": 1,
+							"TTL":  0,
+							"data": "192.168.0.1"
+						}
+					],
 					"Additional": [ ],
 					"edns_client_subnet": "0.0.0.0/0"
 				}
@@ -125,7 +133,15 @@ var _ = Describe("Main", func() {
 							"type": 0
 						}
 					],
-					"Answer": [ ],
+					"Answer":
+					[
+						{
+							"name": "app-id.internal.local.",
+							"type": 1,
+							"TTL":  0,
+							"data": "192.168.0.1"
+						}
+					],
 					"Additional": [ ],
 					"edns_client_subnet": "0.0.0.0/0"
 				}`))
@@ -161,7 +177,15 @@ var _ = Describe("Main", func() {
 							"type": 1
 						}
 					],
-					"Answer": [ ],
+					"Answer":
+					[
+						{
+							"name": "app-id.internal.local.",
+							"type": 1,
+							"TTL":  0,
+							"data": "192.168.0.1"
+						}
+					],
 					"Additional": [ ],
 					"edns_client_subnet": "0.0.0.0/0"
 				}`))
@@ -196,7 +220,15 @@ var _ = Describe("Main", func() {
 							"type": 0
 						}
 					],
-					"Answer": [ ],
+					"Answer":
+					[
+						{
+							"name": "app-id.internal.local.",
+							"type": 1,
+							"TTL":  0,
+							"data": "192.168.0.1"
+						}
+					],
 					"Additional": [ ],
 					"edns_client_subnet": "0.0.0.0/0"
 				}`))

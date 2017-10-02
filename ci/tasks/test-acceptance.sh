@@ -15,7 +15,7 @@ export BOSH_GW_PRIVATE_KEY="/tmp/jumpbox_ssh_key.pem"
 export BOSH_GW_USER="jumpbox"
 export BOSH_DIRECTOR_IP="10.245.0.3"
 export BOSH_BINARY_PATH=$(which bosh)
-export BOSH_DEPLOYMENT="service-discovery"
+export BOSH_DEPLOYMENT="acceptance"
 export TEST_CLOUD_CONFIG_PATH="/tmp/cloud-config.yml"
 
 bosh -n update-cloud-config /usr/local/bosh-deployment/docker/cloud-config.yml -v network=director_network
@@ -23,6 +23,11 @@ bosh -n update-cloud-config /usr/local/bosh-deployment/docker/cloud-config.yml -
 bosh upload-stemcell https://bosh.io/d/stemcells/bosh-warden-boshlite-ubuntu-trusty-go_agent
 
 pushd $ROOT_DIR/service-discovery-release
+   bosh create-release --force
+   bosh upload-release
+popd
+
+pushd $ROOT_DIR/bosh-dns-release
    bosh create-release --force
    bosh upload-release
 popd

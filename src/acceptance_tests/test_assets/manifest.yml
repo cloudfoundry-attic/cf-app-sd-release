@@ -1,0 +1,41 @@
+---
+name: acceptance
+
+update:
+  canaries: 2
+  canary_watch_time: 1000-60000
+  max_in_flight: 1
+  serial: false
+  update_watch_time: 1000-60000
+
+instance_groups:
+- name: cell
+  azs: [z1]
+  instances: 1
+  vm_type: default
+  stemcell: default
+  networks:
+  - name: default
+  jobs:
+  - name: bosh-dns-adapter
+    release: service-discovery
+  - name: bosh-dns
+    release: bosh-dns
+    properties:
+      address: 0.0.0.0
+      handlers:
+        - domain: internal.local.
+          source:
+            type: http
+            url: http://127.0.0.1:8053
+
+releases:
+- name: service-discovery
+  version: latest
+- name: bosh-dns
+  version: latest
+
+stemcells:
+- alias: default
+  os: ubuntu-trusty
+  version: latest

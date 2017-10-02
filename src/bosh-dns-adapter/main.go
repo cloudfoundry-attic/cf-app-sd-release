@@ -70,7 +70,15 @@ func writeResponse(resp http.ResponseWriter, status int, name string, dnsType st
 													"type": %s
 												}
 											],
-											"Answer": [ ],
+											"Answer":
+											[
+												{
+													"name": "app-id.internal.local.",
+													"type": 1,
+													"TTL":  0,
+													"data": "192.168.0.1"
+												}
+											],
 											"Additional": [ ],
 											"edns_client_subnet": "0.0.0.0/0"}`, status, name, dnsType)))
 	if err != nil {

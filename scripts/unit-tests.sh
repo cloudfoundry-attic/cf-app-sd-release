@@ -1,8 +1,10 @@
 #!/bin/bash
 
-set -e -u -x
+set -eux
 
-cd service-discovery-release
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+cd $DIR/..
 export GOPATH=$PWD
 export PATH=$PATH:$GOPATH/bin
 

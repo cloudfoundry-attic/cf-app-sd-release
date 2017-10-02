@@ -1,5 +1,5 @@
 ---
-name: service-discovery-release
+name: service-discovery
 blobstore:
   provider: s3
   options:
