@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e -o pipefail
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# workers exits 1 if not logged in
+fly -t c2c workers || fly -t c2c login
+
+fly -t c2c execute -x --privileged --config="$DIR"/../../cf-networking-ci/tasks/service-discovery/test-acceptance.yml --input=service-discovery-release="$DIR"/../
