@@ -19,6 +19,8 @@ instance_groups:
   jobs:
   - name: bosh-dns-adapter
     release: service-discovery
+  - name: service-discovery-controller
+    release: service-discovery
   - name: bosh-dns
     release: bosh-dns
     properties:

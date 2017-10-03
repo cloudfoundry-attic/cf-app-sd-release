@@ -1,0 +1,9 @@
+set -e -x
+
+source /var/vcap/packages/golang-1.8-linux/bosh/compile.env
+
+mkdir ../src && cp -a * ../src/ && mv ../src ./src
+
+mkdir -p $BOSH_INSTALL_TARGET/bin
+
+go build -o $BOSH_INSTALL_TARGET/bin/service-discovery-controller src/service-discovery-controller/*.go

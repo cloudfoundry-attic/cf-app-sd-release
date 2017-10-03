@@ -1,0 +1,9 @@
+---
+name: service-discovery-controller
+
+dependencies:
+  - golang-1.8-linux
+
+
+files:
+  - service-discovery-controller/*.go # gosub

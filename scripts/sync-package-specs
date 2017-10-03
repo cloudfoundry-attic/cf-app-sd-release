@@ -42,6 +42,9 @@ function sync_package() {
 sync_package bosh-dns-adapter \
   -app bosh-dns-adapter &
 
+sync_package service-discovery-controller \
+  -app service-discovery-controller &
+
 
 wait
 
