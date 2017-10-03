@@ -1,0 +1,9 @@
+<%=
+require 'json'
+config = {
+    "address" => p('address'),
+    "port" => "#{p('port')}"
+}
+
+JSON.dump(config)
+%>

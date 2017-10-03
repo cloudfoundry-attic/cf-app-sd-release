@@ -6,8 +6,9 @@ export RUN_DIR=/var/vcap/sys/run/bosh-dns-adapter
 export LOG_DIR=/var/vcap/sys/log/bosh-dns-adapter
 export PIDFILE="${RUN_DIR}"/bosh-dns-adapter.pid
 export CONF_DIR=/var/vcap/jobs/bosh-dns-adapter/config
-export PORT=<%= p("bosh_dns_adapter.port") %>
-export URL=127.0.0.1:"${PORT}"
+export PORT=<%= p('port') %>
+export ADDRESS=<%= p('address') %>
+export URL="${ADDRESS}":"${PORT}"
 export TIMEOUT=20
 
 

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bosh-dns-adapter/config"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -13,9 +16,25 @@ func main() {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGTERM, os.Interrupt)
 
-	l, err := net.Listen("tcp", "127.0.0.1:8053")
+	configPath := flag.String("c", "", "path to config file")
+	flag.Parse()
+
+	bytes, err := ioutil.ReadFile(*configPath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Address (127.0.0.1:8053) not available")
+		fmt.Printf("Could not read config file at path '%s'", *configPath)
+		os.Exit(2)
+	}
+
+	config, err := config.NewConfig(bytes)
+	if err != nil {
+		fmt.Printf("Could not parse config file at path '%s'", *configPath)
+		os.Exit(2)
+	}
+
+	address := fmt.Sprintf("%s:%s", config.Address, config.Port)
+	l, err := net.Listen("tcp", address)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Address (%s) not available", address))
 		os.Exit(1)
 	}
 

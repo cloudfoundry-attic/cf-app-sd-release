@@ -11,6 +11,11 @@ packages:
   - sd-ctl-utils
 
 properties:
-  bosh_dns_adapter.port:
+
+  address:
+    description: "Address which bosh-dns-adapter will listen on."
+    default: 127.0.0.1
+
+  port:
     description: "Port which bosh-dns-adapter will listen on."
-    default: 22253
+    default: 8053

@@ -17,17 +17,34 @@ import (
 
 var _ = Describe("Main", func() {
 
-	var session *gexec.Session
+	var (
+		session            *gexec.Session
+		tempConfigFile     *os.File
+		configFileContents string
+	)
 
 	BeforeEach(func() {
-		startCmd := exec.Command(pathToServer)
+		configFileContents = `{
+			"address": "127.0.0.1",
+			"port": "8053"
+		}`
+	})
+
+	JustBeforeEach(func() {
 		var err error
+		tempConfigFile, err = ioutil.TempFile(os.TempDir(), "sd")
+		Expect(err).ToNot(HaveOccurred())
+		_, err = tempConfigFile.Write([]byte(configFileContents))
+		Expect(err).ToNot(HaveOccurred())
+
+		startCmd := exec.Command(pathToServer, "-c", tempConfigFile.Name())
 		session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		session.Kill()
+		os.Remove(tempConfigFile.Name())
 	})
 
 	It("should return a http 200 status", func() {
@@ -36,10 +53,6 @@ var _ = Describe("Main", func() {
 		var reader io.Reader
 		request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=1&name=app-id.internal.local.", reader)
 		Expect(err).To(Succeed())
-
-		//context, cancelFunc := context.WithTimeout(context.Background(), 2*time.Second)
-		//defer cancelFunc()
-		//request.WithContext(context)
 
 		resp, err := http.DefaultClient.Do(request)
 		Expect(err).To(Succeed())
@@ -88,12 +101,13 @@ var _ = Describe("Main", func() {
 
 	Context("when a process is already listening on the port", func() {
 		var session2 *gexec.Session
-		BeforeEach(func() {
-			startCmd := exec.Command(pathToServer)
+		JustBeforeEach(func() {
+			startCmd := exec.Command(pathToServer, "-c", tempConfigFile.Name())
 			var err error
 			session2, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 		})
+
 		AfterEach(func() {
 			session2.Kill().Wait()
 		})
@@ -232,6 +246,68 @@ var _ = Describe("Main", func() {
 					"Additional": [ ],
 					"edns_client_subnet": "0.0.0.0/0"
 				}`))
+		})
+	})
+
+	Context("when configured with an invalid port", func() {
+		BeforeEach(func() {
+			configFileContents = `{
+			"address": "127.0.0.1",
+			"port": "-1"
+		}`
+		})
+
+		It("should fail to startup", func() {
+			Eventually(session).Should(gexec.Exit(1))
+		})
+	})
+
+	Context("when configured with an invalid config file path", func() {
+		var session2 *gexec.Session
+		JustBeforeEach(func() {
+			startCmd := exec.Command(pathToServer, "-c", "/non-existent-path")
+			var err error
+			session2, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			session2.Kill().Wait()
+		})
+
+		It("should fail to startup", func() {
+			Eventually(session2).Should(gexec.Exit(2))
+			Eventually(session2).Should(gbytes.Say("Could not read config file at path '/non-existent-path'"))
+		})
+	})
+
+	Context("when configured garbage config file content", func() {
+		BeforeEach(func() {
+			configFileContents = "garbage"
+		})
+
+		It("should fail to startup", func() {
+			Eventually(session).Should(gexec.Exit(2))
+			Eventually(session).Should(gbytes.Say("Could not parse config file at path '%s'", tempConfigFile.Name()))
+		})
+	})
+
+	Context("when no config file is passed", func() {
+		var session2 *gexec.Session
+		JustBeforeEach(func() {
+			startCmd := exec.Command(pathToServer)
+			var err error
+			session2, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			session2.Kill().Wait()
+		})
+
+
+		It("should fail to startup", func() {
+			Eventually(session2).Should(gexec.Exit(2))
 		})
 	})
 })
