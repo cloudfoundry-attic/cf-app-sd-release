@@ -10,6 +10,13 @@ packages:
   - service-discovery-controller
   - sd-ctl-utils
 
+provides:
+- name: service-discovery-controller
+  type: service-discovery-controller
+  properties:
+  - address
+  - port
+
 properties:
   address:
     description: "Address which service-discovery-controller will listen on."

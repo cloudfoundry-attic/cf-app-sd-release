@@ -2,7 +2,9 @@
 require 'json'
 config = {
     "address" => p('address'),
-    "port" => "#{p('port')}"
+    "port" => "#{p('port')}",
+    "service_discovery_controller_address" => "#{link('service-discovery-controller').p('address')}",
+    "service_discovery_controller_port" => "#{link('service-discovery-controller').p('port')}"
 }
 
 JSON.dump(config)
