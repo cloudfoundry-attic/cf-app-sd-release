@@ -17,8 +17,9 @@ var _ = Describe("Acceptance", func() {
 
 			Eventually(session).Should(gexec.Exit())
 			output := string(session.Out.Contents())
-			Expect(output).To(ContainSubstring("flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0"))
+			Expect(output).To(ContainSubstring("flags: qr aa rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 0"))
 			Expect(output).To(MatchRegexp("app-id.internal.local.\\s+0\\s+IN\\s+A\\s+192\\.168\\.0\\.1"))
+			Expect(output).To(MatchRegexp("app-id.internal.local.\\s+0\\s+IN\\s+A\\s+192\\.168\\.0\\.2"))
 		})
 	})
 })
