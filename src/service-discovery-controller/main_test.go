@@ -40,7 +40,7 @@ var _ = Describe("Main", func() {
 	It("should return a http app json", func() {
 		Eventually(session).Should(gbytes.Say("Server Started"))
 
-		req, err := http.NewRequest("GET", "http://localhost:8054/v1/registration/app-id.internal.local", nil)
+		req, err := http.NewRequest("GET", "http://localhost:8054/v1/registration/app-id.internal.local.", nil)
 		Expect(err).ToNot(HaveOccurred())
 		resp, err := http.DefaultClient.Do(req)
 		Expect(err).ToNot(HaveOccurred())
@@ -75,7 +75,7 @@ var _ = Describe("Main", func() {
 	It("should return a http large json", func() {
 		Eventually(session).Should(gbytes.Say("Server Started"))
 
-		req, err := http.NewRequest("GET", "http://localhost:8054/v1/registration/large-id.internal.local", nil)
+		req, err := http.NewRequest("GET", "http://localhost:8054/v1/registration/large-id.internal.local.", nil)
 		Expect(err).ToNot(HaveOccurred())
 		resp, err := http.DefaultClient.Do(req)
 		Expect(err).ToNot(HaveOccurred())

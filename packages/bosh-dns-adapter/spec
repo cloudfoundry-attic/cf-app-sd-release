@@ -7,3 +7,5 @@ dependencies:
 files:
   - bosh-dns-adapter/*.go # gosub
   - bosh-dns-adapter/config/*.go # gosub
+  - bosh-dns-adapter/sdcclient/*.go # gosub
+  - golang.org/x/net/dns/dnsmessage/*.go # gosub

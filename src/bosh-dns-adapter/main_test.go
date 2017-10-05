@@ -9,28 +9,62 @@ import (
 
 	"os"
 
+	"fmt"
+	"strings"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/onsi/gomega/ghttp"
 )
 
 var _ = Describe("Main", func() {
-
 	var (
-		session            *gexec.Session
-		tempConfigFile     *os.File
-		configFileContents string
+		session                                *gexec.Session
+		tempConfigFile                         *os.File
+		configFileContents                     string
+		fakeServiceDiscoveryControllerServer   *ghttp.Server
+		fakeServiceDiscoveryControllerResponse http.HandlerFunc
+		dnsAdapterAddress                      string
+		dnsAdapterPort                         string
 	)
 
 	BeforeEach(func() {
-		configFileContents = `{
-			"address": "127.0.0.1",
-			"port": "8053"
-		}`
+		fakeServiceDiscoveryControllerResponse = ghttp.CombineHandlers(
+			ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
+			ghttp.RespondWith(200, `{
+					"env": "",
+					"hosts": [
+					{
+						"ip_address": "192.168.0.1",
+						"last_check_in": "",
+						"port": 0,
+						"revision": "",
+						"service": "",
+						"service_repo_name": "",
+						"tags": {}
+					}],
+					"service": ""
+				}`),
+		)
+		dnsAdapterAddress = "127.0.0.1"
+		dnsAdapterPort = "8053"
+
 	})
 
 	JustBeforeEach(func() {
+		fakeServiceDiscoveryControllerServer = ghttp.NewUnstartedServer()
+		fakeServiceDiscoveryControllerServer.AppendHandlers(fakeServiceDiscoveryControllerResponse)
+		fakeServiceDiscoveryControllerServer.Start()
+		urlParts := strings.Split(fakeServiceDiscoveryControllerServer.URL(), ":")
+
+		configFileContents = fmt.Sprintf(`{
+			"address": "%s",
+			"port": "%s",
+			"service_discovery_controller_address": "%s",
+			"service_discovery_controller_port": "%s"
+		}`, dnsAdapterAddress, dnsAdapterPort, strings.TrimPrefix(urlParts[1], "//"), urlParts[2])
 		var err error
 		tempConfigFile, err = ioutil.TempFile(os.TempDir(), "sd")
 		Expect(err).ToNot(HaveOccurred())
@@ -45,6 +79,8 @@ var _ = Describe("Main", func() {
 	AfterEach(func() {
 		session.Kill()
 		os.Remove(tempConfigFile.Name())
+
+		fakeServiceDiscoveryControllerServer.Close()
 	})
 
 	It("should return a http 200 status", func() {
@@ -57,7 +93,6 @@ var _ = Describe("Main", func() {
 		resp, err := http.DefaultClient.Do(request)
 		Expect(err).To(Succeed())
 
-		Expect(err).To(Succeed())
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
 		all, err := ioutil.ReadAll(resp.Body)
@@ -119,7 +154,7 @@ var _ = Describe("Main", func() {
 	})
 
 	Context("when 'type' url param is not provided", func() {
-		It("should return a http 400 status", func() {
+		It("should default to type A record", func() {
 			Eventually(session).Should(gbytes.Say("Server Started"))
 
 			var reader io.Reader
@@ -129,12 +164,10 @@ var _ = Describe("Main", func() {
 			resp, err := http.DefaultClient.Do(request)
 			Expect(err).To(Succeed())
 
-			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
-
 			all, err := ioutil.ReadAll(resp.Body)
 			Expect(err).To(Succeed())
 			Expect(string(all)).To(MatchJSON(`{
-					"Status": 2,
+					"Status": 0,
 					"TC": false,
 					"RD": false,
 					"RA": false,
@@ -144,7 +177,7 @@ var _ = Describe("Main", func() {
 					[
 						{
 							"name": "app-id.internal.local.",
-							"type": 0
+							"type": 1
 						}
 					],
 					"Answer":
@@ -158,7 +191,8 @@ var _ = Describe("Main", func() {
 					],
 					"Additional": [ ],
 					"edns_client_subnet": "0.0.0.0/0"
-				}`))
+				}
+		`))
 		})
 	})
 
@@ -191,58 +225,7 @@ var _ = Describe("Main", func() {
 							"type": 1
 						}
 					],
-					"Answer":
-					[
-						{
-							"name": "app-id.internal.local.",
-							"type": 1,
-							"TTL":  0,
-							"data": "192.168.0.1"
-						}
-					],
-					"Additional": [ ],
-					"edns_client_subnet": "0.0.0.0/0"
-				}`))
-		})
-	})
-
-	Context("when both 'type' and 'name' url params are not provided", func() {
-		It("returns a http 400 status", func() {
-			Eventually(session).Should(gbytes.Say("Server Started"))
-			var reader io.Reader
-			request, err := http.NewRequest("GET", "http://127.0.0.1:8053", reader)
-			Expect(err).To(Succeed())
-			resp, err := http.DefaultClient.Do(request)
-			Expect(err).To(Succeed())
-
-			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
-
-			all, err := ioutil.ReadAll(resp.Body)
-			Expect(err).To(Succeed())
-
-			Expect(string(all)).To(MatchJSON(`{
-					"Status": 2,
-					"TC": false,
-					"RD": false,
-					"RA": false,
-					"AD": false,
-					"CD": false,
-					"Question":
-					[
-						{
-							"name": "",
-							"type": 0
-						}
-					],
-					"Answer":
-					[
-						{
-							"name": "app-id.internal.local.",
-							"type": 1,
-							"TTL":  0,
-							"data": "192.168.0.1"
-						}
-					],
+					"Answer": [ ],
 					"Additional": [ ],
 					"edns_client_subnet": "0.0.0.0/0"
 				}`))
@@ -251,10 +234,7 @@ var _ = Describe("Main", func() {
 
 	Context("when configured with an invalid port", func() {
 		BeforeEach(func() {
-			configFileContents = `{
-			"address": "127.0.0.1",
-			"port": "-1"
-		}`
+			dnsAdapterPort = "-1"
 		})
 
 		It("should fail to startup", func() {
@@ -283,7 +263,7 @@ var _ = Describe("Main", func() {
 
 	Context("when configured garbage config file content", func() {
 		BeforeEach(func() {
-			configFileContents = "garbage"
+			dnsAdapterAddress = `"garbage`
 		})
 
 		It("should fail to startup", func() {
@@ -305,9 +285,66 @@ var _ = Describe("Main", func() {
 			session2.Kill().Wait()
 		})
 
-
 		It("should fail to startup", func() {
 			Eventually(session2).Should(gexec.Exit(2))
 		})
+	})
+
+	Context("when requesting anything but an A record", func() {
+		It("should return a successful response with no answers", func() {
+			Eventually(session).Should(gbytes.Say("Server Started"))
+			request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=16&name=app-id.internal.local.", nil)
+			Expect(err).ToNot(HaveOccurred())
+
+			resp, err := http.DefaultClient.Do(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+			all, err := ioutil.ReadAll(resp.Body)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(string(all)).To(MatchJSON(`{
+					"Status": 0,
+					"TC": false,
+					"RD": false,
+					"RA": false,
+					"AD": false,
+					"CD": false,
+					"Question":
+					[
+						{
+							"name": "app-id.internal.local.",
+							"type": 16
+						}
+					],
+					"Answer": [ ],
+					"Additional": [ ],
+					"edns_client_subnet": "0.0.0.0/0"
+				}`))
+		})
+	})
+
+	Context("when the service discovery controller returns non-successful", func() {
+		BeforeEach(func() {
+			fakeServiceDiscoveryControllerResponse = ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
+				ghttp.RespondWith(404, `{ }`),
+			)
+		})
+
+		It("returns a 500 and an error", func() {
+			Eventually(session).Should(gbytes.Say("Server Started"))
+			var reader io.Reader
+
+			request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=1&name=app-id.internal.local.", reader)
+			Expect(err).To(Succeed())
+
+			resp, err := http.DefaultClient.Do(request)
+			Expect(err).To(Succeed())
+
+			Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
+		})
+
 	})
 })

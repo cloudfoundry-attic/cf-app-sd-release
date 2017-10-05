@@ -6,6 +6,7 @@ import (
 
 	"testing"
 	"time"
+
 	"github.com/onsi/gomega/gexec"
 )
 
@@ -13,8 +14,6 @@ func TestServiceDiscoveryController(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "ServiceDiscoveryController Suite")
 }
-
-
 
 var pathToServer string
 

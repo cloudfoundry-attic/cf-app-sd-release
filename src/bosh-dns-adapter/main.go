@@ -2,6 +2,9 @@ package main
 
 import (
 	"bosh-dns-adapter/config"
+	"bosh-dns-adapter/sdcclient"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +13,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"golang.org/x/net/dns/dnsmessage"
 )
 
 func main() {
@@ -38,23 +43,37 @@ func main() {
 		os.Exit(1)
 	}
 
+	sdcServerUrl := fmt.Sprintf("http://%s:%s",
+		config.ServiceDiscoveryControllerAddress,
+		config.ServiceDiscoveryControllerPort,
+	)
+
+	sdcClient := sdcclient.NewServiceDiscoveryClient(sdcServerUrl)
+
 	go func() {
 		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-			dnsType := req.URL.Query().Get("type")
-			name := req.URL.Query().Get("name")
+			dnsType := getQueryParam(req, "type", "1")
+			name := getQueryParam(req, "name", "")
 
-			if dnsType == "" {
-				writeBadRequestResponse(resp, name, "0")
+			if dnsType != "1" {
+				writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, nil)
 				return
 			}
+
 			if name == "" {
-				writeBadRequestResponse(resp, name, dnsType)
+				resp.WriteHeader(http.StatusBadRequest)
+				writeResponse(resp, dnsmessage.RCodeServerFailure, name, dnsType, nil)
 				return
 			}
 
-			writeSuccessfulResponse(resp, name, dnsType)
-		}))
+			ips, err := sdcClient.IPs(name)
+			if err != nil {
+				writeErrorResponse(resp, errors.New(fmt.Sprintf("Error querying Service Discover Controller: %s", err)))
+				return
+			}
 
+			writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, ips)
+		}))
 	}()
 
 	fmt.Println("Server Started")
@@ -64,43 +83,81 @@ func main() {
 		return
 	}
 }
-func writeBadRequestResponse(resp http.ResponseWriter, name string, dnsType string) {
-	resp.WriteHeader(http.StatusBadRequest)
-	writeResponse(resp, 2, name, dnsType)
+func getQueryParam(req *http.Request, key, defaultValue string) string {
+	queryValue := req.URL.Query().Get(key)
+	if queryValue == "" {
+		return defaultValue
+	}
+
+	return queryValue
 }
 
-func writeSuccessfulResponse(resp http.ResponseWriter, name string, dnsType string) {
-	resp.WriteHeader(http.StatusOK)
-	writeResponse(resp, 0, name, dnsType)
+type ServiceDiscoveryClient interface {
+	IPs(infraName string) ([]string, error)
 }
 
-func writeResponse(resp http.ResponseWriter, status int, name string, dnsType string) {
-	_, err := resp.Write([]byte(fmt.Sprintf(`{
-											"Status": %d,
-											"TC": false,
-											"RD": false,
-											"RA": false,
-											"AD": false,
-											"CD": false,
-											"Question":
-											[
-												{
-													"name": "%s",
-													"type": %s
-												}
-											],
-											"Answer":
-											[
-												{
-													"name": "app-id.internal.local.",
-													"type": 1,
-													"TTL":  0,
-													"data": "192.168.0.1"
-												}
-											],
-											"Additional": [ ],
-											"edns_client_subnet": "0.0.0.0/0"}`, status, name, dnsType)))
+func writeErrorResponse(resp http.ResponseWriter, err error) {
+	resp.WriteHeader(http.StatusInternalServerError)
+	_, err = resp.Write([]byte(err.Error()))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error writing to http response body") // not tested
 	}
+}
+
+func writeResponse(resp http.ResponseWriter, dnsResponseStatus dnsmessage.RCode, requestedInfraName string, dnsType string, ips []string) {
+	responseBody, err := buildResponseBody(dnsResponseStatus, requestedInfraName, dnsType, ips)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error building response: %v", err) // not tested
+		return
+	}
+
+	_, err = resp.Write([]byte(responseBody))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error writing to http response body") // not tested
+	}
+}
+
+type Answer struct {
+	Name   string `json:"name"`
+	RRType uint16 `json:"type"`
+	TTL    uint32 `json:"TTL"`
+	Data   string `json:"data"`
+}
+
+func buildResponseBody(dnsResponseStatus dnsmessage.RCode, requestedInfraName string, dnsType string, ips []string) (string, error) {
+	answers := make([]Answer, len(ips), len(ips))
+	for i, ip := range ips {
+		answers[i] = Answer{
+			Name:   requestedInfraName,
+			RRType: uint16(dnsmessage.TypeA),
+			Data:   ip,
+			TTL:    0,
+		}
+	}
+
+	bytes, err := json.Marshal(answers)
+	if err != nil {
+		return "", err // not tested
+	}
+
+	template := `{
+		"Status": %d,
+		"TC": false,
+		"RD": false,
+		"RA": false,
+		"AD": false,
+		"CD": false,
+		"Question":
+		[
+			{
+				"name": "%s",
+				"type": %s
+			}
+		],
+		"Answer": %s,
+		"Additional": [ ],
+		"edns_client_subnet": "0.0.0.0/0"
+	}`
+
+	return fmt.Sprintf(template, dnsResponseStatus, requestedInfraName, dnsType, string(bytes)), nil
 }

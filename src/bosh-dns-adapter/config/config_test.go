@@ -12,7 +12,9 @@ var _ = Describe("Config", func() {
 		It("contains the values in the JSON", func() {
 			configJSON := []byte(`{
 				"address":"example.com",
-				"port":"80053"
+				"port":"80053",
+				"service_discovery_controller_address":"bar.com",
+				"service_discovery_controller_port":"80055"
 			}`)
 
 			parsedConfig, err := NewConfig(configJSON)
@@ -20,6 +22,8 @@ var _ = Describe("Config", func() {
 
 			Expect(parsedConfig.Address).To(Equal("example.com"))
 			Expect(parsedConfig.Port).To(Equal("80053"))
+			Expect(parsedConfig.ServiceDiscoveryControllerAddress).To(Equal("bar.com"))
+			Expect(parsedConfig.ServiceDiscoveryControllerPort).To(Equal("80055"))
 		})
 	})
 

@@ -23,7 +23,7 @@ instance_groups:
     release: service-discovery
     properties:
       address: 127.0.0.1
-      port: 8055
+      port: 8054
   - name: bosh-dns
     release: bosh-dns
     properties:

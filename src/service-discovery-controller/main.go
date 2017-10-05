@@ -40,11 +40,11 @@ func main() {
 	}
 
 	routes := map[string][]string{
-		"app-id.internal.local": {
+		"app-id.internal.local.": {
 			"192.168.0.1",
 			"192.168.0.2",
 		},
-		"large-id.internal.local": {
+		"large-id.internal.local.": {
 			"192.168.0.1",
 			"192.168.0.2",
 			"192.168.0.3",
@@ -60,6 +60,7 @@ func main() {
 			"192.168.0.13",
 		},
 	}
+
 	go func() {
 		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 			serviceKey := path.Base(req.URL.Path)
