@@ -7,3 +7,4 @@ dependencies:
 
 files:
   - service-discovery-controller/*.go # gosub
+  - service-discovery-controller/config/*.go # gosub

@@ -15,18 +15,33 @@ import (
 var _ = Describe("Main", func() {
 
 	var (
-		session *gexec.Session
+		session      *gexec.Session
+		pathToConfig string
+		configJson   string
 	)
 
+	BeforeEach(func() {
+		config, err := ioutil.TempFile(os.TempDir(), "sd_config")
+		Expect(err).ToNot(HaveOccurred())
+		pathToConfig = config.Name()
+		configJson = `{
+			"address": "127.0.0.1",
+			"port": "8055"
+		}`
+	})
+
 	JustBeforeEach(func() {
-		var err error
-		startCmd := exec.Command(pathToServer)
+		err := ioutil.WriteFile(pathToConfig, []byte(configJson), os.ModePerm)
+		Expect(err).ToNot(HaveOccurred())
+
+		startCmd := exec.Command(pathToServer, "-c", pathToConfig)
 		session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		session.Kill()
+		os.Remove(pathToConfig)
 	})
 
 	It("accepts interrupt signals and shuts down", func() {
@@ -40,7 +55,7 @@ var _ = Describe("Main", func() {
 	It("should return a http app json", func() {
 		Eventually(session).Should(gbytes.Say("Server Started"))
 
-		req, err := http.NewRequest("GET", "http://localhost:8054/v1/registration/app-id.internal.local.", nil)
+		req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/app-id.internal.local.", nil)
 		Expect(err).ToNot(HaveOccurred())
 		resp, err := http.DefaultClient.Do(req)
 		Expect(err).ToNot(HaveOccurred())
@@ -75,7 +90,7 @@ var _ = Describe("Main", func() {
 	It("should return a http large json", func() {
 		Eventually(session).Should(gbytes.Say("Server Started"))
 
-		req, err := http.NewRequest("GET", "http://localhost:8054/v1/registration/large-id.internal.local.", nil)
+		req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/large-id.internal.local.", nil)
 		Expect(err).ToNot(HaveOccurred())
 		resp, err := http.DefaultClient.Do(req)
 		Expect(err).ToNot(HaveOccurred())

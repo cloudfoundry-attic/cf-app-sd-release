@@ -32,7 +32,7 @@ instance_groups:
         - domain: internal.local.
           source:
             type: http
-            url: http://127.0.0.1:8053
+            url: http://127.0.0.1:8055
 
 releases:
 - name: service-discovery
