@@ -1,25 +1,84 @@
 package acceptance_tests_test
 
 import (
+	"path/filepath"
+	"time"
+
+	"github.com/cloudfoundry-incubator/cf-test-helpers/cf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"fmt"
-	"os/exec"
 	"github.com/onsi/gomega/gexec"
+	"net/http"
+	"encoding/json"
+	"io/ioutil"
 )
 
+const Timeout_Push = 2 * time.Minute
+
+var (
+	appsDir string
+	prefix  string
+	orgName string
+)
 var _ = Describe("Acceptance", func() {
+
+	BeforeEach(func() {
+		prefix = "sd-apps"
+
+		orgName = prefix + "org" // cf-pusher expects this name
+		Expect(cf.Cf("create-org", orgName).Wait(Timeout_Push)).To(gexec.Exit(0))
+		Expect(cf.Cf("target", "-o", orgName).Wait(Timeout_Push)).To(gexec.Exit(0))
+
+		spaceName := prefix + "space" // cf-pusher expects this name
+		Expect(cf.Cf("create-space", spaceName, "-o", orgName).Wait(Timeout_Push)).To(gexec.Exit(0))
+		Expect(cf.Cf("target", "-o", orgName, "-s", spaceName).Wait(Timeout_Push)).To(gexec.Exit(0))
+	})
+
+	AfterEach(func() {
+		Expect(cf.Cf("delete-org", orgName, "-f").Wait(Timeout_Push)).To(gexec.Exit(0))
+	})
+
 	Describe("when performing a dns lookup for a domain configured to point to the bosh adapter", func() {
 		It("returns the result from the adapter", func() {
-			cmd := exec.Command("dig", "app-id.internal.local.", fmt.Sprintf("@%s", allDeployedInstances[0].IP))
-			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-			Expect(err).ToNot(HaveOccurred())
+			pushProxy("proxy")
 
-			Eventually(session).Should(gexec.Exit())
-			output := string(session.Out.Contents())
-			Expect(output).To(ContainSubstring("flags: qr aa rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 0"))
-			Expect(output).To(MatchRegexp("app-id.internal.local.\\s+0\\s+IN\\s+A\\s+192\\.168\\.0\\.1"))
-			Expect(output).To(MatchRegexp("app-id.internal.local.\\s+0\\s+IN\\s+A\\s+192\\.168\\.0\\.2"))
+			session := cf.Cf("app", "proxy", "--guid").Wait(10 * time.Second)
+
+			proxyGuid := string(session.Out.Contents())
+
+			resp, err := http.Get("http://proxy." + config.AppsDomain + "/dig/" + proxyGuid + ".sd-local.")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+			ipsJson, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+
+			proxyIps := &[]string{}
+
+			println(string(ipsJson))
+			err = json.Unmarshal(ipsJson, proxyIps)
+			Expect(err).NotTo(HaveOccurred())
+
+			session = cf.Cf("ssh", "proxy", "-c", "echo $CF_INSTANCE_INTERNAL_IP").Wait(10 * time.Second)
+			proxyContainerIp := string(session.Out.Contents())
+
+			Expect(*proxyIps).To(ContainElement(proxyContainerIp))
 		})
 	})
 })
+
+func appDir(appType string) string {
+	return filepath.Join(appsDir, appType)
+}
+
+func pushProxy(appName string) {
+	Expect(cf.Cf(
+		"push", appName,
+		"-p", appDir("proxy"),
+		"-f", defaultManifest("proxy"),
+	).Wait(Timeout_Push)).To(gexec.Exit(0))
+}
+
+func defaultManifest(appType string) string {
+	return filepath.Join(appDir(appType), "manifest.yml")
+}
