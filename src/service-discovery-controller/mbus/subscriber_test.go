@@ -5,13 +5,14 @@ import (
 
 	"encoding/json"
 
-	"fmt"
 	"time"
 
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"service-discovery-controller/mbus/fakes"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("Subscriber", func() {
@@ -60,7 +61,7 @@ var _ = Describe("Subscriber", func() {
 		var msg *nats.Msg
 		var serviceDiscoveryData ServiceDiscoveryStartMessage
 
-		Eventually(msgChan, 4).Should(Receive(&msg), fmt.Sprintf("fakeRouteEmitter %+v | subscriber client %+v", fakeRouteEmitter.Stats(), subscriber.NatsClient.Stats()))
+		Eventually(msgChan, 4).Should(Receive(&msg))
 
 		Expect(msg).ToNot(BeNil())
 
@@ -82,10 +83,9 @@ var _ = Describe("Subscriber", func() {
 
 		time.Sleep(1 * time.Second)
 
-		err = subscriber.SendGreetMessage("127.0.0.1:8080")
+		err = subscriber.SetupGreetMsgHandler("127.0.0.1:8080")
 		Expect(err).NotTo(HaveOccurred())
 
-		// Why no send?
 		Expect(fakeRouteEmitter.PublishRequest("service-discovery.greet", "service-discovery.greet.test.response", []byte{})).To(Succeed())
 		Expect(fakeRouteEmitter.Flush()).To(Succeed())
 
@@ -111,7 +111,7 @@ var _ = Describe("Subscriber", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeRouteEmitter.Flush()).To(Succeed())
 
-			err = subscriber.SendGreetMessage("127.0.0.1:8080")
+			err = subscriber.SetupGreetMsgHandler("127.0.0.1:8080")
 			Expect(err).NotTo(HaveOccurred())
 
 			err = fakeRouteEmitter.PublishRequest("service-discovery.greet", "service-discovery.greet-1.test.response", []byte{})
@@ -146,7 +146,7 @@ var _ = Describe("Subscriber", func() {
 		})
 
 		It("and fails to subscribe to greet messages", func() {
-			err := subscriber.SendGreetMessage("127.0.0.1:8080")
+			err := subscriber.SetupGreetMsgHandler("127.0.0.1:8080")
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(Equal("unable to subscribe to greet messages: nats: connection closed"))
@@ -212,6 +212,26 @@ var _ = Describe("Subscriber", func() {
 			}).ShouldNot(Succeed())
 		})
 	})
+
+	Describe("Edge error cases", func() {
+		var fakeNatsConn *fakes.NatsConn
+		BeforeEach(func() {
+			fakeNatsConn = &fakes.NatsConn{}
+			subscriber = NewSubscriber(fakeNatsConn, subOpts)
+		})
+
+		Context("when sending a greet message and fails to flush", func() {
+			BeforeEach(func() {
+				fakeNatsConn.FlushReturns(errors.New("failed to flush"))
+			})
+
+			It("should return an error", func() {
+				Expect(subscriber.SetupGreetMsgHandler("fake-host")).To(MatchError("unable to flush subscribe greet message: failed to flush"))
+			})
+		})
+
+	})
+
 })
 
 func getNatsClient(natsUrl string) *nats.Conn {
