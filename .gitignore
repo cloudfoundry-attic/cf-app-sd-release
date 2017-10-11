@@ -1,5 +1,5 @@
 bin/
-pkg/
+/pkg/
 config/private.yml
 blobs
 dev_releases

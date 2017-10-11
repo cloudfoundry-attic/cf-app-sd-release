@@ -25,3 +25,18 @@
 [submodule "src/github.com/cloudfoundry-incubator/cf-test-helpers"]
 	path = src/github.com/cloudfoundry-incubator/cf-test-helpers
 	url = https://github.com/cloudfoundry-incubator/cf-test-helpers
+[submodule "src/github.com/nats-io/nats"]
+	path = src/github.com/nats-io/nats
+	url = https://github.com/nats-io/nats
+[submodule "src/github.com/nats-io/gnatsd"]
+	path = src/github.com/nats-io/gnatsd
+	url = https://github.com/nats-io/gnatsd
+[submodule "src/github.com/nats-io/go-nats"]
+	path = src/github.com/nats-io/go-nats
+	url = https://github.com/nats-io/go-nats
+[submodule "src/github.com/nats-io/nuid"]
+	path = src/github.com/nats-io/nuid
+	url = https://github.com/nats-io/nuid
+[submodule "src/github.com/pkg/errors"]
+	path = src/github.com/pkg/errors
+	url = https://github.com/pkg/errors
