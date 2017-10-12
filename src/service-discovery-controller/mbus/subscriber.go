@@ -30,6 +30,7 @@ type RegistryMessage struct {
 //go:generate counterfeiter -o fakes/address_table.go --fake-name AddressTable . AddressTable
 type AddressTable interface {
 	Add(hostnames []string, ip string)
+	Remove(hostnames []string)
 }
 
 type Subscriber struct {
@@ -115,6 +116,18 @@ func (s *Subscriber) SetupAddressMessageHandler() {
 			return
 		}
 		s.table.Add(registryMessage.URIs, registryMessage.Host)
+	}))
+
+	s.natsClient.Subscribe("service-discovery.unregister", nats.MsgHandler(func(msg *nats.Msg) {
+		registryMessage := &RegistryMessage{}
+		err := json.Unmarshal(msg.Data, registryMessage)
+		if err != nil || len(registryMessage.URIs) == 0 {
+			s.logger.Info("SetupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
+				"msgJson": string(msg.Data),
+			}))
+			return
+		}
+		s.table.Remove(registryMessage.URIs)
 	}))
 }
 

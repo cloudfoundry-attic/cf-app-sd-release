@@ -317,6 +317,96 @@ var _ = Describe("Subscriber", func() {
 		})
 	})
 
+	Context("when an unregister message is received", func() {
+		It("should remove it from the address table", func() {
+			subscriber.SetupAddressMessageHandler()
+
+			natsUnRegisterMsg := nats.Msg{
+				Subject: "service-discovery.unregister",
+				Data: []byte(`{
+					"host": "192.168.0.1",
+					"uris": ["foo.com", "0.foo.com"]
+				}`),
+			}
+
+			Eventually(func() int {
+				fakeRouteEmitter.PublishMsg(&natsUnRegisterMsg)
+				return addressTable.RemoveCallCount()
+			}).Should(Equal(1))
+
+			Expect(addressTable.RemoveArgsForCall(0)).To(Equal([]string{"foo.com", "0.foo.com"}))
+		})
+
+		Context("when the message is malformed", func() {
+			It("should not remove the garbage", func() {
+				subscriber.SetupAddressMessageHandler()
+
+				json := `garbage "0.foo.com"] }`
+				natsUnRegisterMsg := nats.Msg{
+					Subject: "service-discovery.unregister",
+					Data:    []byte(json),
+				}
+
+				Eventually(func() lager.Logger {
+					fakeRouteEmitter.PublishMsg(&natsUnRegisterMsg)
+					return subcriberLogger
+				}).Should(HaveLogged(
+					Info(
+						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Data("msgJson", json),
+					)))
+
+				Expect(addressTable.RemoveCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("when an unregister message does not contain host info", func() {
+			It("should remove it from the address table", func() {
+				subscriber.SetupAddressMessageHandler()
+
+				json := `{
+					"uris": ["foo.com", "0.foo.com"]
+				}`
+				natsUnRegisterMsg := nats.Msg{
+					Subject: "service-discovery.unregister",
+					Data:    []byte(json),
+				}
+
+				Eventually(func() int {
+					fakeRouteEmitter.PublishMsg(&natsUnRegisterMsg)
+					return addressTable.RemoveCallCount()
+				}).Should(Equal(1))
+
+				Expect(addressTable.RemoveArgsForCall(0)).To(Equal([]string{"foo.com", "0.foo.com"}))
+			})
+		})
+
+		Context("when a registration message does not contain URIS", func() {
+			It("should not remove and log", func() {
+				subscriber.SetupAddressMessageHandler()
+
+				json := `{
+									"host": "192.168.0.1"
+				}`
+				natsUnRegisterMsg := nats.Msg{
+					Subject: "service-discovery.unregister",
+					Data:    []byte(json),
+				}
+
+				Eventually(func() lager.Logger {
+					fakeRouteEmitter.PublishMsg(&natsUnRegisterMsg)
+					return subcriberLogger
+				}).Should(HaveLogged(
+					Info(
+						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Data("msgJson", json),
+					)))
+
+				Expect(addressTable.RemoveCallCount()).To(Equal(0))
+			})
+		})
+	})
+
 	Describe("Edge error cases", func() {
 		var fakeNatsConn *fakes.NatsConn
 		BeforeEach(func() {

@@ -13,6 +13,11 @@ type AddressTable struct {
 		hostnames []string
 		ip        string
 	}
+	RemoveStub        func(hostnames []string)
+	removeMutex       sync.RWMutex
+	removeArgsForCall []struct {
+		hostnames []string
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -47,11 +52,42 @@ func (fake *AddressTable) AddArgsForCall(i int) ([]string, string) {
 	return fake.addArgsForCall[i].hostnames, fake.addArgsForCall[i].ip
 }
 
+func (fake *AddressTable) Remove(hostnames []string) {
+	var hostnamesCopy []string
+	if hostnames != nil {
+		hostnamesCopy = make([]string, len(hostnames))
+		copy(hostnamesCopy, hostnames)
+	}
+	fake.removeMutex.Lock()
+	fake.removeArgsForCall = append(fake.removeArgsForCall, struct {
+		hostnames []string
+	}{hostnamesCopy})
+	fake.recordInvocation("Remove", []interface{}{hostnamesCopy})
+	fake.removeMutex.Unlock()
+	if fake.RemoveStub != nil {
+		fake.RemoveStub(hostnames)
+	}
+}
+
+func (fake *AddressTable) RemoveCallCount() int {
+	fake.removeMutex.RLock()
+	defer fake.removeMutex.RUnlock()
+	return len(fake.removeArgsForCall)
+}
+
+func (fake *AddressTable) RemoveArgsForCall(i int) []string {
+	fake.removeMutex.RLock()
+	defer fake.removeMutex.RUnlock()
+	return fake.removeArgsForCall[i].hostnames
+}
+
 func (fake *AddressTable) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.addMutex.RLock()
 	defer fake.addMutex.RUnlock()
+	fake.removeMutex.RLock()
+	defer fake.removeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
