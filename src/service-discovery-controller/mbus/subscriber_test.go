@@ -7,13 +7,14 @@ import (
 
 	"time"
 
-	"service-discovery-controller/mbus/fakes"
-
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/st3v/glager"
+	"service-discovery-controller/mbus/fakes"
 	"github.com/pkg/errors"
+	"code.cloudfoundry.org/lager"
 )
 
 var _ = Describe("Subscriber", func() {
@@ -24,6 +25,7 @@ var _ = Describe("Subscriber", func() {
 		subOpts          SubscriberOpts
 		natsUrl          string
 		addressTable     *fakes.AddressTable
+		subcriberLogger  lager.Logger
 	)
 
 	BeforeEach(func() {
@@ -34,7 +36,7 @@ var _ = Describe("Subscriber", func() {
 		fakeRouteEmitter = getNatsClient(natsUrl)
 
 		subOpts = SubscriberOpts{
-			ID: "Fake-Subscriber-ID",
+			ID:                               "Fake-Subscriber-ID",
 			MinimumRegisterIntervalInSeconds: 60,
 			PruneThresholdInSeconds:          120,
 		}
@@ -42,7 +44,9 @@ var _ = Describe("Subscriber", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		addressTable = &fakes.AddressTable{}
-		subscriber = NewSubscriber(natsClient, subOpts, addressTable)
+		subcriberLogger = NewLogger("test")
+
+		subscriber = NewSubscriber(natsClient, subOpts, addressTable, subcriberLogger)
 	})
 
 	AfterEach(func() {
@@ -204,7 +208,7 @@ var _ = Describe("Subscriber", func() {
 				return nil
 			}))
 			Expect(err).ToNot(HaveOccurred())
-			subscriber = NewSubscriber(natsClient, subOpts, addressTable)
+			subscriber = NewSubscriber(natsClient, subOpts, addressTable, subcriberLogger)
 		})
 
 		It("sending a start message should return an error", func() {
@@ -228,13 +232,88 @@ var _ = Describe("Subscriber", func() {
 				}`),
 			}
 
-			fakeRouteEmitter.PublishMsg(&natsRegistryMsg)
+			Eventually(func() int {
+				fakeRouteEmitter.PublishMsg(&natsRegistryMsg)
+				return addressTable.AddCallCount()
+			}).Should(Equal(1))
 
-			Eventually(addressTable.AddCallCount).Should(Equal(1))
 			hostnames, ip := addressTable.AddArgsForCall(0)
 
 			Expect(hostnames).To(Equal([]string{"foo.com", "0.foo.com"}))
 			Expect(ip).To(Equal("192.168.0.1"))
+		})
+
+		Context("when the message is malformed", func() {
+			It("should not add the garbage", func() {
+				subscriber.SetupAddressMessageHandler()
+
+				json := `garbage "0.foo.com"] }`
+				natsRegistryMsg := nats.Msg{
+					Subject: "service-discovery.register",
+					Data:    []byte(json),
+				}
+
+				Eventually(func() lager.Logger {
+					fakeRouteEmitter.PublishMsg(&natsRegistryMsg)
+					return subcriberLogger
+				}).Should(HaveLogged(
+					Info(
+						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Data("msgJson", json),
+					)))
+
+				Expect(addressTable.AddCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("when a registration message does not contain host info", func() {
+			It("should not add", func() {
+				subscriber.SetupAddressMessageHandler()
+
+				json := `{
+					"uris": ["foo.com", "0.foo.com"]
+				}`
+				natsRegistryMsg := nats.Msg{
+					Subject: "service-discovery.register",
+					Data:    []byte(json),
+				}
+
+				Eventually(func() lager.Logger {
+					fakeRouteEmitter.PublishMsg(&natsRegistryMsg)
+					return subcriberLogger
+				}).Should(HaveLogged(
+					Info(
+						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Data("msgJson", json),
+					)))
+
+				Expect(addressTable.AddCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("when a registration message does not contain URIS", func() {
+			It("should not add", func() {
+				subscriber.SetupAddressMessageHandler()
+
+				json := `{
+									"host": "192.168.0.1"
+				}`
+				natsRegistryMsg := nats.Msg{
+					Subject: "service-discovery.register",
+					Data:    []byte(json),
+				}
+
+				Eventually(func() lager.Logger {
+					fakeRouteEmitter.PublishMsg(&natsRegistryMsg)
+					return subcriberLogger
+				}).Should(HaveLogged(
+					Info(
+						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Data("msgJson", json),
+					)))
+
+				Expect(addressTable.AddCallCount()).To(Equal(0))
+			})
 		})
 	})
 
@@ -242,7 +321,7 @@ var _ = Describe("Subscriber", func() {
 		var fakeNatsConn *fakes.NatsConn
 		BeforeEach(func() {
 			fakeNatsConn = &fakes.NatsConn{}
-			subscriber = NewSubscriber(fakeNatsConn, subOpts, addressTable)
+			subscriber = NewSubscriber(fakeNatsConn, subOpts, addressTable, subcriberLogger)
 		})
 
 		Context("when sending a greet message and fails to flush", func() {

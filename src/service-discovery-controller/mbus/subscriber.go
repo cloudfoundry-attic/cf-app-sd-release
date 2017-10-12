@@ -5,6 +5,7 @@ import (
 
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
+	"code.cloudfoundry.org/lager"
 )
 
 type ServiceDiscoveryStartMessage struct {
@@ -35,6 +36,7 @@ type Subscriber struct {
 	natsClient NatsConn
 	subOpts    SubscriberOpts
 	table      AddressTable
+	logger     lager.Logger
 }
 
 //go:generate counterfeiter -o fakes/nats_conn.go --fake-name NatsConn . NatsConn
@@ -45,11 +47,16 @@ type NatsConn interface {
 	Subscribe(string, nats.MsgHandler) (*nats.Subscription, error)
 }
 
-func NewSubscriber(natsClient NatsConn, subOpts SubscriberOpts, table AddressTable) *Subscriber {
+func NewSubscriber(natsClient NatsConn,
+	subOpts SubscriberOpts,
+	table AddressTable,
+	logger lager.Logger,
+) *Subscriber {
 	return &Subscriber{
 		natsClient,
 		subOpts,
 		table,
+		logger,
 	}
 }
 
@@ -100,7 +107,13 @@ func (s *Subscriber) SetupGreetMsgHandler(host string) error {
 func (s *Subscriber) SetupAddressMessageHandler() {
 	s.natsClient.Subscribe("service-discovery.register", nats.MsgHandler(func(msg *nats.Msg) {
 		registryMessage := &RegistryMessage{}
-		json.Unmarshal(msg.Data, registryMessage)
+		err := json.Unmarshal(msg.Data, registryMessage)
+		if err != nil || registryMessage.Host == "" || len(registryMessage.URIs) == 0 {
+			s.logger.Info("SetupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
+				"msgJson": string(msg.Data),
+			}))
+			return
+		}
 		s.table.Add(registryMessage.URIs, registryMessage.Host)
 	}))
 }
