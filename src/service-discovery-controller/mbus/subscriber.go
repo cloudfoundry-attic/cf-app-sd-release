@@ -21,9 +21,20 @@ type SubscriberOpts struct {
 	AcceptTLS                        bool
 }
 
+type RegistryMessage struct {
+	Host string   `json:"host"`
+	URIs []string `json:"uris"`
+}
+
+//go:generate counterfeiter -o fakes/address_table.go --fake-name AddressTable . AddressTable
+type AddressTable interface {
+	Add(hostnames []string, ip string)
+}
+
 type Subscriber struct {
-	NatsClient NatsConn
-	SubOpts    SubscriberOpts
+	natsClient NatsConn
+	subOpts    SubscriberOpts
+	table      AddressTable
 }
 
 //go:generate counterfeiter -o fakes/nats_conn.go --fake-name NatsConn . NatsConn
@@ -34,10 +45,11 @@ type NatsConn interface {
 	Subscribe(string, nats.MsgHandler) (*nats.Subscription, error)
 }
 
-func NewSubscriber(natsClient NatsConn, subOpts SubscriberOpts) *Subscriber {
+func NewSubscriber(natsClient NatsConn, subOpts SubscriberOpts, table AddressTable) *Subscriber {
 	return &Subscriber{
 		natsClient,
 		subOpts,
+		table,
 	}
 }
 
@@ -49,7 +61,7 @@ func (s *Subscriber) SendStartMessage(host string) error {
 		Data:    discoveryMessageJson,
 	}
 
-	err := s.NatsClient.PublishMsg(msg)
+	err := s.natsClient.PublishMsg(msg)
 	if err != nil {
 		return errors.Wrap(err, "unable to publish a start message")
 	}
@@ -58,26 +70,26 @@ func (s *Subscriber) SendStartMessage(host string) error {
 }
 
 func (s *Subscriber) Close() {
-	s.NatsClient.Close()
+	s.natsClient.Close()
 }
 
 func (s *Subscriber) SetupGreetMsgHandler(host string) error {
 	discoveryMessageJson := s.mapSubOpts(host)
 
-	_, err := s.NatsClient.Subscribe("service-discovery.greet", nats.MsgHandler(func(greetMsg *nats.Msg) {
+	_, err := s.natsClient.Subscribe("service-discovery.greet", nats.MsgHandler(func(greetMsg *nats.Msg) {
 		msg := &nats.Msg{
 			Subject: greetMsg.Reply,
 			Data:    discoveryMessageJson,
 		}
 
-		_ = s.NatsClient.PublishMsg(msg)
+		_ = s.natsClient.PublishMsg(msg)
 	}))
 
 	if err != nil {
 		return errors.Wrap(err, "unable to subscribe to greet messages")
 	}
 
-	err = s.NatsClient.Flush()
+	err = s.natsClient.Flush()
 	if err != nil {
 		return errors.Wrap(err, "unable to flush subscribe greet message")
 	}
@@ -85,12 +97,20 @@ func (s *Subscriber) SetupGreetMsgHandler(host string) error {
 	return nil
 }
 
+func (s *Subscriber) SetupAddressMessageHandler() {
+	s.natsClient.Subscribe("service-discovery.register", nats.MsgHandler(func(msg *nats.Msg) {
+		registryMessage := &RegistryMessage{}
+		json.Unmarshal(msg.Data, registryMessage)
+		s.table.Add(registryMessage.URIs, registryMessage.Host)
+	}))
+}
+
 func (s *Subscriber) mapSubOpts(host string) []byte {
 	discoveryStartMessage := ServiceDiscoveryStartMessage{
-		Id:                               s.SubOpts.ID,
+		Id:                               s.subOpts.ID,
 		Host:                             host,
-		MinimumRegisterIntervalInSeconds: s.SubOpts.MinimumRegisterIntervalInSeconds,
-		PruneThresholdInSeconds:          s.SubOpts.PruneThresholdInSeconds,
+		MinimumRegisterIntervalInSeconds: s.subOpts.MinimumRegisterIntervalInSeconds,
+		PruneThresholdInSeconds:          s.subOpts.PruneThresholdInSeconds,
 	}
 
 	discoveryMessageJson, _ := json.Marshal(discoveryStartMessage) //err should never happen

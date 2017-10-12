@@ -7,11 +7,12 @@ import (
 
 	"time"
 
+	"service-discovery-controller/mbus/fakes"
+
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"service-discovery-controller/mbus/fakes"
 	"github.com/pkg/errors"
 )
 
@@ -22,6 +23,7 @@ var _ = Describe("Subscriber", func() {
 		subscriber       *Subscriber
 		subOpts          SubscriberOpts
 		natsUrl          string
+		addressTable     *fakes.AddressTable
 	)
 
 	BeforeEach(func() {
@@ -32,14 +34,15 @@ var _ = Describe("Subscriber", func() {
 		fakeRouteEmitter = getNatsClient(natsUrl)
 
 		subOpts = SubscriberOpts{
-			ID:                               "Fake-Subscriber-ID",
+			ID: "Fake-Subscriber-ID",
 			MinimumRegisterIntervalInSeconds: 60,
 			PruneThresholdInSeconds:          120,
 		}
 		natsClient, err := nats.Connect(natsUrl)
 		Expect(err).ToNot(HaveOccurred())
 
-		subscriber = NewSubscriber(natsClient, subOpts)
+		addressTable = &fakes.AddressTable{}
+		subscriber = NewSubscriber(natsClient, subOpts, addressTable)
 	})
 
 	AfterEach(func() {
@@ -135,7 +138,7 @@ var _ = Describe("Subscriber", func() {
 
 	Context("when nats client connection is closed", func() {
 		BeforeEach(func() {
-			subscriber.NatsClient.Close()
+			subscriber.Close()
 		})
 
 		It("and fails to publish message", func() {
@@ -201,7 +204,7 @@ var _ = Describe("Subscriber", func() {
 				return nil
 			}))
 			Expect(err).ToNot(HaveOccurred())
-			subscriber = NewSubscriber(natsClient, subOpts)
+			subscriber = NewSubscriber(natsClient, subOpts, addressTable)
 		})
 
 		It("sending a start message should return an error", func() {
@@ -213,11 +216,33 @@ var _ = Describe("Subscriber", func() {
 		})
 	})
 
+	Context("when a registration message is received", func() {
+		It("should write it to the address table", func() {
+			subscriber.SetupAddressMessageHandler()
+
+			natsRegistryMsg := nats.Msg{
+				Subject: "service-discovery.register",
+				Data: []byte(`{
+					"host": "192.168.0.1",
+					"uris": ["foo.com", "0.foo.com"]
+				}`),
+			}
+
+			fakeRouteEmitter.PublishMsg(&natsRegistryMsg)
+
+			Eventually(addressTable.AddCallCount).Should(Equal(1))
+			hostnames, ip := addressTable.AddArgsForCall(0)
+
+			Expect(hostnames).To(Equal([]string{"foo.com", "0.foo.com"}))
+			Expect(ip).To(Equal("192.168.0.1"))
+		})
+	})
+
 	Describe("Edge error cases", func() {
 		var fakeNatsConn *fakes.NatsConn
 		BeforeEach(func() {
 			fakeNatsConn = &fakes.NatsConn{}
-			subscriber = NewSubscriber(fakeNatsConn, subOpts)
+			subscriber = NewSubscriber(fakeNatsConn, subOpts, addressTable)
 		})
 
 		Context("when sending a greet message and fails to flush", func() {
@@ -229,9 +254,7 @@ var _ = Describe("Subscriber", func() {
 				Expect(subscriber.SetupGreetMsgHandler("fake-host")).To(MatchError("unable to flush subscribe greet message: failed to flush"))
 			})
 		})
-
 	})
-
 })
 
 func getNatsClient(natsUrl string) *nats.Conn {
