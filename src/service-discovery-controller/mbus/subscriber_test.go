@@ -7,14 +7,15 @@ import (
 
 	"time"
 
+	"service-discovery-controller/mbus/fakes"
+
+	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/st3v/glager"
-	"service-discovery-controller/mbus/fakes"
 	"github.com/pkg/errors"
-	"code.cloudfoundry.org/lager"
+	. "github.com/st3v/glager"
 )
 
 var _ = Describe("Subscriber", func() {
@@ -36,7 +37,7 @@ var _ = Describe("Subscriber", func() {
 		fakeRouteEmitter = getNatsClient(natsUrl)
 
 		subOpts = SubscriberOpts{
-			ID:                               "Fake-Subscriber-ID",
+			ID: "Fake-Subscriber-ID",
 			MinimumRegisterIntervalInSeconds: 60,
 			PruneThresholdInSeconds:          120,
 		}
@@ -334,7 +335,9 @@ var _ = Describe("Subscriber", func() {
 				return addressTable.RemoveCallCount()
 			}).Should(Equal(1))
 
-			Expect(addressTable.RemoveArgsForCall(0)).To(Equal([]string{"foo.com", "0.foo.com"}))
+			uris, host := addressTable.RemoveArgsForCall(0)
+			Expect(uris).To(Equal([]string{"foo.com", "0.foo.com"}))
+			Expect(host).To(Equal("192.168.0.1"))
 		})
 
 		Context("when the message is malformed", func() {

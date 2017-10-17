@@ -3,9 +3,9 @@ package mbus
 import (
 	"encoding/json"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
-	"code.cloudfoundry.org/lager"
 )
 
 type ServiceDiscoveryStartMessage struct {
@@ -30,7 +30,7 @@ type RegistryMessage struct {
 //go:generate counterfeiter -o fakes/address_table.go --fake-name AddressTable . AddressTable
 type AddressTable interface {
 	Add(hostnames []string, ip string)
-	Remove(hostnames []string)
+	Remove(hostnames []string, ip string)
 }
 
 type Subscriber struct {
@@ -127,14 +127,14 @@ func (s *Subscriber) SetupAddressMessageHandler() {
 			}))
 			return
 		}
-		s.table.Remove(registryMessage.URIs)
+		s.table.Remove(registryMessage.URIs, registryMessage.Host)
 	}))
 }
 
 func (s *Subscriber) mapSubOpts(host string) []byte {
 	discoveryStartMessage := ServiceDiscoveryStartMessage{
-		Id:                               s.subOpts.ID,
-		Host:                             host,
+		Id:   s.subOpts.ID,
+		Host: host,
 		MinimumRegisterIntervalInSeconds: s.subOpts.MinimumRegisterIntervalInSeconds,
 		PruneThresholdInSeconds:          s.subOpts.PruneThresholdInSeconds,
 	}
