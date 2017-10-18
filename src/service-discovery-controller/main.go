@@ -12,6 +12,8 @@ import (
 	"flag"
 	"io/ioutil"
 	"service-discovery-controller/config"
+	"service-discovery-controller/addresstable"
+	"service-discovery-controller/mbus"
 )
 
 type host struct {
@@ -55,33 +57,32 @@ func main() {
 		os.Exit(1)
 	}
 
-	routes := map[string][]string{
-		"app-id.internal.local.": {
-			"192.168.0.1",
-			"192.168.0.2",
-		},
-		"large-id.internal.local.": {
-			"192.168.0.1",
-			"192.168.0.2",
-			"192.168.0.3",
-			"192.168.0.4",
-			"192.168.0.5",
-			"192.168.0.6",
-			"192.168.0.7",
-			"192.168.0.8",
-			"192.168.0.9",
-			"192.168.0.10",
-			"192.168.0.11",
-			"192.168.0.12",
-			"192.168.0.13",
-		},
-	}
+	addressTable := addresstable.NewAddressTable()
+
+
+	mbus.NewSubscriber()
+	//addressTable.Add([]string{"app-id.internal.local."}, "192.168.0.1")
+	//addressTable.Add([]string{"app-id.internal.local."}, "192.168.0.2")
+	//
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.1")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.2")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.3")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.4")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.5")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.6")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.7")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.8")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.9")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.10")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.11")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.12")
+	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.13")
 
 	go func() {
 		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 			serviceKey := path.Base(req.URL.Path)
 
-			ips := routes[serviceKey]
+			ips := addressTable.Lookup(serviceKey)
 			hosts := []host{}
 			for _, ip := range ips {
 				hosts = append(hosts, host{

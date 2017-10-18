@@ -38,6 +38,7 @@ type Subscriber struct {
 	subOpts    SubscriberOpts
 	table      AddressTable
 	logger     lager.Logger
+	localIP    string
 }
 
 //go:generate counterfeiter -o fakes/nats_conn.go --fake-name NatsConn . NatsConn
@@ -48,21 +49,51 @@ type NatsConn interface {
 	Subscribe(string, nats.MsgHandler) (*nats.Subscription, error)
 }
 
-func NewSubscriber(natsClient NatsConn,
-	subOpts SubscriberOpts,
-	table AddressTable,
-	logger lager.Logger,
-) *Subscriber {
-	return &Subscriber{
-		natsClient,
-		subOpts,
-		table,
-		logger,
-	}
+//go:generate counterfeiter -o fakes/nats_conn_provider.go --fake-name NatsConnProvider . NatsConnProvider
+type NatsConnProvider interface {
+	Connection(opts ...nats.Option) (NatsConn, error)
 }
 
-func (s *Subscriber) SendStartMessage(host string) error {
-	discoveryMessageJson := s.mapSubOpts(host)
+//go:generate counterfeiter -o fakes/local_ip.go --fake-name LocalIP . LocalIP
+type LocalIP interface {
+	LocalIP() (string, error)
+}
+
+func NewSubscriber(
+	natsConnBuilder NatsConnProvider,
+	subOpts SubscriberOpts,
+	table AddressTable,
+	localIP LocalIP,
+	logger lager.Logger,
+) *Subscriber {
+
+	ip, err := localIP.LocalIP()
+	if err != nil {
+		panic(err)
+	}
+	subscriber := &Subscriber{
+		subOpts: subOpts,
+		table:   table,
+		logger:  logger,
+		localIP: ip,
+	}
+
+	natsClient, err := natsConnBuilder.Connection(
+		nats.ReconnectHandler(nats.ConnHandler(func(*nats.Conn) {
+			subscriber.SendStartMessage()
+		})),
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	subscriber.natsClient = natsClient
+	return subscriber
+}
+
+func (s *Subscriber) SendStartMessage() error {
+	discoveryMessageJson := s.mapSubOpts()
 
 	msg := &nats.Msg{
 		Subject: "service-discovery.start",
@@ -81,8 +112,8 @@ func (s *Subscriber) Close() {
 	s.natsClient.Close()
 }
 
-func (s *Subscriber) SetupGreetMsgHandler(host string) error {
-	discoveryMessageJson := s.mapSubOpts(host)
+func (s *Subscriber) SetupGreetMsgHandler() error {
+	discoveryMessageJson := s.mapSubOpts()
 
 	_, err := s.natsClient.Subscribe("service-discovery.greet", nats.MsgHandler(func(greetMsg *nats.Msg) {
 		msg := &nats.Msg{
@@ -131,10 +162,10 @@ func (s *Subscriber) SetupAddressMessageHandler() {
 	}))
 }
 
-func (s *Subscriber) mapSubOpts(host string) []byte {
+func (s *Subscriber) mapSubOpts() []byte {
 	discoveryStartMessage := ServiceDiscoveryStartMessage{
 		Id:   s.subOpts.ID,
-		Host: host,
+		Host: s.localIP,
 		MinimumRegisterIntervalInSeconds: s.subOpts.MinimumRegisterIntervalInSeconds,
 		PruneThresholdInSeconds:          s.subOpts.PruneThresholdInSeconds,
 	}

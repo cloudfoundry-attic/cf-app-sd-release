@@ -27,6 +27,7 @@ var _ = Describe("Subscriber", func() {
 		natsUrl          string
 		addressTable     *fakes.AddressTable
 		subcriberLogger  lager.Logger
+		localIP          *fakes.LocalIP
 	)
 
 	BeforeEach(func() {
@@ -34,20 +35,23 @@ var _ = Describe("Subscriber", func() {
 		gnatsServer.Start()
 
 		natsUrl = "nats://" + gnatsServer.Addr().String()
-		fakeRouteEmitter = getNatsClient(natsUrl)
+		fakeRouteEmitter = newFakeRouteEmitter(natsUrl)
 
 		subOpts = SubscriberOpts{
 			ID: "Fake-Subscriber-ID",
 			MinimumRegisterIntervalInSeconds: 60,
 			PruneThresholdInSeconds:          120,
 		}
-		natsClient, err := nats.Connect(natsUrl)
-		Expect(err).ToNot(HaveOccurred())
 
 		addressTable = &fakes.AddressTable{}
 		subcriberLogger = NewLogger("test")
 
-		subscriber = NewSubscriber(natsClient, subOpts, addressTable, subcriberLogger)
+		provider := &NatsConnWithUrlProvider{Url: natsUrl}
+
+		localIP = &fakes.LocalIP{}
+		localIP.LocalIPReturns("192.168.0.1", nil)
+
+		subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
 	})
 
 	AfterEach(func() {
@@ -63,7 +67,7 @@ var _ = Describe("Subscriber", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(fakeRouteEmitter.Flush()).To(Succeed())
 
-		err = subscriber.SendStartMessage("127.0.0.1:8080")
+		err = subscriber.SendStartMessage()
 		Expect(err).ToNot(HaveOccurred())
 
 		var msg *nats.Msg
@@ -91,7 +95,7 @@ var _ = Describe("Subscriber", func() {
 
 		time.Sleep(1 * time.Second)
 
-		err = subscriber.SetupGreetMsgHandler("127.0.0.1:8080")
+		err = subscriber.SetupGreetMsgHandler()
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeRouteEmitter.PublishRequest("service-discovery.greet", "service-discovery.greet.test.response", []byte{})).To(Succeed())
@@ -119,7 +123,7 @@ var _ = Describe("Subscriber", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeRouteEmitter.Flush()).To(Succeed())
 
-			err = subscriber.SetupGreetMsgHandler("127.0.0.1:8080")
+			err = subscriber.SetupGreetMsgHandler()
 			Expect(err).NotTo(HaveOccurred())
 
 			err = fakeRouteEmitter.PublishRequest("service-discovery.greet", "service-discovery.greet-1.test.response", []byte{})
@@ -147,14 +151,14 @@ var _ = Describe("Subscriber", func() {
 		})
 
 		It("and fails to publish message", func() {
-			err := subscriber.SendStartMessage("127.0.0.1:8080")
+			err := subscriber.SendStartMessage()
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(Equal("unable to publish a start message: nats: connection closed"))
 		})
 
 		It("and fails to subscribe to greet messages", func() {
-			err := subscriber.SetupGreetMsgHandler("127.0.0.1:8080")
+			err := subscriber.SetupGreetMsgHandler()
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(Equal("unable to subscribe to greet messages: nats: connection closed"))
@@ -162,7 +166,7 @@ var _ = Describe("Subscriber", func() {
 	})
 
 	Context("when subscriber loses nats server connectivity and then regains connectivity", func() {
-		It("should still be able to send a start message", func() {
+		It("should send a start message", func() {
 			msgChan := make(chan *nats.Msg, 1)
 			_, err := fakeRouteEmitter.ChanSubscribe("service-discovery.start", msgChan)
 			Expect(err).ToNot(HaveOccurred())
@@ -181,9 +185,6 @@ var _ = Describe("Subscriber", func() {
 				return fakeRouteEmitter.IsConnected()
 			}, 10*time.Second).Should(BeTrue())
 
-			err = subscriber.SendStartMessage("127.0.0.1:8080")
-			Expect(err).ToNot(HaveOccurred())
-
 			var msg *nats.Msg
 			Eventually(msgChan, 4).ShouldNot(Receive(&msg))
 
@@ -199,6 +200,8 @@ var _ = Describe("Subscriber", func() {
 			Expect(serviceDiscoveryData.MinimumRegisterIntervalInSeconds).To(Equal(subOpts.MinimumRegisterIntervalInSeconds))
 			Expect(serviceDiscoveryData.PruneThresholdInSeconds).To(Equal(subOpts.PruneThresholdInSeconds))
 			Expect(serviceDiscoveryData.Host).ToNot(BeEmpty())
+			Expect(serviceDiscoveryData.Host).To(Equal("192.168.0.1"))
+
 		})
 	})
 
@@ -209,14 +212,18 @@ var _ = Describe("Subscriber", func() {
 				return nil
 			}))
 			Expect(err).ToNot(HaveOccurred())
-			subscriber = NewSubscriber(natsClient, subOpts, addressTable, subcriberLogger)
+
+			provider := &fakes.NatsConnProvider{}
+			provider.ConnectionReturns(natsClient, nil)
+
+			subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
 		})
 
 		It("sending a start message should return an error", func() {
 			gnatsServer.Shutdown()
 
 			Eventually(func() error {
-				return subscriber.SendStartMessage("127.0.0.1:8080")
+				return subscriber.SendStartMessage()
 			}).ShouldNot(Succeed())
 		})
 	})
@@ -414,7 +421,10 @@ var _ = Describe("Subscriber", func() {
 		var fakeNatsConn *fakes.NatsConn
 		BeforeEach(func() {
 			fakeNatsConn = &fakes.NatsConn{}
-			subscriber = NewSubscriber(fakeNatsConn, subOpts, addressTable, subcriberLogger)
+			provider := &fakes.NatsConnProvider{}
+			provider.ConnectionReturns(fakeNatsConn, nil)
+
+			subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
 		})
 
 		Context("when sending a greet message and fails to flush", func() {
@@ -423,14 +433,14 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			It("should return an error", func() {
-				Expect(subscriber.SetupGreetMsgHandler("fake-host")).To(MatchError("unable to flush subscribe greet message: failed to flush"))
+				Expect(subscriber.SetupGreetMsgHandler()).To(MatchError("unable to flush subscribe greet message: failed to flush"))
 			})
 		})
 	})
 })
 
-func getNatsClient(natsUrl string) *nats.Conn {
-	natsClient, err := nats.Connect(natsUrl)
+func newFakeRouteEmitter(natsUrl string) *nats.Conn {
+	natsClient, err := nats.Connect(natsUrl, nats.ReconnectWait(1*time.Nanosecond))
 	Expect(err).NotTo(HaveOccurred())
 	return natsClient
 }
