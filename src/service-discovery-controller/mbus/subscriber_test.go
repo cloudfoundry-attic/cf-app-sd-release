@@ -150,6 +150,14 @@ var _ = Describe("Subscriber", func() {
 			subscriber.Close()
 		})
 
+		It("logs a message", func() {
+			Eventually(subcriberLogger).Should(HaveLogged(
+				Info(
+					Message("test.ClosedHandler unexpected close of nats connection"),
+					Data("last_error", nil),
+				)))
+		})
+
 		It("and fails to publish message", func() {
 			err := subscriber.SendStartMessage()
 			Expect(err).To(HaveOccurred())
@@ -162,6 +170,20 @@ var _ = Describe("Subscriber", func() {
 			Expect(err).To(HaveOccurred())
 
 			Expect(err.Error()).To(Equal("unable to subscribe to greet messages: nats: connection closed"))
+		})
+	})
+
+	Context("when the nats server stops", func() {
+		It("logs a message", func() {
+			By("gnatsd server stops", func() {
+				gnatsServer.Shutdown()
+			})
+
+			Eventually(subcriberLogger).Should(HaveLogged(
+				Info(
+					Message("test.DisconnectHandler disconnected from nats server"),
+					Data("last_error", nil),
+				)))
 		})
 	})
 
@@ -201,6 +223,12 @@ var _ = Describe("Subscriber", func() {
 			Expect(serviceDiscoveryData.PruneThresholdInSeconds).To(Equal(subOpts.PruneThresholdInSeconds))
 			Expect(serviceDiscoveryData.Host).ToNot(BeEmpty())
 			Expect(serviceDiscoveryData.Host).To(Equal("192.168.0.1"))
+
+			Eventually(subcriberLogger).Should(HaveLogged(
+				Info(
+					Message("test.ReconnectHandler reconnected to nats server"),
+					Data("nats_host", natsUrl),
+				)))
 
 		})
 	})

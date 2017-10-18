@@ -79,8 +79,24 @@ func NewSubscriber(
 	}
 
 	natsClient, err := natsConnBuilder.Connection(
-		nats.ReconnectHandler(nats.ConnHandler(func(*nats.Conn) {
+		nats.ReconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
+			subscriber.logger.Info(
+				"ReconnectHandler reconnected to nats server",
+				lager.Data{"nats_host": conn.ConnectedUrl()},
+			)
 			subscriber.SendStartMessage()
+		})),
+		nats.DisconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
+			subscriber.logger.Info(
+				"DisconnectHandler disconnected from nats server",
+				lager.Data{"last_error": conn.LastError()},
+			)
+		})),
+		nats.ClosedHandler(nats.ConnHandler(func(conn *nats.Conn) {
+			subscriber.logger.Info(
+				"ClosedHandler unexpected close of nats connection",
+				lager.Data{"last_error": conn.LastError()},
+			)
 		})),
 	)
 
