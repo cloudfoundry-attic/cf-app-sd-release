@@ -2,13 +2,13 @@ package config
 
 import (
 	"encoding/json"
-	"net/url"
 	"fmt"
+	"net/url"
 )
 
 type Config struct {
-	Address string `json:"address"`
-	Port    string `json:"port"`
+	Address string       `json:"address"`
+	Port    string       `json:"port"`
 	Nats    []NatsConfig `json:"nats"`
 }
 

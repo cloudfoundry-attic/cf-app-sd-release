@@ -76,7 +76,6 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 		})
 	})
 
-
 	Context("when the server responds a non-200 response", func() {
 		BeforeEach(func() {
 			fakeServerResponse = ghttp.CombineHandlers(

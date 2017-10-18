@@ -2,17 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path"
-	"syscall"
-	"flag"
-	"io/ioutil"
-	"service-discovery-controller/config"
 	"service-discovery-controller/addresstable"
+	"service-discovery-controller/config"
+	"syscall"
 )
 
 type host struct {

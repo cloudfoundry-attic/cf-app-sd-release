@@ -10,12 +10,15 @@ export PATH=$PATH:$GOPATH/bin
 
 go get github.com/onsi/ginkgo/ginkgo
 
-ignored=(vendor,Tools,bin,ci,docs,gobin,out,test,tmp)
-echo -e "\n Formatting packages, other than: ${ignored[*]}..."
-for i in `ls -1` ; do
-  if [ -d "$i" ] && [[ ! ${ignored[*]} =~ "$i" ]] ; then
-    go fmt github.com/cloudfoundry/bosh-agent/${i}/...
-  fi
+echo -e "\n Formatting packages..."
+
+for packageToFmt in bosh-dns-adapter service-discovery-controller; do
+    reformatted_packages=$(go fmt $packageToFmt/...)
+    if [[ $reformatted_packages = *[![:space:]]* ]]; then
+      echo "go fmt reformatted the following packages:"
+      echo $reformatted_packages
+      exit 1
+    fi
 done
 
 ginkgo -r -race -randomizeAllSpecs -randomizeSuites src/bosh-dns-adapter src/service-discovery-controller
