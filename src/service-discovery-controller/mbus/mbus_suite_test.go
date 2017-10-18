@@ -4,17 +4,16 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"testing"
-	gnatsd "github.com/nats-io/gnatsd/test"
 	"github.com/nats-io/gnatsd/server"
+	gnatsd "github.com/nats-io/gnatsd/test"
 	"github.com/nats-io/nats"
+	"testing"
 )
 
 func TestMbus(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Mbus Suite")
 }
-
 
 // RunDefaultServer will run a server on the default port.
 func RunDefaultServer() *server.Server {

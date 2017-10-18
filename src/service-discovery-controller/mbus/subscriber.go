@@ -3,6 +3,8 @@ package mbus
 import (
 	"encoding/json"
 
+	"sync"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
@@ -34,11 +36,13 @@ type AddressTable interface {
 }
 
 type Subscriber struct {
-	natsClient NatsConn
-	subOpts    SubscriberOpts
-	table      AddressTable
-	logger     lager.Logger
-	localIP    string
+	natsConnProvider NatsConnProvider
+	subOpts          SubscriberOpts
+	table            AddressTable
+	logger           lager.Logger
+	localIP          string
+	natsClient       NatsConn
+	once             sync.Once
 }
 
 //go:generate counterfeiter -o fakes/nats_conn.go --fake-name NatsConn . NatsConn
@@ -60,60 +64,81 @@ type LocalIP interface {
 }
 
 func NewSubscriber(
-	natsConnBuilder NatsConnProvider,
+	natsConnProvider NatsConnProvider,
 	subOpts SubscriberOpts,
 	table AddressTable,
-	localIP LocalIP,
+	localIP string,
 	logger lager.Logger,
 ) *Subscriber {
-
-	ip, err := localIP.LocalIP()
-	if err != nil {
-		panic(err)
+	return &Subscriber{
+		natsConnProvider: natsConnProvider,
+		subOpts:          subOpts,
+		table:            table,
+		logger:           logger,
+		localIP:          localIP,
 	}
-	subscriber := &Subscriber{
-		subOpts: subOpts,
-		table:   table,
-		logger:  logger,
-		localIP: ip,
-	}
-
-	natsClient, err := natsConnBuilder.Connection(
-		nats.ReconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
-			subscriber.logger.Info(
-				"ReconnectHandler reconnected to nats server",
-				lager.Data{"nats_host": conn.ConnectedUrl()},
-			)
-			subscriber.SendStartMessage()
-		})),
-		nats.DisconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
-			subscriber.logger.Info(
-				"DisconnectHandler disconnected from nats server",
-				lager.Data{"last_error": conn.LastError()},
-			)
-		})),
-		nats.ClosedHandler(nats.ConnHandler(func(conn *nats.Conn) {
-			subscriber.logger.Info(
-				"ClosedHandler unexpected close of nats connection",
-				lager.Data{"last_error": conn.LastError()},
-			)
-		})),
-	)
-
-	if err != nil {
-		panic(err)
-	}
-
-	subscriber.natsClient = natsClient
-	return subscriber
 }
 
-func (s *Subscriber) SendStartMessage() error {
-	discoveryMessageJson := s.mapSubOpts()
+func (s *Subscriber) Run() error {
+	var err error
+	s.once.Do(func() {
+		var natsClient NatsConn
+		natsClient, err = s.natsConnProvider.Connection(
+			nats.ReconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
+				s.logger.Info(
+					"ReconnectHandler reconnected to nats server",
+					lager.Data{"nats_host": conn.ConnectedUrl()},
+				)
+				s.sendStartMessage()
+			})),
+			nats.DisconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
+				s.logger.Info(
+					"DisconnectHandler disconnected from nats server",
+					lager.Data{"last_error": conn.LastError()},
+				)
+			})),
+			nats.ClosedHandler(nats.ConnHandler(func(conn *nats.Conn) {
+				s.logger.Info(
+					"ClosedHandler unexpected close of nats connection",
+					lager.Data{"last_error": conn.LastError()},
+				)
+			})),
+		)
 
+		if err != nil {
+			err = errors.Wrap(err, "unable to create nats connection")
+			return
+		}
+
+		s.natsClient = natsClient
+
+		err = s.sendStartMessage()
+		if err != nil {
+			return
+		}
+
+		err = s.setupGreetMsgHandler()
+		if err != nil {
+			return
+		}
+
+		err = s.setupAddressMessageHandler()
+		if err != nil {
+			return
+		}
+	})
+
+	if err != nil {
+		s.Close()
+	}
+
+	return err
+}
+
+func (s *Subscriber) sendStartMessage() error {
 	msg := &nats.Msg{
 		Subject: "service-discovery.start",
-		Data:    discoveryMessageJson,
+		Data:    s.mapSubOpts(),
 	}
 
 	err := s.natsClient.PublishMsg(msg)
@@ -125,10 +150,12 @@ func (s *Subscriber) SendStartMessage() error {
 }
 
 func (s *Subscriber) Close() {
-	s.natsClient.Close()
+	if s.natsClient != nil {
+		s.natsClient.Close()
+	}
 }
 
-func (s *Subscriber) SetupGreetMsgHandler() error {
+func (s *Subscriber) setupGreetMsgHandler() error {
 	discoveryMessageJson := s.mapSubOpts()
 
 	_, err := s.natsClient.Subscribe("service-discovery.greet", nats.MsgHandler(func(greetMsg *nats.Msg) {
@@ -141,23 +168,25 @@ func (s *Subscriber) SetupGreetMsgHandler() error {
 	}))
 
 	if err != nil {
-		return errors.Wrap(err, "unable to subscribe to greet messages")
+		s.logger.Error("setupGreetMsgHandler unable to subscribe to greet messages", err)
+		return err
 	}
 
 	err = s.natsClient.Flush()
 	if err != nil {
-		return errors.Wrap(err, "unable to flush subscribe greet message")
+		s.logger.Error("setupGreetMsgHandler unable to flush subscribe greet message", err)
+		return err
 	}
 
 	return nil
 }
 
-func (s *Subscriber) SetupAddressMessageHandler() {
-	s.natsClient.Subscribe("service-discovery.register", nats.MsgHandler(func(msg *nats.Msg) {
+func (s *Subscriber) setupAddressMessageHandler() error {
+	_, err := s.natsClient.Subscribe("service-discovery.register", nats.MsgHandler(func(msg *nats.Msg) {
 		registryMessage := &RegistryMessage{}
 		err := json.Unmarshal(msg.Data, registryMessage)
 		if err != nil || registryMessage.Host == "" || len(registryMessage.URIs) == 0 {
-			s.logger.Info("SetupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
+			s.logger.Info("setupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
 				"msgJson": string(msg.Data),
 			}))
 			return
@@ -165,17 +194,29 @@ func (s *Subscriber) SetupAddressMessageHandler() {
 		s.table.Add(registryMessage.URIs, registryMessage.Host)
 	}))
 
-	s.natsClient.Subscribe("service-discovery.unregister", nats.MsgHandler(func(msg *nats.Msg) {
+	if err != nil {
+		s.logger.Error("setupAddressMessageHandler unable to subscribe to service-discovery.register", err)
+		return err
+	}
+
+	_, err = s.natsClient.Subscribe("service-discovery.unregister", nats.MsgHandler(func(msg *nats.Msg) {
 		registryMessage := &RegistryMessage{}
 		err := json.Unmarshal(msg.Data, registryMessage)
 		if err != nil || len(registryMessage.URIs) == 0 {
-			s.logger.Info("SetupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
+			s.logger.Info("setupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
 				"msgJson": string(msg.Data),
 			}))
 			return
 		}
 		s.table.Remove(registryMessage.URIs, registryMessage.Host)
 	}))
+
+	if err != nil {
+		s.logger.Error("setupAddressMessageHandler unable to subscribe to service-discovery.unregister", err)
+		return err
+	}
+
+	return nil
 }
 
 func (s *Subscriber) mapSubOpts() []byte {

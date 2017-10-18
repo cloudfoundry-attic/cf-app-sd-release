@@ -27,7 +27,9 @@ var _ = Describe("Subscriber", func() {
 		natsUrl          string
 		addressTable     *fakes.AddressTable
 		subcriberLogger  lager.Logger
-		localIP          *fakes.LocalIP
+		localIP          string
+		startMsgChan     chan *nats.Msg
+		greetMsgChan     chan *nats.Msg
 	)
 
 	BeforeEach(func() {
@@ -36,6 +38,17 @@ var _ = Describe("Subscriber", func() {
 
 		natsUrl = "nats://" + gnatsServer.Addr().String()
 		fakeRouteEmitter = newFakeRouteEmitter(natsUrl)
+
+		startMsgChan = make(chan *nats.Msg, 1)
+		_, err := fakeRouteEmitter.ChanSubscribe("service-discovery.start", startMsgChan)
+		Expect(err).ToNot(HaveOccurred())
+
+		greetMsgChan = make(chan *nats.Msg, 1)
+
+		_, err = fakeRouteEmitter.ChanSubscribe("service-discovery.greet.test.response", greetMsgChan)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(fakeRouteEmitter.Flush()).To(Succeed())
 
 		subOpts = SubscriberOpts{
 			ID: "Fake-Subscriber-ID",
@@ -48,10 +61,10 @@ var _ = Describe("Subscriber", func() {
 
 		provider := &NatsConnWithUrlProvider{Url: natsUrl}
 
-		localIP = &fakes.LocalIP{}
-		localIP.LocalIPReturns("192.168.0.1", nil)
+		localIP = "192.168.0.1"
 
 		subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+		Expect(subscriber.Run()).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -61,23 +74,14 @@ var _ = Describe("Subscriber", func() {
 	})
 
 	It("sends a start message", func() {
-		msgChan := make(chan *nats.Msg, 1)
-
-		_, err := fakeRouteEmitter.ChanSubscribe("service-discovery.start", msgChan)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fakeRouteEmitter.Flush()).To(Succeed())
-
-		err = subscriber.SendStartMessage()
-		Expect(err).ToNot(HaveOccurred())
-
 		var msg *nats.Msg
 		var serviceDiscoveryData ServiceDiscoveryStartMessage
 
-		Eventually(msgChan, 4).Should(Receive(&msg))
+		Eventually(startMsgChan, 4).Should(Receive(&msg))
 
 		Expect(msg).ToNot(BeNil())
 
-		err = json.Unmarshal(msg.Data, &serviceDiscoveryData)
+		err := json.Unmarshal(msg.Data, &serviceDiscoveryData)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(serviceDiscoveryData.Id).To(Equal(subOpts.ID))
@@ -87,26 +91,15 @@ var _ = Describe("Subscriber", func() {
 	})
 
 	It("when a greeting message is received it responds", func() {
-		msgChan := make(chan *nats.Msg, 1)
-
-		_, err := fakeRouteEmitter.ChanSubscribe("service-discovery.greet.test.response", msgChan)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fakeRouteEmitter.Flush()).To(Succeed())
-
-		time.Sleep(1 * time.Second)
-
-		err = subscriber.SetupGreetMsgHandler()
-		Expect(err).NotTo(HaveOccurred())
-
 		Expect(fakeRouteEmitter.PublishRequest("service-discovery.greet", "service-discovery.greet.test.response", []byte{})).To(Succeed())
 		Expect(fakeRouteEmitter.Flush()).To(Succeed())
 
 		var msg *nats.Msg
 		var serviceDiscoveryData ServiceDiscoveryStartMessage
-		Eventually(msgChan, 10*time.Second).Should(Receive(&msg))
+		Eventually(greetMsgChan, 10*time.Second).Should(Receive(&msg))
 		Expect(msg).ToNot(BeNil())
 
-		err = json.Unmarshal(msg.Data, &serviceDiscoveryData)
+		err := json.Unmarshal(msg.Data, &serviceDiscoveryData)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(serviceDiscoveryData.Id).To(Equal(subOpts.ID))
@@ -122,9 +115,6 @@ var _ = Describe("Subscriber", func() {
 			_, err := fakeRouteEmitter.ChanSubscribe("service-discovery.greet-1.test.response", msgChan)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeRouteEmitter.Flush()).To(Succeed())
-
-			err = subscriber.SetupGreetMsgHandler()
-			Expect(err).NotTo(HaveOccurred())
 
 			err = fakeRouteEmitter.PublishRequest("service-discovery.greet", "service-discovery.greet-1.test.response", []byte{})
 			Expect(err).ToNot(HaveOccurred())
@@ -156,20 +146,6 @@ var _ = Describe("Subscriber", func() {
 					Message("test.ClosedHandler unexpected close of nats connection"),
 					Data("last_error", nil),
 				)))
-		})
-
-		It("and fails to publish message", func() {
-			err := subscriber.SendStartMessage()
-			Expect(err).To(HaveOccurred())
-
-			Expect(err.Error()).To(Equal("unable to publish a start message: nats: connection closed"))
-		})
-
-		It("and fails to subscribe to greet messages", func() {
-			err := subscriber.SetupGreetMsgHandler()
-			Expect(err).To(HaveOccurred())
-
-			Expect(err.Error()).To(Equal("unable to subscribe to greet messages: nats: connection closed"))
 		})
 	})
 
@@ -233,33 +209,8 @@ var _ = Describe("Subscriber", func() {
 		})
 	})
 
-	Context("when subscriber loses nats server connectivity", func() {
-		BeforeEach(func() {
-			natsClient, err := nats.Connect(natsUrl, nats.Option(func(options *nats.Options) error {
-				options.ReconnectWait = 1 * time.Millisecond
-				return nil
-			}))
-			Expect(err).ToNot(HaveOccurred())
-
-			provider := &fakes.NatsConnProvider{}
-			provider.ConnectionReturns(natsClient, nil)
-
-			subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
-		})
-
-		It("sending a start message should return an error", func() {
-			gnatsServer.Shutdown()
-
-			Eventually(func() error {
-				return subscriber.SendStartMessage()
-			}).ShouldNot(Succeed())
-		})
-	})
-
 	Context("when a registration message is received", func() {
 		It("should write it to the address table", func() {
-			subscriber.SetupAddressMessageHandler()
-
 			natsRegistryMsg := nats.Msg{
 				Subject: "service-discovery.register",
 				Data: []byte(`{
@@ -281,8 +232,6 @@ var _ = Describe("Subscriber", func() {
 
 		Context("when the message is malformed", func() {
 			It("should not add the garbage", func() {
-				subscriber.SetupAddressMessageHandler()
-
 				json := `garbage "0.foo.com"] }`
 				natsRegistryMsg := nats.Msg{
 					Subject: "service-discovery.register",
@@ -294,7 +243,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Message("test.setupAddressMessageHandler received a malformed message"),
 						Data("msgJson", json),
 					)))
 
@@ -304,8 +253,6 @@ var _ = Describe("Subscriber", func() {
 
 		Context("when a registration message does not contain host info", func() {
 			It("should not add", func() {
-				subscriber.SetupAddressMessageHandler()
-
 				json := `{
 					"uris": ["foo.com", "0.foo.com"]
 				}`
@@ -319,7 +266,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Message("test.setupAddressMessageHandler received a malformed message"),
 						Data("msgJson", json),
 					)))
 
@@ -329,10 +276,8 @@ var _ = Describe("Subscriber", func() {
 
 		Context("when a registration message does not contain URIS", func() {
 			It("should not add", func() {
-				subscriber.SetupAddressMessageHandler()
-
 				json := `{
-									"host": "192.168.0.1"
+					"host": "192.168.0.1"
 				}`
 				natsRegistryMsg := nats.Msg{
 					Subject: "service-discovery.register",
@@ -344,7 +289,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Message("test.setupAddressMessageHandler received a malformed message"),
 						Data("msgJson", json),
 					)))
 
@@ -355,8 +300,6 @@ var _ = Describe("Subscriber", func() {
 
 	Context("when an unregister message is received", func() {
 		It("should remove it from the address table", func() {
-			subscriber.SetupAddressMessageHandler()
-
 			natsUnRegisterMsg := nats.Msg{
 				Subject: "service-discovery.unregister",
 				Data: []byte(`{
@@ -377,8 +320,6 @@ var _ = Describe("Subscriber", func() {
 
 		Context("when the message is malformed", func() {
 			It("should not remove the garbage", func() {
-				subscriber.SetupAddressMessageHandler()
-
 				json := `garbage "0.foo.com"] }`
 				natsUnRegisterMsg := nats.Msg{
 					Subject: "service-discovery.unregister",
@@ -390,7 +331,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Message("test.setupAddressMessageHandler received a malformed message"),
 						Data("msgJson", json),
 					)))
 
@@ -400,8 +341,6 @@ var _ = Describe("Subscriber", func() {
 
 		Context("when an unregister message does not contain host info", func() {
 			It("should remove it from the address table", func() {
-				subscriber.SetupAddressMessageHandler()
-
 				json := `{
 					"uris": ["foo.com", "0.foo.com"]
 				}`
@@ -421,11 +360,7 @@ var _ = Describe("Subscriber", func() {
 
 		Context("when a registration message does not contain URIS", func() {
 			It("should not remove and log", func() {
-				subscriber.SetupAddressMessageHandler()
-
-				json := `{
-									"host": "192.168.0.1"
-				}`
+				json := `{ "host": "192.168.0.1" }`
 				natsUnRegisterMsg := nats.Msg{
 					Subject: "service-discovery.unregister",
 					Data:    []byte(json),
@@ -436,7 +371,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.SetupAddressMessageHandler received a malformed message"),
+						Message("test.setupAddressMessageHandler received a malformed message"),
 						Data("msgJson", json),
 					)))
 
@@ -446,24 +381,187 @@ var _ = Describe("Subscriber", func() {
 	})
 
 	Describe("Edge error cases", func() {
-		var fakeNatsConn *fakes.NatsConn
-		BeforeEach(func() {
-			fakeNatsConn = &fakes.NatsConn{}
-			provider := &fakes.NatsConnProvider{}
-			provider.ConnectionReturns(fakeNatsConn, nil)
+		var (
+			natsConn *fakes.NatsConn
+			provider *fakes.NatsConnProvider
+		)
 
-			subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+		BeforeEach(func() {
+			natsConn = &fakes.NatsConn{}
+			provider = &fakes.NatsConnProvider{}
+			provider.ConnectionReturns(natsConn, nil)
+
+		})
+
+		Context("when initializing the nats connection returns an error", func() {
+			BeforeEach(func() {
+				provider.ConnectionReturns(natsConn, errors.New("CANT"))
+
+				subscriber.Close()
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+			})
+
+			It("run returns an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("unable to create nats connection: CANT"))
+			})
+		})
+
+		Context("when calling run and sending start message fails", func() {
+			BeforeEach(func() {
+				natsConn.PublishMsgReturns(errors.New("NO START"))
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+			})
+
+			It("returns an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("unable to publish a start message: NO START"))
+			})
+
+			It("self closes", func() {
+				subscriber.Run()
+				Expect(natsConn.CloseCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when calling run and sending greet message fails", func() {
+			BeforeEach(func() {
+				natsConn.PublishMsgReturnsOnCall(0, nil)
+				natsConn.SubscribeReturns(nil, errors.New("NO GREET"))
+
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+			})
+
+			It("self closes", func() {
+				subscriber.Run()
+				Expect(natsConn.CloseCallCount()).To(Equal(1))
+			})
+
+			It("returns an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("NO GREET"))
+			})
+
+			It("logs an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+
+				Expect(subcriberLogger).To(HaveLogged(
+					Error(
+						err,
+						Message("test.setupGreetMsgHandler unable to subscribe to greet messages"),
+					)))
+			})
+		})
+
+		Context("when calling run and subscribing to register fails", func() {
+			BeforeEach(func() {
+				natsConn.PublishMsgReturnsOnCall(0, nil)
+				natsConn.SubscribeReturnsOnCall(1, nil, errors.New("NO SUBSCRIBE"))
+
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+			})
+
+			It("returns an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("NO SUBSCRIBE"))
+			})
+
+			It("self closes", func() {
+				subscriber.Run()
+				Expect(natsConn.CloseCallCount()).To(Equal(1))
+			})
+
+			It("logs an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+
+				Expect(subcriberLogger).To(HaveLogged(
+					Error(
+						err,
+						Message("test.setupAddressMessageHandler unable to subscribe to service-discovery.register"),
+					)))
+			})
+		})
+
+		Context("when calling run and subscribing to unregister fails", func() {
+			BeforeEach(func() {
+				natsConn.PublishMsgReturnsOnCall(0, nil)
+				natsConn.SubscribeReturnsOnCall(2, nil, errors.New("NO SUBSCRIBE when unregister"))
+
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+			})
+
+			It("returns an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("NO SUBSCRIBE when unregister"))
+			})
+
+			It("self closes", func() {
+				subscriber.Run()
+				Expect(natsConn.CloseCallCount()).To(Equal(1))
+			})
+
+			It("logs an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+
+				Expect(subcriberLogger).To(HaveLogged(
+					Error(
+						err,
+						Message("test.setupAddressMessageHandler unable to subscribe to service-discovery.unregister"),
+					)))
+			})
 		})
 
 		Context("when sending a greet message and fails to flush", func() {
 			BeforeEach(func() {
-				fakeNatsConn.FlushReturns(errors.New("failed to flush"))
+				provider.ConnectionReturns(natsConn, nil)
+
+				subscriber.Close()
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+				natsConn.FlushReturns(errors.New("failed to flush"))
 			})
 
 			It("should return an error", func() {
-				Expect(subscriber.SetupGreetMsgHandler()).To(MatchError("unable to flush subscribe greet message: failed to flush"))
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("failed to flush"))
+			})
+
+			It("logs an error", func() {
+				err := subscriber.Run()
+				Expect(err).To(HaveOccurred())
+				Expect(subcriberLogger).To(HaveLogged(
+					Error(
+						err,
+						Message("test.setupGreetMsgHandler unable to flush subscribe greet message"),
+					)))
+
 			})
 		})
+
+		Context("when attempting to run subscriber more than once", func() {
+			BeforeEach(func() {
+				provider.ConnectionReturns(natsConn, nil)
+
+				subscriber.Close()
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+			})
+
+			It("should not have any side effects", func() {
+				Expect(subscriber.Run()).To(Succeed())
+				Expect(subscriber.Run()).To(Succeed())
+
+				Expect(provider.ConnectionCallCount()).To(Equal(1))
+			})
+		})
+
 	})
 })
 

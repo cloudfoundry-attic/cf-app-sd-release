@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"service-discovery-controller/config"
 	"service-discovery-controller/addresstable"
-	"service-discovery-controller/mbus"
 )
 
 type host struct {
@@ -59,24 +58,22 @@ func main() {
 
 	addressTable := addresstable.NewAddressTable()
 
+	addressTable.Add([]string{"app-id.internal.local."}, "192.168.0.1")
+	addressTable.Add([]string{"app-id.internal.local."}, "192.168.0.2")
 
-	mbus.NewSubscriber()
-	//addressTable.Add([]string{"app-id.internal.local."}, "192.168.0.1")
-	//addressTable.Add([]string{"app-id.internal.local."}, "192.168.0.2")
-	//
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.1")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.2")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.3")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.4")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.5")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.6")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.7")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.8")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.9")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.10")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.11")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.12")
-	//addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.13")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.1")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.2")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.3")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.4")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.5")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.6")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.7")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.8")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.9")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.10")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.11")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.12")
+	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.13")
 
 	go func() {
 		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
