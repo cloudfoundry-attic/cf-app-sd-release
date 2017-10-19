@@ -4,21 +4,22 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"testing"
-	"github.com/onsi/gomega/gexec"
-	"os/exec"
-	"time"
 	"encoding/json"
-	"strings"
-	helpers_config "github.com/cloudfoundry-incubator/cf-test-helpers/config"
-	"os"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/cf"
+	helpers_config "github.com/cloudfoundry-incubator/cf-test-helpers/config"
+	"github.com/onsi/gomega/gexec"
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+	"time"
 )
 
 func TestAcceptanceTests(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "AcceptanceTests Suite")
 }
+
 const Timeout_Short = 10 * time.Second
 
 var (
@@ -65,7 +66,6 @@ func Auth(username, password string) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess.Wait(Timeout_Short)).Should(gexec.Exit(0))
 }
-
 
 func getInstanceInfos() []instanceInfo {
 	cmd := exec.Command("bosh", "-d", "acceptance", "instances", "--details", "--json")

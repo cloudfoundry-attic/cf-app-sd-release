@@ -4,13 +4,15 @@ import (
 	"path/filepath"
 	"time"
 
+	"bytes"
+	"encoding/json"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/cf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"net/http"
-	"encoding/json"
 	"io/ioutil"
+	"net/http"
+	"strings"
 )
 
 const Timeout_Push = 2 * time.Minute
@@ -46,7 +48,8 @@ var _ = Describe("Acceptance", func() {
 
 			proxyGuid := string(session.Out.Contents())
 
-			resp, err := http.Get("http://proxy." + config.AppsDomain + "/dig/" + proxyGuid + ".sd-local.")
+			resp, err := http.Get("http://proxy." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".sd-local.")
+
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
@@ -56,13 +59,13 @@ var _ = Describe("Acceptance", func() {
 			proxyIps := &[]string{}
 
 			println(string(ipsJson))
-			err = json.Unmarshal(ipsJson, proxyIps)
+			err = json.Unmarshal(bytes.TrimSpace(ipsJson), proxyIps)
 			Expect(err).NotTo(HaveOccurred())
 
 			session = cf.Cf("ssh", "proxy", "-c", "echo $CF_INSTANCE_INTERNAL_IP").Wait(10 * time.Second)
 			proxyContainerIp := string(session.Out.Contents())
 
-			Expect(*proxyIps).To(ContainElement(proxyContainerIp))
+			Expect(*proxyIps).To(ContainElement(strings.TrimSpace(proxyContainerIp)))
 		})
 	})
 })

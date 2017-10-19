@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -exu
+set -eu
 
 export GOPATH=$PWD/service-discovery-release
 export PATH="${GOPATH}/bin":$PATH
