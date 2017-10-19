@@ -4,6 +4,7 @@ set -exu
 
 export GOPATH=$PWD/service-discovery-release
 export PATH="${GOPATH}/bin":$PATH
+export APPS_DIR=$PWD/service-discovery-release/src/example-apps
 
 go install github.com/onsi/ginkgo/ginkgo
 
