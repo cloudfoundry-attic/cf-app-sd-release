@@ -32,6 +32,15 @@ type NatsConn struct {
 	flushReturnsOnCall map[int]struct {
 		result1 error
 	}
+	ConnectedUrlStub        func() string
+	connectedUrlMutex       sync.RWMutex
+	connectedUrlArgsForCall []struct{}
+	connectedUrlReturns     struct {
+		result1 string
+	}
+	connectedUrlReturnsOnCall map[int]struct {
+		result1 string
+	}
 	SubscribeStub        func(string, nats.MsgHandler) (*nats.Subscription, error)
 	subscribeMutex       sync.RWMutex
 	subscribeArgsForCall []struct {
@@ -154,6 +163,46 @@ func (fake *NatsConn) FlushReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *NatsConn) ConnectedUrl() string {
+	fake.connectedUrlMutex.Lock()
+	ret, specificReturn := fake.connectedUrlReturnsOnCall[len(fake.connectedUrlArgsForCall)]
+	fake.connectedUrlArgsForCall = append(fake.connectedUrlArgsForCall, struct{}{})
+	fake.recordInvocation("ConnectedUrl", []interface{}{})
+	fake.connectedUrlMutex.Unlock()
+	if fake.ConnectedUrlStub != nil {
+		return fake.ConnectedUrlStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.connectedUrlReturns.result1
+}
+
+func (fake *NatsConn) ConnectedUrlCallCount() int {
+	fake.connectedUrlMutex.RLock()
+	defer fake.connectedUrlMutex.RUnlock()
+	return len(fake.connectedUrlArgsForCall)
+}
+
+func (fake *NatsConn) ConnectedUrlReturns(result1 string) {
+	fake.ConnectedUrlStub = nil
+	fake.connectedUrlReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *NatsConn) ConnectedUrlReturnsOnCall(i int, result1 string) {
+	fake.ConnectedUrlStub = nil
+	if fake.connectedUrlReturnsOnCall == nil {
+		fake.connectedUrlReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.connectedUrlReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *NatsConn) Subscribe(arg1 string, arg2 nats.MsgHandler) (*nats.Subscription, error) {
 	fake.subscribeMutex.Lock()
 	ret, specificReturn := fake.subscribeReturnsOnCall[len(fake.subscribeArgsForCall)]
@@ -215,6 +264,8 @@ func (fake *NatsConn) Invocations() map[string][][]interface{} {
 	defer fake.closeMutex.RUnlock()
 	fake.flushMutex.RLock()
 	defer fake.flushMutex.RUnlock()
+	fake.connectedUrlMutex.RLock()
+	defer fake.connectedUrlMutex.RUnlock()
 	fake.subscribeMutex.RLock()
 	defer fake.subscribeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

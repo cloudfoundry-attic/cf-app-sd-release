@@ -6,6 +6,11 @@ import (
 	"os"
 	"os/exec"
 
+	"fmt"
+	"time"
+
+	"github.com/nats-io/gnatsd/server"
+	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -18,30 +23,62 @@ var _ = Describe("Main", func() {
 		session      *gexec.Session
 		pathToConfig string
 		configJson   string
+		natsServer   *server.Server
+		routeEmitter *nats.Conn
 	)
 
 	BeforeEach(func() {
+		natsServer = RunNatsServerOnPort(8080)
 		config, err := ioutil.TempFile(os.TempDir(), "sd_config")
 		Expect(err).ToNot(HaveOccurred())
 		pathToConfig = config.Name()
 		configJson = `{
-			"address": "127.0.0.1",
-			"port": "8055"
+			"address":"127.0.0.1",
+			"port":"8055",
+			"nats":[
+				{
+					"host":"localhost",
+					"port":8080,
+					"user":"",
+					"pass":""
+				}
+			]
 		}`
-	})
 
-	JustBeforeEach(func() {
-		err := ioutil.WriteFile(pathToConfig, []byte(configJson), os.ModePerm)
+		err = ioutil.WriteFile(pathToConfig, []byte(configJson), os.ModePerm)
 		Expect(err).ToNot(HaveOccurred())
 
 		startCmd := exec.Command(pathToServer, "-c", pathToConfig)
 		session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).ToNot(HaveOccurred())
+
+		time.Sleep(1 * time.Second) // TODO : get rid of me
+
+		routeEmitter = newFakeRouteEmitter("nats://" + natsServer.Addr().String())
+
+		register(routeEmitter, "192.168.0.1", "app-id.internal.local.")
+		register(routeEmitter, "192.168.0.2", "app-id.internal.local.")
+		register(routeEmitter, "192.168.0.1", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.2", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.3", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.4", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.5", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.6", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.7", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.8", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.9", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.10", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.11", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.12", "large-id.internal.local.")
+		register(routeEmitter, "192.168.0.13", "large-id.internal.local.")
+		Expect(routeEmitter.Flush()).ToNot(HaveOccurred()) //TODO: necessary?
 	})
 
 	AfterEach(func() {
 		session.Kill()
 		os.Remove(pathToConfig)
+		routeEmitter.Close()
+		natsServer.Shutdown()
 	})
 
 	It("accepts interrupt signals and shuts down", func() {
@@ -50,6 +87,10 @@ var _ = Describe("Main", func() {
 
 		Eventually(session).Should(gexec.Exit())
 		Eventually(session).Should(gbytes.Say("Shutting service-discovery-controller down"))
+	})
+
+	PIt("should not return ips for unregistered domains", func() {
+		Fail("")
 	})
 
 	It("should return a http app json", func() {
@@ -222,3 +263,18 @@ var _ = Describe("Main", func() {
 		}`))
 	})
 })
+
+func register(routeEmitter *nats.Conn, ip string, url string) {
+	natsRegistryMsg := nats.Msg{
+		Subject: "service-discovery.register",
+		Data:    []byte(fmt.Sprintf(`{"host": "%s","uris":["%s"]}`, ip, url)),
+	}
+
+	Expect(routeEmitter.PublishMsg(&natsRegistryMsg)).ToNot(HaveOccurred())
+}
+
+func newFakeRouteEmitter(natsUrl string) *nats.Conn {
+	natsClient, err := nats.Connect(natsUrl, nats.ReconnectWait(1*time.Nanosecond))
+	Expect(err).NotTo(HaveOccurred())
+	return natsClient
+}

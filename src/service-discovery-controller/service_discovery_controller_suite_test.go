@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nats-io/gnatsd/server"
+	gnatsd "github.com/nats-io/gnatsd/test"
 	"github.com/onsi/gomega/gexec"
 )
 
@@ -30,3 +32,9 @@ var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })
+
+func RunNatsServerOnPort(port int) *server.Server {
+	opts := gnatsd.DefaultTestOptions
+	opts.Port = port
+	return gnatsd.RunServer(&opts)
+}

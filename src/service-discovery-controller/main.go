@@ -12,7 +12,11 @@ import (
 	"path"
 	"service-discovery-controller/addresstable"
 	"service-discovery-controller/config"
+	"service-discovery-controller/mbus"
 	"syscall"
+
+	"code.cloudfoundry.org/lager"
+	"strings"
 )
 
 type host struct {
@@ -49,31 +53,30 @@ func main() {
 		os.Exit(2)
 	}
 
+	logger := lager.NewLogger("service-discovery-controller")
+
+	addressTable := addresstable.NewAddressTable()
+
+	subscriber := launchSubscriber(config, addressTable, logger)
+
+	launchHttpServer(config, addressTable, logger)
+
+	fmt.Println("Server Started")
+
+	select {
+	case <-signalChannel:
+		subscriber.Close() //TODO: test?
+		fmt.Println("Shutting service-discovery-controller down")
+		return
+	}
+}
+func launchHttpServer(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) {
 	address := fmt.Sprintf("%s:%s", config.Address, config.Port)
 	l, err := net.Listen("tcp", address)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Address (%s) not available", address))
 		os.Exit(1)
 	}
-
-	addressTable := addresstable.NewAddressTable()
-
-	addressTable.Add([]string{"app-id.internal.local."}, "192.168.0.1")
-	addressTable.Add([]string{"app-id.internal.local."}, "192.168.0.2")
-
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.1")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.2")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.3")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.4")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.5")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.6")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.7")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.8")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.9")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.10")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.11")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.12")
-	addressTable.Add([]string{"large-id.internal.local."}, "192.168.0.13")
 
 	go func() {
 		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
@@ -101,12 +104,50 @@ func main() {
 			}
 		}))
 	}()
+}
 
-	fmt.Println("Server Started")
-
-	select {
-	case <-signalChannel:
-		fmt.Println("Shutting service-discovery-controller down")
-		return
+func launchSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) *mbus.Subscriber {
+	subOpts := mbus.SubscriberOpts{ //TODO: does this need to be configurable? can we hard code into subscriber?
+		ID: "Fake-Subscriber-ID",
+		MinimumRegisterIntervalInSeconds: 60,
+		PruneThresholdInSeconds:          120,
 	}
+
+	provider := &mbus.NatsConnWithUrlProvider{
+		Url: strings.Join(config.NatsServers(), ","), //TODO: test me, joining multiple urls (inject a bad and good server?)
+	}
+
+	localIP, err := LocalIP()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get local IP: %v", err)) //TODO: handle err
+	}
+
+	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger)
+
+	err = subscriber.Run()
+	if err != nil {
+		panic(fmt.Sprintf("Subscriber: CANT RUN!: %v", err)) //TODO: panic
+	}
+	return subscriber
+}
+
+func LocalIP() (string, error) {
+	addr, err := net.ResolveUDPAddr("udp", "1.2.3.4:1")
+	if err != nil {
+		return "", err
+	}
+
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		return "", err
+	}
+
+	defer conn.Close()
+
+	host, _, err := net.SplitHostPort(conn.LocalAddr().String())
+	if err != nil {
+		return "", err
+	}
+
+	return host, nil
 }

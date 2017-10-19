@@ -25,14 +25,14 @@ type SubscriberOpts struct {
 }
 
 type RegistryMessage struct {
-	Host string   `json:"host"`
-	URIs []string `json:"uris"`
+	IP         string   `json:"host"`
+	InfraNames []string `json:"uris"`
 }
 
 //go:generate counterfeiter -o fakes/address_table.go --fake-name AddressTable . AddressTable
 type AddressTable interface {
-	Add(hostnames []string, ip string)
-	Remove(hostnames []string, ip string)
+	Add(infraNames []string, ip string)
+	Remove(infraNames []string, ip string)
 }
 
 type Subscriber struct {
@@ -50,6 +50,7 @@ type NatsConn interface {
 	PublishMsg(m *nats.Msg) error
 	Close()
 	Flush() error
+	ConnectedUrl() string
 	Subscribe(string, nats.MsgHandler) (*nats.Subscription, error)
 }
 
@@ -87,7 +88,7 @@ func (s *Subscriber) Run() error {
 			nats.ReconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
 				s.logger.Info(
 					"ReconnectHandler reconnected to nats server",
-					lager.Data{"nats_host": conn.ConnectedUrl()},
+					lager.Data{"nats_host": conn.ConnectedUrl()}, // TODO: user pass santization
 				)
 				s.sendStartMessage()
 			})),
@@ -111,6 +112,11 @@ func (s *Subscriber) Run() error {
 		}
 
 		s.natsClient = natsClient
+
+		s.logger.Info(
+			"Connected to NATS server",
+			lager.Data{"nats_host": natsClient.ConnectedUrl()}, // TODO: user pass santization
+		)
 
 		err = s.sendStartMessage()
 		if err != nil {
@@ -185,13 +191,13 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 	_, err := s.natsClient.Subscribe("service-discovery.register", nats.MsgHandler(func(msg *nats.Msg) {
 		registryMessage := &RegistryMessage{}
 		err := json.Unmarshal(msg.Data, registryMessage)
-		if err != nil || registryMessage.Host == "" || len(registryMessage.URIs) == 0 {
+		if err != nil || registryMessage.IP == "" || len(registryMessage.InfraNames) == 0 {
 			s.logger.Info("setupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
 				"msgJson": string(msg.Data),
 			}))
 			return
 		}
-		s.table.Add(registryMessage.URIs, registryMessage.Host)
+		s.table.Add(registryMessage.InfraNames, registryMessage.IP)
 	}))
 
 	if err != nil {
@@ -202,13 +208,13 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 	_, err = s.natsClient.Subscribe("service-discovery.unregister", nats.MsgHandler(func(msg *nats.Msg) {
 		registryMessage := &RegistryMessage{}
 		err := json.Unmarshal(msg.Data, registryMessage)
-		if err != nil || len(registryMessage.URIs) == 0 {
+		if err != nil || len(registryMessage.InfraNames) == 0 {
 			s.logger.Info("setupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
 				"msgJson": string(msg.Data),
 			}))
 			return
 		}
-		s.table.Remove(registryMessage.URIs, registryMessage.Host)
+		s.table.Remove(registryMessage.InfraNames, registryMessage.IP)
 	}))
 
 	if err != nil {

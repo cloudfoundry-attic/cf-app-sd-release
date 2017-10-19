@@ -1,6 +1,8 @@
 package addresstable
 
-import "sync"
+import (
+	"sync"
+)
 
 type AddressTable struct {
 	addresses map[string][]string
