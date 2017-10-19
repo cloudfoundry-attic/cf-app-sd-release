@@ -41,7 +41,7 @@ nats_machines.each do |nats_machine|
     }
 end
 
-config['nats'] => nats_servers
+config['nats'] = nats_servers
 
 require 'json'
 JSON.dump(config)
