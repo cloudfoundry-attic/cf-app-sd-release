@@ -17,6 +17,11 @@ provides:
   - address
   - port
 
+consumes:
+- name: nats
+  type: nats
+  optional: true
+
 properties:
   address:
     description: "Address which service-discovery-controller will listen on."
@@ -25,3 +30,18 @@ properties:
   port:
     description: "Port which service-discovery-controller will listen on."
     default: 8054
+
+  nats.user:
+    description: User name for NATS authentication
+    example: nats
+  nats.password:
+    description: Password for NATS authentication
+    example: natSpa55w0rd
+  nats.port:
+    description: TCP port of NATS servers
+    example: 4222
+  nats.machines:
+    description: IPs of each NATS cluster member
+    example: |
+      - 192.168.50.123
+      - 192.168.52.123
