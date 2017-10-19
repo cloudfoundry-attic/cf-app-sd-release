@@ -20,7 +20,7 @@ var _ = Describe("NatsConnProvider", func() {
 		gnatsServer = RunServerOnPort(8080)
 		gnatsServer.Start()
 
-		natsUrl := "nats://" + gnatsServer.Addr().String()
+		natsUrl := "nats://username:password@" + gnatsServer.Addr().String()
 
 		provider = &NatsConnWithUrlProvider{
 			Url: natsUrl,

@@ -36,7 +36,7 @@ var _ = Describe("Subscriber", func() {
 		gnatsServer = RunServerOnPort(8080)
 		gnatsServer.Start()
 
-		natsUrl = "nats://" + gnatsServer.Addr().String()
+		natsUrl = "nats://username:password@" + gnatsServer.Addr().String()
 		fakeRouteEmitter = newFakeRouteEmitter(natsUrl)
 
 		startMsgChan = make(chan *nats.Msg, 1)
@@ -203,7 +203,7 @@ var _ = Describe("Subscriber", func() {
 			Eventually(subcriberLogger, 5*time.Second).Should(HaveLogged(
 				Info(
 					Message("test.ReconnectHandler reconnected to nats server"),
-					Data("nats_host", natsUrl),
+					Data("nats_host", "nats://"+gnatsServer.Addr().String()),
 				)))
 
 		})

@@ -5,6 +5,8 @@ import (
 
 	"sync"
 
+	"net/url"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
@@ -86,10 +88,16 @@ func (s *Subscriber) Run() error {
 		var natsClient NatsConn
 		natsClient, err = s.natsConnProvider.Connection(
 			nats.ReconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
-				s.logger.Info(
-					"ReconnectHandler reconnected to nats server",
-					lager.Data{"nats_host": conn.ConnectedUrl()}, // TODO: user pass santization
-				)
+				{
+					url, err := url.Parse(conn.ConnectedUrl())
+					if err == nil {
+						s.logger.Info(
+							"ReconnectHandler reconnected to nats server",
+							lager.Data{"nats_host": url.Scheme + "://" + url.Host}, //don't leak creds
+						)
+					}
+				}
+
 				s.sendStartMessage()
 			})),
 			nats.DisconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
@@ -113,10 +121,15 @@ func (s *Subscriber) Run() error {
 
 		s.natsClient = natsClient
 
-		s.logger.Info(
-			"Connected to NATS server",
-			lager.Data{"nats_host": natsClient.ConnectedUrl()}, // TODO: user pass santization
-		)
+		{
+			url, err := url.Parse(natsClient.ConnectedUrl())
+			if err == nil {
+				s.logger.Info(
+					"Connected to NATS server",
+					lager.Data{"nats_host": url.Scheme + "://" + url.Host},
+				)
+			}
+		}
 
 		err = s.sendStartMessage()
 		if err != nil {

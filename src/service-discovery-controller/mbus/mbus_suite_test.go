@@ -17,5 +17,7 @@ func TestMbus(t *testing.T) {
 func RunServerOnPort(port int) *server.Server {
 	opts := gnatsd.DefaultTestOptions
 	opts.Port = port
+	opts.Username = "username"
+	opts.Password = "password"
 	return gnatsd.RunServer(&opts)
 }

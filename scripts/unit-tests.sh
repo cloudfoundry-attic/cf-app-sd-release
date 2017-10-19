@@ -15,7 +15,7 @@ echo -e "\n Formatting packages..."
 for packageToFmt in bosh-dns-adapter service-discovery-controller acceptance_tests; do
     reformatted_packages=$(go fmt $packageToFmt/...)
     if [[ $reformatted_packages = *[![:space:]]* ]]; then
-      echo "go fmt reformatted the following packages:"
+      echo "FAILURE: go fmt reformatted the following packages:"
       echo $reformatted_packages
       exit 1
     fi
