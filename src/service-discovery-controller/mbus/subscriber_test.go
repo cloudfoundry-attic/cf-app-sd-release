@@ -200,7 +200,7 @@ var _ = Describe("Subscriber", func() {
 			Expect(serviceDiscoveryData.Host).ToNot(BeEmpty())
 			Expect(serviceDiscoveryData.Host).To(Equal("192.168.0.1"))
 
-			Eventually(subcriberLogger).Should(HaveLogged(
+			Eventually(subcriberLogger, 5*time.Second).Should(HaveLogged(
 				Info(
 					Message("test.ReconnectHandler reconnected to nats server"),
 					Data("nats_host", natsUrl),
