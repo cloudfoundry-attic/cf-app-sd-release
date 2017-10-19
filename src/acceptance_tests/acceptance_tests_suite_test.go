@@ -37,7 +37,7 @@ var _ = BeforeSuite(func() {
 	//	Expect(err).ToNot(HaveOccurred())
 	//})
 
-	allDeployedInstances = getInstanceInfos()
+	//allDeployedInstances = getInstanceInfos()
 	config = helpers_config.LoadConfig()
 
 	Expect(cf.Cf("api", "--skip-ssl-validation", config.ApiEndpoint).Wait(Timeout_Short)).To(gexec.Exit(0))

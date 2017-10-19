@@ -18,10 +18,11 @@ func NewAddressTable() *AddressTable {
 func (at *AddressTable) Add(hostnames []string, ip string) {
 	at.mutex.Lock()
 	for _, hostname := range hostnames {
-		ips := at.ipsForHostname(hostname)
+		fqHostname := fqdn(hostname)
+		ips := at.ipsForHostname(fqHostname)
 		if indexOf(ips, ip) == -1 {
 			ips = append(ips, ip)
-			at.addresses[hostname] = ips
+			at.addresses[fqHostname] = ips
 		}
 	}
 	at.mutex.Unlock()
@@ -30,10 +31,11 @@ func (at *AddressTable) Add(hostnames []string, ip string) {
 func (at *AddressTable) Remove(hostnames []string, ip string) {
 	at.mutex.Lock()
 	for _, hostname := range hostnames {
-		ips := at.ipsForHostname(hostname)
+		fqHostname := fqdn(hostname)
+		ips := at.ipsForHostname(fqHostname)
 		index := indexOf(ips, ip)
 		if index > -1 {
-			at.addresses[hostname] = append(ips[:index], ips[index+1:]...)
+			at.addresses[fqHostname] = append(ips[:index], ips[index+1:]...)
 		}
 	}
 	at.mutex.Unlock()
@@ -41,7 +43,8 @@ func (at *AddressTable) Remove(hostnames []string, ip string) {
 
 func (at *AddressTable) Lookup(hostname string) []string {
 	at.mutex.RLock()
-	ips := at.ipsForHostname(hostname)
+	fqHostname := fqdn(hostname)
+	ips := at.ipsForHostname(fqHostname)
 	at.mutex.RUnlock()
 	return ips
 }
@@ -61,4 +64,19 @@ func indexOf(strings []string, value string) int {
 		}
 	}
 	return -1
+}
+
+func isFqdn(s string) bool {
+	l := len(s)
+	if l == 0 {
+		return false
+	}
+	return s[l-1] == '.'
+}
+
+func fqdn(s string) string {
+	if isFqdn(s) {
+		return s
+	}
+	return s + "."
 }

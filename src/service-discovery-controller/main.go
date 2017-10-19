@@ -54,6 +54,7 @@ func main() {
 	}
 
 	logger := lager.NewLogger("service-discovery-controller")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG)) // TODO: configurable?
 
 	addressTable := addresstable.NewAddressTable()
 

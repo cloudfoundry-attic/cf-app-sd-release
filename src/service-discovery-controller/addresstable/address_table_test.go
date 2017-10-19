@@ -17,14 +17,14 @@ var _ = Describe("AddressTable", func() {
 	Describe("Add", func() {
 		It("adds an endpoint", func() {
 			table.Add([]string{"foo.com"}, "192.0.0.1")
-			Expect(table.Lookup("foo.com")).To(Equal([]string{"192.0.0.1"}))
+			Expect(table.Lookup("foo.com.")).To(Equal([]string{"192.0.0.1"}))
 		})
 
 		Context("when two hostnames are registered to same ip address", func() {
 			It("returns both IPs", func() {
 				table.Add([]string{"foo.com", "bar.com"}, "192.0.0.2")
-				Expect(table.Lookup("foo.com")).To(Equal([]string{"192.0.0.2"}))
-				Expect(table.Lookup("bar.com")).To(Equal([]string{"192.0.0.2"}))
+				Expect(table.Lookup("foo.com.")).To(Equal([]string{"192.0.0.2"}))
+				Expect(table.Lookup("bar.com.")).To(Equal([]string{"192.0.0.2"}))
 			})
 		})
 
@@ -32,7 +32,7 @@ var _ = Describe("AddressTable", func() {
 			It("returns both IPs", func() {
 				table.Add([]string{"foo.com"}, "192.0.0.1")
 				table.Add([]string{"foo.com"}, "192.0.0.2")
-				Expect(table.Lookup("foo.com")).To(Equal([]string{"192.0.0.1", "192.0.0.2"}))
+				Expect(table.Lookup("foo.com.")).To(Equal([]string{"192.0.0.1", "192.0.0.2"}))
 			})
 		})
 
@@ -53,10 +53,10 @@ var _ = Describe("AddressTable", func() {
 		})
 		Context("when two hostnames are registered to same ip address", func() {
 			BeforeEach(func() {
-				table.Add([]string{"foo.com", "bar.com"}, "192.0.0.2")
+				table.Add([]string{"foo.com.", "bar.com"}, "192.0.0.2")
 			})
 			It("removes both IPs", func() {
-				table.Remove([]string{"foo.com", "bar.com"}, "192.0.0.2")
+				table.Remove([]string{"foo.com", "bar.com."}, "192.0.0.2")
 
 				Expect(table.Lookup("foo.com")).To(Equal([]string{}))
 				Expect(table.Lookup("bar.com")).To(Equal([]string{}))
