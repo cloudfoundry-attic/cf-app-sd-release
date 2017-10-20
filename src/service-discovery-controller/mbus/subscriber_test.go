@@ -243,7 +243,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.setupAddressMessageHandler received a malformed message"),
+						Message("test.AddressMessageHandler received a malformed register message"),
 						Data("msgJson", json),
 					)))
 
@@ -266,7 +266,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.setupAddressMessageHandler received a malformed message"),
+						Message("test.AddressMessageHandler received a malformed register message"),
 						Data("msgJson", json),
 					)))
 
@@ -289,7 +289,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.setupAddressMessageHandler received a malformed message"),
+						Message("test.AddressMessageHandler received a malformed register message"),
 						Data("msgJson", json),
 					)))
 
@@ -331,7 +331,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.setupAddressMessageHandler received a malformed message"),
+						Message("test.AddressMessageHandler received a malformed unregister message"),
 						Data("msgJson", json),
 					)))
 
@@ -371,7 +371,7 @@ var _ = Describe("Subscriber", func() {
 					return subcriberLogger
 				}).Should(HaveLogged(
 					Info(
-						Message("test.setupAddressMessageHandler received a malformed message"),
+						Message("test.AddressMessageHandler received a malformed unregister message"),
 						Data("msgJson", json),
 					)))
 

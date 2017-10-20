@@ -15,8 +15,10 @@ import (
 	"service-discovery-controller/mbus"
 	"syscall"
 
-	"code.cloudfoundry.org/lager"
+	"service-discovery-controller/localip"
 	"strings"
+
+	"code.cloudfoundry.org/lager"
 )
 
 type host struct {
@@ -41,6 +43,7 @@ func main() {
 	configPath := flag.String("c", "", "path to config file")
 	flag.Parse()
 
+	var err error
 	bytes, err := ioutil.ReadFile(*configPath)
 	if err != nil {
 		fmt.Printf("Could not read config file at path '%s'", *configPath)
@@ -58,7 +61,11 @@ func main() {
 
 	addressTable := addresstable.NewAddressTable()
 
-	subscriber := launchSubscriber(config, addressTable, logger)
+	subscriber, err := launchSubscriber(config, addressTable, logger)
+	if err != nil {
+		fmt.Printf("Failed to launch subscriber '%v'", err)
+		os.Exit(2)
+	}
 
 	launchHttpServer(config, addressTable, logger)
 
@@ -107,7 +114,7 @@ func launchHttpServer(config *config.Config, addressTable *addresstable.AddressT
 	}()
 }
 
-func launchSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) *mbus.Subscriber {
+func launchSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) (*mbus.Subscriber, error) {
 	subOpts := mbus.SubscriberOpts{
 		ID: "Fake-Subscriber-ID", // goRouter uses (spec.index + random guid)
 		MinimumRegisterIntervalInSeconds: 60,
@@ -118,37 +125,17 @@ func launchSubscriber(config *config.Config, addressTable *addresstable.AddressT
 		Url: strings.Join(config.NatsServers(), ","),
 	}
 
-	localIP, err := LocalIP()
+	localIP, err := localip.LocalIP()
 	if err != nil {
-		panic(fmt.Sprintf("failed to get local IP: %v", err)) //TODO: handle err
+		return &mbus.Subscriber{}, err
 	}
 
 	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger)
 
 	err = subscriber.Run()
 	if err != nil {
-		panic(fmt.Sprintf("Subscriber: CANT RUN!: %v", err)) //TODO: panic
-	}
-	return subscriber
-}
-
-func LocalIP() (string, error) {
-	addr, err := net.ResolveUDPAddr("udp", "1.2.3.4:1")
-	if err != nil {
-		return "", err
+		return subscriber, err
 	}
 
-	conn, err := net.DialUDP("udp", nil, addr)
-	if err != nil {
-		return "", err
-	}
-
-	defer conn.Close()
-
-	host, _, err := net.SplitHostPort(conn.LocalAddr().String())
-	if err != nil {
-		return "", err
-	}
-
-	return host, nil
+	return subscriber, nil
 }

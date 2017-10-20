@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"code.cloudfoundry.org/lager"
+	"fmt"
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
 )
@@ -59,11 +60,6 @@ type NatsConn interface {
 //go:generate counterfeiter -o fakes/nats_conn_provider.go --fake-name NatsConnProvider . NatsConnProvider
 type NatsConnProvider interface {
 	Connection(opts ...nats.Option) (NatsConn, error)
-}
-
-//go:generate counterfeiter -o fakes/local_ip.go --fake-name LocalIP . LocalIP
-type LocalIP interface {
-	LocalIP() (string, error)
 }
 
 func NewSubscriber(
@@ -157,7 +153,7 @@ func (s *Subscriber) Run() error {
 func (s *Subscriber) sendStartMessage() error {
 	msg := &nats.Msg{
 		Subject: "service-discovery.start",
-		Data:    s.mapSubOpts(),
+		Data:    s.subscriptionOptionsJSON(),
 	}
 
 	err := s.natsClient.PublishMsg(msg)
@@ -175,15 +171,16 @@ func (s *Subscriber) Close() {
 }
 
 func (s *Subscriber) setupGreetMsgHandler() error {
-	discoveryMessageJson := s.mapSubOpts()
+	discoveryMessageJson := s.subscriptionOptionsJSON()
 
 	_, err := s.natsClient.Subscribe("service-discovery.greet", nats.MsgHandler(func(greetMsg *nats.Msg) {
-		msg := &nats.Msg{
+		err := s.natsClient.PublishMsg(&nats.Msg{
 			Subject: greetMsg.Reply,
 			Data:    discoveryMessageJson,
+		})
+		if err != nil {
+			s.logger.Error("GreetMsgHandler unable to publish response to greet messages", err)
 		}
-
-		_ = s.natsClient.PublishMsg(msg)
 	}))
 
 	if err != nil {
@@ -205,7 +202,7 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 		registryMessage := &RegistryMessage{}
 		err := json.Unmarshal(msg.Data, registryMessage)
 		if err != nil || registryMessage.IP == "" || len(registryMessage.InfraNames) == 0 {
-			s.logger.Info("setupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
+			s.logger.Info("AddressMessageHandler received a malformed register message", lager.Data(map[string]interface{}{
 				"msgJson": string(msg.Data),
 			}))
 			return
@@ -222,7 +219,7 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 		registryMessage := &RegistryMessage{}
 		err := json.Unmarshal(msg.Data, registryMessage)
 		if err != nil || len(registryMessage.InfraNames) == 0 {
-			s.logger.Info("setupAddressMessageHandler received a malformed message", lager.Data(map[string]interface{}{
+			s.logger.Info("AddressMessageHandler received a malformed unregister message", lager.Data(map[string]interface{}{
 				"msgJson": string(msg.Data),
 			}))
 			return
@@ -238,15 +235,17 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 	return nil
 }
 
-func (s *Subscriber) mapSubOpts() []byte {
-	discoveryStartMessage := ServiceDiscoveryStartMessage{
+func (s *Subscriber) subscriptionOptionsJSON() []byte {
+	discoveryMessageJson, err := json.Marshal(ServiceDiscoveryStartMessage{
 		Id:   s.subOpts.ID,
 		Host: s.localIP,
 		MinimumRegisterIntervalInSeconds: s.subOpts.MinimumRegisterIntervalInSeconds,
 		PruneThresholdInSeconds:          s.subOpts.PruneThresholdInSeconds,
-	}
+	})
 
-	discoveryMessageJson, _ := json.Marshal(discoveryStartMessage) //err should never happen
+	if err != nil {
+		panic(fmt.Sprintf("Unable to marshal subsription options: %v", err))
+	}
 
 	return discoveryMessageJson
 }
