@@ -155,7 +155,7 @@ var _ = Describe("Subscriber", func() {
 				gnatsServer.Shutdown()
 			})
 
-			Eventually(subcriberLogger).Should(HaveLogged(
+			Eventually(subcriberLogger, 5*time.Second).Should(HaveLogged(
 				Info(
 					Message("test.DisconnectHandler disconnected from nats server"),
 					Data("last_error", nil),
