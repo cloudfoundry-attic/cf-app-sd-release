@@ -43,27 +43,27 @@ func main() {
 	configPath := flag.String("c", "", "path to config file")
 	flag.Parse()
 
+	logger := lager.NewLogger("service-discovery-controller")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+
 	var err error
 	bytes, err := ioutil.ReadFile(*configPath)
 	if err != nil {
-		fmt.Printf("Could not read config file at path '%s'", *configPath)
+		logger.Error(fmt.Sprintf("Could not read config file at path '%s'", *configPath), err)
 		os.Exit(2)
 	}
 
 	config, err := config.NewConfig(bytes)
 	if err != nil {
-		fmt.Printf("Could not parse config file at path '%s'", *configPath)
+		logger.Error(fmt.Sprintf("Could not parse config file at path '%s'", *configPath), err)
 		os.Exit(2)
 	}
-
-	logger := lager.NewLogger("service-discovery-controller")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 
 	addressTable := addresstable.NewAddressTable()
 
 	subscriber, err := launchSubscriber(config, addressTable, logger)
 	if err != nil {
-		fmt.Printf("Failed to launch subscriber '%v'", err)
+		logger.Error("Failed to launch subscriber", err)
 		os.Exit(2)
 	}
 
@@ -108,7 +108,7 @@ func launchHttpServer(config *config.Config, addressTable *addresstable.AddressT
 
 			_, err = resp.Write(json)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error writing to http response body") // not tested
+				logger.Debug("Error writing to http response body")
 			}
 		}))
 	}()

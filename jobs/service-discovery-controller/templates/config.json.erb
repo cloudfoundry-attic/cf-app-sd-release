@@ -30,7 +30,7 @@ end.else do
   nats_password = link('nats').p("nats.password")
 end
 
-nats_servers = nats_machines.map do |nats_machine|
+config['nats'] = nats_machines.map do |nats_machine|
     {
      'host' => nats_machine,
      'port' => nats_port,
@@ -38,8 +38,6 @@ nats_servers = nats_machines.map do |nats_machine|
      'pass' => nats_password
     }
 end
-
-config['nats'] = nats_servers
 
 require 'json'
 JSON.dump(config)
