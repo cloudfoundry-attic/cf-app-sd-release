@@ -18,21 +18,16 @@ import (
 )
 
 var _ = Describe("Main", func() {
-
 	var (
 		session      *gexec.Session
-		pathToConfig string
-		configJson   string
+		configPath   string
 		natsServer   *server.Server
 		routeEmitter *nats.Conn
 	)
 
 	BeforeEach(func() {
 		natsServer = RunNatsServerOnPort(8080)
-		config, err := ioutil.TempFile(os.TempDir(), "sd_config")
-		Expect(err).ToNot(HaveOccurred())
-		pathToConfig = config.Name()
-		configJson = `{
+		configPath = writeConfigFile(`{
 			"address":"127.0.0.1",
 			"port":"8055",
 			"nats":[
@@ -43,12 +38,12 @@ var _ = Describe("Main", func() {
 					"pass":""
 				}
 			]
-		}`
+		}`)
+	})
 
-		err = ioutil.WriteFile(pathToConfig, []byte(configJson), os.ModePerm)
-		Expect(err).ToNot(HaveOccurred())
-
-		startCmd := exec.Command(pathToServer, "-c", pathToConfig)
+	JustBeforeEach(func() {
+		startCmd := exec.Command(pathToServer, "-c", configPath)
+		var err error
 		session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -75,7 +70,7 @@ var _ = Describe("Main", func() {
 
 	AfterEach(func() {
 		session.Kill()
-		os.Remove(pathToConfig)
+		os.Remove(configPath)
 		routeEmitter.Close()
 		natsServer.Shutdown()
 	})
@@ -113,7 +108,6 @@ var _ = Describe("Main", func() {
 			}],
 			"service": ""
 		}`))
-
 	})
 
 	It("should return a http app json", func() {
@@ -281,6 +275,64 @@ var _ = Describe("Main", func() {
 			"service": ""
 		}`))
 	})
+
+	Context("when one of the nats urls is invalid", func() {
+		BeforeEach(func() {
+			os.Remove(configPath)
+			configPath = writeConfigFile(`{
+				"address":"127.0.0.1",
+				"port":"8055",
+				"nats":[
+					{
+						"host":"garbage",
+						"port":8081,
+						"user":"who",
+						"pass":"what"
+					},
+					{
+						"host":"localhost",
+						"port":8080,
+						"user":"",
+						"pass":""
+					}
+				]
+			}`)
+		})
+
+		It("connects to NATs successfully", func() {
+			Eventually(func() string {
+				req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/app-id.internal.local.", nil)
+				Expect(err).ToNot(HaveOccurred())
+				resp, err := http.DefaultClient.Do(req)
+				Expect(err).ToNot(HaveOccurred())
+				respBody, err := ioutil.ReadAll(resp.Body)
+				Expect(err).ToNot(HaveOccurred())
+				return string(respBody)
+			}).Should(MatchJSON(`{
+				"env": "",
+				"hosts": [
+				{
+					"ip_address": "192.168.0.1",
+					"last_check_in": "",
+					"port": 0,
+					"revision": "",
+					"service": "",
+					"service_repo_name": "",
+					"tags": {}
+				},
+				{
+					"ip_address": "192.168.0.2",
+					"last_check_in": "",
+					"port": 0,
+					"revision": "",
+					"service": "",
+					"service_repo_name": "",
+					"tags": {}
+				}],
+				"service": ""
+			}`))
+		})
+	})
 })
 
 func register(routeEmitter *nats.Conn, ip string, url string) {
@@ -305,4 +357,16 @@ func newFakeRouteEmitter(natsUrl string) *nats.Conn {
 	natsClient, err := nats.Connect(natsUrl, nats.ReconnectWait(1*time.Nanosecond))
 	Expect(err).NotTo(HaveOccurred())
 	return natsClient
+}
+
+func writeConfigFile(configJson string) string {
+	configFile, err := ioutil.TempFile(os.TempDir(), "sd_config")
+	Expect(err).ToNot(HaveOccurred())
+
+	configPath := configFile.Name()
+
+	err = ioutil.WriteFile(configPath, []byte(configJson), os.ModePerm)
+	Expect(err).ToNot(HaveOccurred())
+
+	return configPath
 }

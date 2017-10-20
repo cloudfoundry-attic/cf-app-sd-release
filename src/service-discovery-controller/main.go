@@ -108,14 +108,14 @@ func launchHttpServer(config *config.Config, addressTable *addresstable.AddressT
 }
 
 func launchSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) *mbus.Subscriber {
-	subOpts := mbus.SubscriberOpts{ //TODO: does this need to be configurable? can we hard code into subscriber?
-		ID: "Fake-Subscriber-ID",
+	subOpts := mbus.SubscriberOpts{
+		ID: "Fake-Subscriber-ID", // goRouter uses (spec.index + random guid)
 		MinimumRegisterIntervalInSeconds: 60,
 		PruneThresholdInSeconds:          120,
 	}
 
 	provider := &mbus.NatsConnWithUrlProvider{
-		Url: strings.Join(config.NatsServers(), ","), //TODO: test me, joining multiple urls (inject a bad and good server?)
+		Url: strings.Join(config.NatsServers(), ","),
 	}
 
 	localIP, err := LocalIP()
