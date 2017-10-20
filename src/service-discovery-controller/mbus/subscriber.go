@@ -207,6 +207,9 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 			}))
 			return
 		}
+		s.logger.Debug("AddressMessageHandler register msg received", lager.Data(map[string]interface{}{
+			"msgJson": string(msg.Data),
+		}))
 		s.table.Add(registryMessage.InfraNames, registryMessage.IP)
 	}))
 
@@ -224,6 +227,9 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 			}))
 			return
 		}
+		s.logger.Debug("AddressMessageHandler unregister msg received", lager.Data(map[string]interface{}{
+			"msgJson": string(msg.Data),
+		}))
 		s.table.Remove(registryMessage.InfraNames, registryMessage.IP)
 	}))
 

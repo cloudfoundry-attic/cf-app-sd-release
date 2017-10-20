@@ -230,6 +230,27 @@ var _ = Describe("Subscriber", func() {
 			Expect(ip).To(Equal("192.168.0.1"))
 		})
 
+		It("should log the message", func() {
+			json := `{
+				"host": "192.168.0.1",
+				"uris": ["foo.com", "0.foo.com"]
+			}`
+
+			natsRegistryMsg := nats.Msg{
+				Subject: "service-discovery.register",
+				Data:    []byte(json),
+			}
+
+			Eventually(func() lager.Logger {
+				fakeRouteEmitter.PublishMsg(&natsRegistryMsg)
+				return subcriberLogger
+			}).Should(HaveLogged(
+				Debug(
+					Message("test.AddressMessageHandler register msg received"),
+					Data("msgJson", json),
+				)))
+		})
+
 		Context("when the message is malformed", func() {
 			It("should not add the garbage", func() {
 				json := `garbage "0.foo.com"] }`
@@ -316,6 +337,27 @@ var _ = Describe("Subscriber", func() {
 			uris, host := addressTable.RemoveArgsForCall(0)
 			Expect(uris).To(Equal([]string{"foo.com", "0.foo.com"}))
 			Expect(host).To(Equal("192.168.0.1"))
+		})
+
+		It("should log the message", func() {
+			json := `{
+				"host": "192.168.0.1",
+				"uris": ["foo.com", "0.foo.com"]
+			}`
+
+			natsRegistryMsg := nats.Msg{
+				Subject: "service-discovery.unregister",
+				Data:    []byte(json),
+			}
+
+			Eventually(func() lager.Logger {
+				fakeRouteEmitter.PublishMsg(&natsRegistryMsg)
+				return subcriberLogger
+			}).Should(HaveLogged(
+				Debug(
+					Message("test.AddressMessageHandler unregister msg received"),
+					Data("msgJson", json),
+				)))
 		})
 
 		Context("when the message is malformed", func() {
