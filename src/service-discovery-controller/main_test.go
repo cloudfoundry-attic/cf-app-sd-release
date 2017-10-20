@@ -115,6 +115,9 @@ var _ = Describe("Main", func() {
 				}],
 				"service": ""
 			}`))
+
+			sessionContents := string(session.Out.Contents())
+			Expect(sessionContents).To(MatchRegexp(`HTTPServer access.*\"ip_address\\":\\"192.168.0.2\\".*\"serviceKey\":\"app-id.internal.local.\"`))
 		})
 
 		It("should return a http app json", func() {

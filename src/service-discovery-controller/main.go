@@ -111,6 +111,11 @@ func launchHttpServer(config *config.Config, addressTable *addresstable.AddressT
 			if err != nil {
 				logger.Debug("Error writing to http response body")
 			}
+
+			logger.Debug("HTTPServer access", lager.Data(map[string]interface{}{
+				"serviceKey":   serviceKey,
+				"responseJson": string(json),
+			}))
 		}))
 	}()
 }
