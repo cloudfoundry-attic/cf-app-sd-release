@@ -17,6 +17,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
+	"time"
 )
 
 var _ = Describe("Main", func() {
@@ -148,7 +149,7 @@ var _ = Describe("Main", func() {
 		})
 
 		It("fails to start", func() {
-			Eventually(session2).Should(gexec.Exit(1))
+			Eventually(session2, 5 * time.Second).Should(gexec.Exit(1))
 			Eventually(session2.Err).Should(gbytes.Say("Address \\(127.0.0.1:8053\\) not available"))
 		})
 	})
