@@ -15,4 +15,5 @@ files:
   - service-discovery-controller/*.go # gosub
   - service-discovery-controller/addresstable/*.go # gosub
   - service-discovery-controller/config/*.go # gosub
+  - service-discovery-controller/localip/*.go # gosub
   - service-discovery-controller/mbus/*.go # gosub
