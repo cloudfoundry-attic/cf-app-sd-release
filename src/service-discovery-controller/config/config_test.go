@@ -13,6 +13,7 @@ var _ = Describe("Config", func() {
 			configJSON := []byte(`{
 				"address":"example.com",
 				"port":"80053",
+				"index":"62",
 				"nats":[
 					{
 						"host": "a-nats-host",
@@ -34,7 +35,7 @@ var _ = Describe("Config", func() {
 
 			Expect(parsedConfig.Address).To(Equal("example.com"))
 			Expect(parsedConfig.Port).To(Equal("80053"))
-
+			Expect(parsedConfig.Index).To(Equal("62"))
 			Expect(parsedConfig.NatsServers()).To(ContainElement("nats://a-nats-user:a-nats-pass@a-nats-host:1"))
 			Expect(parsedConfig.NatsServers()).To(ContainElement("nats://b-nats-user:b-nats-pass@b-nats-host:2"))
 		})

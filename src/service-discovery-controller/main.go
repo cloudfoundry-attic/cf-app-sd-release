@@ -73,7 +73,7 @@ func main() {
 
 	select {
 	case <-signalChannel:
-		subscriber.Close() //TODO: test?
+		subscriber.Close()
 		fmt.Println("Shutting service-discovery-controller down")
 		return
 	}

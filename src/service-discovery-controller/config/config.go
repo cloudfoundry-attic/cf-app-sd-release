@@ -10,6 +10,7 @@ type Config struct {
 	Address string       `json:"address"`
 	Port    string       `json:"port"`
 	Nats    []NatsConfig `json:"nats"`
+	Index   string       `json:"index"`
 }
 
 type NatsConfig struct {
