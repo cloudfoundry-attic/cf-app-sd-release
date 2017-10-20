@@ -18,6 +18,7 @@ import (
 	"service-discovery-controller/localip"
 	"strings"
 
+	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
 	"code.cloudfoundry.org/lager"
 )
 
@@ -115,8 +116,17 @@ func launchHttpServer(config *config.Config, addressTable *addresstable.AddressT
 }
 
 func launchSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) (*mbus.Subscriber, error) {
+	uuidGenerator := adapter.UUIDAdapter{}
+
+	uuid, err := uuidGenerator.GenerateUUID()
+	if err != nil {
+		return &mbus.Subscriber{}, err
+	}
+
+	subscriberID := fmt.Sprintf("%s-%s", config.Index, uuid)
+
 	subOpts := mbus.SubscriberOpts{
-		ID: "Fake-Subscriber-ID", // goRouter uses (spec.index + random guid)
+		ID: subscriberID,
 		MinimumRegisterIntervalInSeconds: 60,
 		PruneThresholdInSeconds:          120,
 	}

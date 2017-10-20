@@ -1,23 +1,20 @@
 package main_test
 
 import (
-	"io"
-	"net/http"
-	"os/exec"
-
-	"io/ioutil"
-
-	"os"
-
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"os/exec"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
-	"time"
 )
 
 var _ = Describe("Main", func() {

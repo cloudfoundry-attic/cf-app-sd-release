@@ -46,3 +46,9 @@
 [submodule "src/github.com/st3v/glager"]
 	path = src/github.com/st3v/glager
 	url = https://github.com/st3v/glager.git
+[submodule "src/code.cloudfoundry.org/cf-networking-helpers"]
+	path = src/code.cloudfoundry.org/cf-networking-helpers
+	url = git@github.com:cloudfoundry/cf-networking-helpers.git
+[submodule "src/github.com/nu7hatch/gouuid"]
+	path = src/github.com/nu7hatch/gouuid
+	url = git@github.com:nu7hatch/gouuid.git
