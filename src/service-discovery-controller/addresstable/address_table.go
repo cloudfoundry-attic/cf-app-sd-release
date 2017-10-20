@@ -43,10 +43,14 @@ func (at *AddressTable) Remove(hostnames []string, ip string) {
 
 func (at *AddressTable) Lookup(hostname string) []string {
 	at.mutex.RLock()
-	fqHostname := fqdn(hostname)
-	ips := at.ipsForHostname(fqHostname)
+
+	found := at.ipsForHostname(fqdn(hostname))
+	foundCopy := make([]string, len(found))
+	copy(foundCopy, found)
+
 	at.mutex.RUnlock()
-	return ips
+
+	return foundCopy
 }
 
 func (at *AddressTable) ipsForHostname(hostname string) []string {
