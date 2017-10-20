@@ -52,10 +52,9 @@ var _ = Describe("Main", func() {
 		session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).ToNot(HaveOccurred())
 
-		time.Sleep(1 * time.Second) // TODO : get rid of me
+		Eventually(session).Should(gbytes.Say("Server Started"))
 
 		routeEmitter = newFakeRouteEmitter("nats://" + natsServer.Addr().String())
-
 		register(routeEmitter, "192.168.0.1", "app-id.internal.local.")
 		register(routeEmitter, "192.168.0.2", "app-id.internal.local.")
 		register(routeEmitter, "192.168.0.1", "large-id.internal.local.")
@@ -71,7 +70,7 @@ var _ = Describe("Main", func() {
 		register(routeEmitter, "192.168.0.11", "large-id.internal.local.")
 		register(routeEmitter, "192.168.0.12", "large-id.internal.local.")
 		register(routeEmitter, "192.168.0.13", "large-id.internal.local.")
-		Expect(routeEmitter.Flush()).ToNot(HaveOccurred()) //TODO: necessary?
+		Expect(routeEmitter.Flush()).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -82,20 +81,42 @@ var _ = Describe("Main", func() {
 	})
 
 	It("accepts interrupt signals and shuts down", func() {
-		Eventually(session).Should(gbytes.Say("Server Started"))
 		session.Signal(os.Interrupt)
 
 		Eventually(session).Should(gexec.Exit())
 		Eventually(session).Should(gbytes.Say("Shutting service-discovery-controller down"))
 	})
 
-	PIt("should not return ips for unregistered domains", func() {
-		Fail("")
+	It("should not return ips for unregistered domains", func() {
+		unregister(routeEmitter, "192.168.0.1", "app-id.internal.local.")
+		Expect(routeEmitter.Flush()).ToNot(HaveOccurred())
+
+		Eventually(func() string {
+			req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/app-id.internal.local.", nil)
+			Expect(err).ToNot(HaveOccurred())
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).ToNot(HaveOccurred())
+			respBody, err := ioutil.ReadAll(resp.Body)
+			Expect(err).ToNot(HaveOccurred())
+			return string(respBody)
+		}).Should(MatchJSON(`{
+			"env": "",
+			"hosts": [
+			{
+				"ip_address": "192.168.0.2",
+				"last_check_in": "",
+				"port": 0,
+				"revision": "",
+				"service": "",
+				"service_repo_name": "",
+				"tags": {}
+			}],
+			"service": ""
+		}`))
+
 	})
 
 	It("should return a http app json", func() {
-		Eventually(session).Should(gbytes.Say("Server Started"))
-
 		req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/app-id.internal.local.", nil)
 		Expect(err).ToNot(HaveOccurred())
 		resp, err := http.DefaultClient.Do(req)
@@ -129,8 +150,6 @@ var _ = Describe("Main", func() {
 	})
 
 	It("should return a http large json", func() {
-		Eventually(session).Should(gbytes.Say("Server Started"))
-
 		req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/large-id.internal.local.", nil)
 		Expect(err).ToNot(HaveOccurred())
 		resp, err := http.DefaultClient.Do(req)
@@ -267,6 +286,15 @@ var _ = Describe("Main", func() {
 func register(routeEmitter *nats.Conn, ip string, url string) {
 	natsRegistryMsg := nats.Msg{
 		Subject: "service-discovery.register",
+		Data:    []byte(fmt.Sprintf(`{"host": "%s","uris":["%s"]}`, ip, url)),
+	}
+
+	Expect(routeEmitter.PublishMsg(&natsRegistryMsg)).ToNot(HaveOccurred())
+}
+
+func unregister(routeEmitter *nats.Conn, ip string, url string) {
+	natsRegistryMsg := nats.Msg{
+		Subject: "service-discovery.unregister",
 		Data:    []byte(fmt.Sprintf(`{"host": "%s","uris":["%s"]}`, ip, url)),
 	}
 
