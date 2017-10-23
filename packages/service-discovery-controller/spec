@@ -13,6 +13,7 @@ files:
   - github.com/nats-io/nats/*.go # gosub
   - github.com/nats-io/nuid/*.go # gosub
   - github.com/nu7hatch/gouuid/*.go # gosub
+  - github.com/pivotal-cf/paraphernalia/secure/tlsconfig/*.go # gosub
   - github.com/pkg/errors/*.go # gosub
   - service-discovery-controller/*.go # gosub
   - service-discovery-controller/addresstable/*.go # gosub
