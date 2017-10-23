@@ -1,7 +1,14 @@
-package sdcclient
+package sdcclient_test
 
 import (
 	"net/http"
+
+	. "bosh-dns-adapter/sdcclient"
+	"bosh-dns-adapter/testhelpers"
+
+	"crypto/tls"
+	"io/ioutil"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,80 +20,148 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 		client             *ServiceDiscoveryClient
 		fakeServer         *ghttp.Server
 		fakeServerResponse http.HandlerFunc
+
+		caFileName         string
+		clientCertFileName string
+		clientKeyFileName  string
+		serverCert         tls.Certificate
 	)
 
-	JustBeforeEach(func() {
-		fakeServer = ghttp.NewUnstartedServer()
-		fakeServer.AppendHandlers(fakeServerResponse)
-		fakeServer.HTTPTestServer.Start()
-		client = NewServiceDiscoveryClient(fakeServer.URL())
+	BeforeEach(func() {
+		caFileName, clientCertFileName, clientKeyFileName, serverCert = testhelpers.GenerateCaAndMutualTlsCerts()
 	})
 
-	AfterEach(func() {
-		fakeServer.Close()
+	Describe("NewServiceDiscoveryClient", func() {
+		Context("when the client has a misconfigured CA path", func() {
+			BeforeEach(func() {
+				os.Remove(caFileName)
+				caFileName = "non-existent"
+			})
+
+			It("returns an error", func() {
+				_, err := NewServiceDiscoveryClient("app-id.sd-local.", caFileName, clientCertFileName, clientKeyFileName)
+				Expect(err).To(MatchError("read CA file: open non-existent: no such file or directory"))
+
+			})
+		})
+
+		Context("when the client has a CA file that is malformed", func() {
+			BeforeEach(func() {
+				ioutil.WriteFile(caFileName, []byte("not a cert"), os.ModePerm)
+			})
+
+			It("returns an error", func() {
+				_, err := NewServiceDiscoveryClient("app-id.sd-local.", caFileName, clientCertFileName, clientKeyFileName)
+				Expect(err).To(MatchError("load CA file into cert pool"))
+
+			})
+		})
+
+		Context("when the client has a misconfigured client/key", func() {
+			BeforeEach(func() {
+				os.Remove(clientCertFileName)
+				clientCertFileName = "non-existent"
+			})
+			It("returns an error", func() {
+				_, err := NewServiceDiscoveryClient("app-id.sd-local.", caFileName, clientCertFileName, clientKeyFileName)
+				Expect(err).To(MatchError("load client key pair: open non-existent: no such file or directory"))
+			})
+		})
+
 	})
 
-	Context("when the server responds successfully", func() {
+	Describe("IPs", func() {
 		BeforeEach(func() {
-			fakeServerResponse = ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
-				ghttp.RespondWith(http.StatusOK, `{
-					"env": "",
-					"Hosts": [
-					{
-						"ip_address": "192.168.0.1",
-						"last_check_in": "",
-						"port": 0,
-						"revision": "",
-						"service": "",
-						"service_repo_name": "",
-						"tags": {}
-					},
-					{
-						"ip_address": "192.168.0.2",
-						"last_check_in": "",
-						"port": 0,
-						"revision": "",
-						"service": "",
-						"service_repo_name": "",
-						"tags": {}
-					}],
-					"service": ""
-				}`))
+			fakeServer = ghttp.NewUnstartedServer()
+			fakeServer.HTTPTestServer.TLS = &tls.Config{}
+			fakeServer.HTTPTestServer.TLS.RootCAs = testhelpers.CertPool(caFileName)
+			fakeServer.HTTPTestServer.TLS.ClientCAs = testhelpers.CertPool(caFileName)
+			fakeServer.HTTPTestServer.TLS.ClientAuth = tls.RequireAndVerifyClientCert
+			fakeServer.HTTPTestServer.TLS.CipherSuites = []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256}
+			fakeServer.HTTPTestServer.TLS.PreferServerCipherSuites = true
+			fakeServer.HTTPTestServer.TLS.Certificates = []tls.Certificate{serverCert}
 		})
 
-		It("returns the ips in the server response", func() {
-			actualIPs, err := client.IPs("app-id.sd-local.")
-			Expect(err).ToNot(HaveOccurred())
+		JustBeforeEach(func() {
+			var err error
+			fakeServer.HTTPTestServer.StartTLS()
+			client, err = NewServiceDiscoveryClient(fakeServer.URL(), caFileName, clientCertFileName, clientKeyFileName)
+			Expect(err).NotTo(HaveOccurred())
+		})
 
-			Expect(actualIPs).To(Equal([]string{"192.168.0.1", "192.168.0.2"}))
+		AfterEach(func() {
+			fakeServer.Close()
+			os.Remove(caFileName)
+			os.Remove(clientCertFileName)
+			os.Remove(clientKeyFileName)
+		})
+
+		Context("when the server responds successfully", func() {
+			BeforeEach(func() {
+				fakeServerResponse = ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
+					ghttp.RespondWith(http.StatusOK, `{
+							"env": "",
+							"Hosts": [
+							{
+								"ip_address": "192.168.0.1",
+								"last_check_in": "",
+								"port": 0,
+								"revision": "",
+								"service": "",
+								"service_repo_name": "",
+								"tags": {}
+							},
+							{
+								"ip_address": "192.168.0.2",
+								"last_check_in": "",
+								"port": 0,
+								"revision": "",
+								"service": "",
+								"service_repo_name": "",
+								"tags": {}
+							}],
+							"service": ""
+						}`))
+				fakeServer.AppendHandlers(fakeServerResponse)
+			})
+
+			It("returns the ips in the server response", func() {
+				actualIPs, err := client.IPs("app-id.sd-local.")
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(actualIPs).To(Equal([]string{"192.168.0.1", "192.168.0.2"}))
+			})
+		})
+
+		Context("when the server responds with malformed JSON", func() {
+			BeforeEach(func() {
+				fakeServerResponse = ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
+					ghttp.RespondWith(http.StatusOK, `garbage`))
+				fakeServer.AppendHandlers(fakeServerResponse)
+			})
+
+			It("returns an error", func() {
+				_, err := client.IPs("app-id.sd-local.")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		Context("when the server responds a non-200 response", func() {
+			BeforeEach(func() {
+				fakeServerResponse = ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
+					ghttp.RespondWith(http.StatusBadRequest, `{}`))
+				fakeServer.AppendHandlers(fakeServerResponse)
+			})
+
+			It("returns an error", func() {
+				_, err := client.IPs("app-id.sd-local.")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Received non successful response from server:"))
+			})
 		})
 	})
 
-	Context("when the server responds with malformed JSON", func() {
-		BeforeEach(func() {
-			fakeServerResponse = ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
-				ghttp.RespondWith(http.StatusOK, `garbage`))
-		})
-
-		It("returns an error", func() {
-			_, err := client.IPs("app-id.sd-local.")
-			Expect(err).To(HaveOccurred())
-		})
-	})
-
-	Context("when the server responds a non-200 response", func() {
-		BeforeEach(func() {
-			fakeServerResponse = ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
-				ghttp.RespondWith(http.StatusBadRequest, `{}`))
-		})
-
-		It("returns an error", func() {
-			_, err := client.IPs("app-id.sd-local.")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Received non successful response from server:"))
-		})
-	})
 })

@@ -43,12 +43,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	sdcServerUrl := fmt.Sprintf("http://%s:%s",
+	sdcServerUrl := fmt.Sprintf("https://%s:%s",
 		config.ServiceDiscoveryControllerAddress,
 		config.ServiceDiscoveryControllerPort,
 	)
 
-	sdcClient := sdcclient.NewServiceDiscoveryClient(sdcServerUrl)
+	sdcClient, err := sdcclient.NewServiceDiscoveryClient(sdcServerUrl, config.CACert, config.ClientCert, config.ClientKey)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Unable to create service discovery client: %s", err))
+		os.Exit(1)
+	}
 
 	go func() {
 		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {

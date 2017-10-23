@@ -5,6 +5,9 @@ templates:
   service-discovery-controller_ctl.erb:     bin/service-discovery-controller_ctl
   service-discovery-controller_as_vcap.erb: bin/service-discovery-controller_as_vcap
   config.json.erb:                          config/config.json
+  server.crt.erb:                           config/certs/server.crt
+  server.key.erb:                           config/certs/server.key
+  client_ca.crt.erb:                        config/certs/client_ca.crt
 
 packages:
   - service-discovery-controller
@@ -30,6 +33,12 @@ properties:
   port:
     description: "Port which service-discovery-controller will listen on."
     default: 8054
+
+  dnshttps.server.tls:
+    description: "Server-side mutual TLS configuration for dns over http"
+
+  dnshttps.client.ca:
+    description: "client-side mutual TLS configuration for dns over http"
 
   nats.user:
     description: User name for NATS authentication

@@ -1,6 +1,8 @@
 package main_test
 
 import (
+	"bosh-dns-adapter/testhelpers"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -52,18 +54,36 @@ var _ = Describe("Main", func() {
 	})
 
 	JustBeforeEach(func() {
+		var err error
+		caFileName, clientCertFileName, clientKeyFileName, serverCert := testhelpers.GenerateCaAndMutualTlsCerts()
+
 		fakeServiceDiscoveryControllerServer = ghttp.NewUnstartedServer()
+		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS = &tls.Config{}
+		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS.RootCAs = testhelpers.CertPool(caFileName)
+		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS.ClientCAs = testhelpers.CertPool(caFileName)
+		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS.ClientAuth = tls.RequireAndVerifyClientCert
+		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS.CipherSuites = []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256}
+		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS.PreferServerCipherSuites = true
+		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS.Certificates = []tls.Certificate{serverCert}
+
 		fakeServiceDiscoveryControllerServer.AppendHandlers(fakeServiceDiscoveryControllerResponse)
-		fakeServiceDiscoveryControllerServer.Start()
+		fakeServiceDiscoveryControllerServer.HTTPTestServer.StartTLS()
+
 		urlParts := strings.Split(fakeServiceDiscoveryControllerServer.URL(), ":")
 
 		configFileContents = fmt.Sprintf(`{
 			"address": "%s",
 			"port": "%s",
 			"service_discovery_controller_address": "%s",
-			"service_discovery_controller_port": "%s"
-		}`, dnsAdapterAddress, dnsAdapterPort, strings.TrimPrefix(urlParts[1], "//"), urlParts[2])
-		var err error
+			"service_discovery_controller_port": "%s",
+			"client_cert": "%s",
+			"client_key": "%s",
+			"ca_cert": "%s"
+		}`, dnsAdapterAddress, dnsAdapterPort, strings.TrimPrefix(urlParts[1], "//"), urlParts[2],
+			clientCertFileName,
+			clientKeyFileName,
+			caFileName)
+
 		tempConfigFile, err = ioutil.TempFile(os.TempDir(), "sd")
 		Expect(err).ToNot(HaveOccurred())
 		_, err = tempConfigFile.Write([]byte(configFileContents))
@@ -82,6 +102,7 @@ var _ = Describe("Main", func() {
 	})
 
 	It("should return a http 200 status", func() {
+
 		Eventually(session).Should(gbytes.Say("Server Started"))
 
 		var reader io.Reader

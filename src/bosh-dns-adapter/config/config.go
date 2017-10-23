@@ -7,6 +7,9 @@ type Config struct {
 	Port                              string `json:"port"`
 	ServiceDiscoveryControllerAddress string `json:"service_discovery_controller_address"`
 	ServiceDiscoveryControllerPort    string `json:"service_discovery_controller_port"`
+	ClientCert                        string `json:"client_cert"`
+	ClientKey                         string `json:"client_key"`
+	CACert                            string `json:"ca_cert"`
 }
 
 func NewConfig(configJSON []byte) (*Config, error) {
