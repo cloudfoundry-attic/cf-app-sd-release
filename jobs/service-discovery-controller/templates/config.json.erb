@@ -3,9 +3,9 @@ config = {
     "address" => p('address'),
     "port" => "#{p('port')}",
     "index" => "#{spec.index}",
-    "server_cert" => "config/certs/server.crt",
-    "server_key" => "config/certs/server.key",
-    "ca_cert" => "config/certs/client_ca.crt"
+    "server_cert" => "/var/vcap/jobs/service-discovery-controller/config/certs/server.crt",
+    "server_key" => "/var/vcap/jobs/service-discovery-controller/config/certs/server.key",
+    "ca_cert" => "/var/vcap/jobs/service-discovery-controller/config/certs/client_ca.crt"
 }
 
 nats_machines = nil

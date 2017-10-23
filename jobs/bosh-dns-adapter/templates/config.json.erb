@@ -5,9 +5,9 @@ config = {
     "port" => "#{p('port')}",
     "service_discovery_controller_address" => "#{link('service-discovery-controller').p('address')}",
     "service_discovery_controller_port" => "#{link('service-discovery-controller').p('port')}",
-    "client_cert" => "config/certs/client.crt",
-    "client_key" => "config/certs/client.key",
-    "ca_cert" => "config/certs/server_ca.crt"
+    "client_cert" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/client.crt",
+    "client_key" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/client.key",
+    "ca_cert" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/server_ca.crt"
 }
 
 JSON.dump(config)
