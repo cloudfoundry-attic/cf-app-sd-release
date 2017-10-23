@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"time"
 
+	"bosh-dns-adapter/testhelpers"
+	"crypto/tls"
+	"crypto/x509"
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
@@ -23,13 +26,22 @@ var _ = Describe("Main", func() {
 		configPath   string
 		natsServer   *server.Server
 		routeEmitter *nats.Conn
+		clientCert   tls.Certificate
+		caFile       string
+		serverCert   string
+		serverKey    string
 	)
 
 	BeforeEach(func() {
+		caFile, serverCert, serverKey, clientCert = testhelpers.GenerateCaAndMutualTlsCerts()
+
 		natsServer = RunNatsServerOnPort(8080)
-		configPath = writeConfigFile(`{
+		configPath = writeConfigFile(fmt.Sprintf(`{
 			"address":"127.0.0.1",
 			"port":"8055",
+			"ca_cert": "%s",
+			"server_cert": "%s",
+			"server_key": "%s",
 			"nats":[
 				{
 					"host":"localhost",
@@ -38,7 +50,7 @@ var _ = Describe("Main", func() {
 					"pass":""
 				}
 			]
-		}`)
+		}`, caFile, serverCert, serverKey))
 	})
 
 	AfterEach(func() {
@@ -94,9 +106,7 @@ var _ = Describe("Main", func() {
 			Expect(routeEmitter.Flush()).ToNot(HaveOccurred())
 
 			Eventually(func() string {
-				req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/app-id.internal.local.", nil)
-				Expect(err).ToNot(HaveOccurred())
-				resp, err := http.DefaultClient.Do(req)
+				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/app-id.internal.local.")
 				Expect(err).ToNot(HaveOccurred())
 				respBody, err := ioutil.ReadAll(resp.Body)
 				Expect(err).ToNot(HaveOccurred())
@@ -121,9 +131,7 @@ var _ = Describe("Main", func() {
 		})
 
 		It("should return a http app json", func() {
-			req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/app-id.internal.local.", nil)
-			Expect(err).ToNot(HaveOccurred())
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/app-id.internal.local.")
 			Expect(err).ToNot(HaveOccurred())
 			respBody, err := ioutil.ReadAll(resp.Body)
 			Expect(err).ToNot(HaveOccurred())
@@ -154,9 +162,7 @@ var _ = Describe("Main", func() {
 		})
 
 		It("should return a http large json", func() {
-			req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/large-id.internal.local.", nil)
-			Expect(err).ToNot(HaveOccurred())
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/large-id.internal.local.")
 			Expect(err).ToNot(HaveOccurred())
 			respBody, err := ioutil.ReadAll(resp.Body)
 			Expect(err).ToNot(HaveOccurred())
@@ -289,9 +295,12 @@ var _ = Describe("Main", func() {
 		Context("when one of the nats urls is invalid", func() {
 			BeforeEach(func() {
 				os.Remove(configPath)
-				configPath = writeConfigFile(`{
+				configPath = writeConfigFile(fmt.Sprintf(`{
 					"address":"127.0.0.1",
 					"port":"8055",
+					"ca_cert": "%s",
+					"server_cert": "%s",
+					"server_key": "%s",
 					"nats":[
 						{
 							"host":"garbage",
@@ -306,14 +315,12 @@ var _ = Describe("Main", func() {
 							"pass":""
 						}
 					]
-				}`)
+				}`, caFile, serverCert, serverKey))
 			})
 
 			It("connects to NATs successfully", func() {
 				Eventually(func() string {
-					req, err := http.NewRequest("GET", "http://localhost:8055/v1/registration/app-id.internal.local.", nil)
-					Expect(err).ToNot(HaveOccurred())
-					resp, err := http.DefaultClient.Do(req)
+					resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/app-id.internal.local.")
 					Expect(err).ToNot(HaveOccurred())
 					respBody, err := ioutil.ReadAll(resp.Body)
 					Expect(err).ToNot(HaveOccurred())
@@ -406,4 +413,22 @@ func writeConfigFile(configJson string) string {
 	Expect(err).ToNot(HaveOccurred())
 
 	return configPath
+}
+
+func NewClient(caCertPool *x509.CertPool, cert tls.Certificate) *http.Client {
+	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		ClientCAs:    caCertPool,
+		RootCAs:      caCertPool,
+		Certificates: []tls.Certificate{cert},
+	}
+
+	tlsConfig.BuildNameToCertificate()
+	tlsConfig.ServerName = "service-discovery-controller.internal"
+
+	tr := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
+	return &http.Client{Transport: tr}
 }

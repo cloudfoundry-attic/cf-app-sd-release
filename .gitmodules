@@ -52,3 +52,6 @@
 [submodule "src/github.com/nu7hatch/gouuid"]
 	path = src/github.com/nu7hatch/gouuid
 	url = https://github.com/nu7hatch/gouuid.git
+[submodule "src/github.com/pivotal-cf/paraphernalia"]
+	path = src/github.com/pivotal-cf/paraphernalia
+	url = https://github.com/pivotal-cf/paraphernalia

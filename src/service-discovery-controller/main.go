@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,6 +19,9 @@ import (
 
 	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
 	"code.cloudfoundry.org/lager"
+	"crypto/tls"
+	"crypto/x509"
+	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
 )
 
 type host struct {
@@ -80,43 +82,68 @@ func main() {
 	}
 }
 func launchHttpServer(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) {
-	address := fmt.Sprintf("%s:%s", config.Address, config.Port)
-	l, err := net.Listen("tcp", address)
+	http.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
+		serviceKey := path.Base(req.URL.Path)
+
+		ips := addressTable.Lookup(serviceKey)
+		hosts := []host{}
+		for _, ip := range ips {
+			hosts = append(hosts, host{
+				IPAddress: ip,
+				Tags:      make(map[string]interface{}),
+			})
+		}
+
+		var err error
+		json, err := json.Marshal(registration{Hosts: hosts})
+		if err != nil {
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, err = resp.Write(json)
+		if err != nil {
+			logger.Debug("Error writing to http response body")
+		}
+
+		logger.Debug("HTTPServer access", lager.Data(map[string]interface{}{
+			"serviceKey":   serviceKey,
+			"responseJson": string(json),
+		}))
+	})
+
+	caCert, err := ioutil.ReadFile(config.CACert)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Address (%s) not available", address))
-		os.Exit(1)
+		fmt.Errorf("unable to read ca file: %s", err)
+		return
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	cert, err := tls.LoadX509KeyPair(config.ServerCert, config.ServerKey)
+	if err != nil {
+		fmt.Errorf("unable to load x509 key pair: %s", err)
+		return
 	}
 
+	tlsConfig := tlsconfig.Build(
+		tlsconfig.WithIdentity(cert),
+		tlsconfig.WithInternalServiceDefaults(),
+	)
+
+	serverConfig := tlsConfig.Server(tlsconfig.WithClientAuthentication(caCertPool))
+	serverConfig.BuildNameToCertificate()
+
+	server := &http.Server{
+		Addr:      fmt.Sprintf("%s:%s", config.Address, config.Port),
+		TLSConfig: serverConfig,
+	}
+	server.SetKeepAlivesEnabled(false)
+
 	go func() {
-		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-			serviceKey := path.Base(req.URL.Path)
-
-			ips := addressTable.Lookup(serviceKey)
-			hosts := []host{}
-			for _, ip := range ips {
-				hosts = append(hosts, host{
-					IPAddress: ip,
-					Tags:      make(map[string]interface{}),
-				})
-			}
-
-			var err error
-			json, err := json.Marshal(registration{Hosts: hosts})
-			if err != nil {
-				http.Error(resp, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			_, err = resp.Write(json)
-			if err != nil {
-				logger.Debug("Error writing to http response body")
-			}
-
-			logger.Debug("HTTPServer access", lager.Data(map[string]interface{}{
-				"serviceKey":   serviceKey,
-				"responseJson": string(json),
-			}))
-		}))
+		serveErr := server.ListenAndServeTLS("", "")
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("SDC Server ending with %v", serveErr))
+		os.Exit(1)
 	}()
 }
 

@@ -2,7 +2,10 @@
 config = {
     "address" => p('address'),
     "port" => "#{p('port')}",
-    "index" => "#{spec.index}"
+    "index" => "#{spec.index}",
+    "server_cert" => "config/certs/server.crt",
+    "server_key" => "config/certs/server.key",
+    "ca_cert" => "config/certs/client_ca.crt"
 }
 
 nats_machines = nil

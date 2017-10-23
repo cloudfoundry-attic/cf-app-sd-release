@@ -7,10 +7,13 @@ import (
 )
 
 type Config struct {
-	Address string       `json:"address"`
-	Port    string       `json:"port"`
-	Nats    []NatsConfig `json:"nats"`
-	Index   string       `json:"index"`
+	Address    string       `json:"address"`
+	Port       string       `json:"port"`
+	Nats       []NatsConfig `json:"nats"`
+	Index      string       `json:"index"`
+	ServerCert string       `json:"server_cert"`
+	ServerKey  string       `json:"server_key"`
+	CACert     string       `json:"ca_cert"`
 }
 
 type NatsConfig struct {

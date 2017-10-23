@@ -16,7 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func GenerateCaAndMutualTlsCerts() (caFileName string, serverCertFileName string, serverPrivateKeyFileName string, clientCert tls.Certificate) {
+func GenerateCaAndMutualTlsCerts() (caFileName string, clientCertFileName string, clientPrivateKeyFileName string, serverCert tls.Certificate) {
 	var (
 		err     error
 		privKey *rsa.PrivateKey
@@ -29,14 +29,14 @@ func GenerateCaAndMutualTlsCerts() (caFileName string, serverCertFileName string
 	// Client
 	clientCertPem, clientKeyPem, err := buildCertPem(privKey, caFileName)
 	Expect(err).NotTo(HaveOccurred())
-	serverCertFileName = writeClientCredFile(clientCertPem)
-	serverPrivateKeyFileName = writeClientCredFile(clientKeyPem)
+	clientCertFileName = writeClientCredFile(clientCertPem)
+	clientPrivateKeyFileName = writeClientCredFile(clientKeyPem)
 
 	// Server
 	serverCertPem, serverKeyPem, err := buildCertPem(privKey, caFileName)
 	Expect(err).NotTo(HaveOccurred())
 
-	clientCert, err = tls.X509KeyPair(serverCertPem, serverKeyPem)
+	serverCert, err = tls.X509KeyPair(serverCertPem, serverKeyPem)
 	Expect(err).NotTo(HaveOccurred())
 
 	return
@@ -50,8 +50,8 @@ func CertPool(certName string) *x509.CertPool {
 	return certPool
 }
 
-func mapToX509Cert(pemEncodedCertFilePath string) []*x509.Certificate {
-	caFile, err := os.Open(pemEncodedCertFilePath)
+func mapToX509Cert(PemEncodedCertFilePath string) []*x509.Certificate {
+	caFile, err := os.Open(PemEncodedCertFilePath)
 	Expect(err).NotTo(HaveOccurred())
 
 	caFileContents, err := ioutil.ReadAll(caFile)
