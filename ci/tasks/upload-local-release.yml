@@ -9,6 +9,7 @@ platform: linux
 
 inputs:
   - name: bbl-state
+  - name: service-discovery-release
   - name: cf-deployment-concourse-tasks
   - name: local-release
 
