@@ -16,4 +16,4 @@ params:
     DATADOG_API_KEY: ~
 
 run:
-  path: service-discovery-release/ci/tasks/service-discovery/smoke-tests
+  path: service-discovery-release/ci/tasks/smoke-tests

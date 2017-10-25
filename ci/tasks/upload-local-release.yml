@@ -13,7 +13,7 @@ inputs:
   - name: local-release
 
 run:
-  path: service-discovery-release/ci/tasks/service-discovery/upload-local-release
+  path: service-discovery-release/ci/tasks/upload-local-release
 
 params:
   BBL_STATE_DIR:

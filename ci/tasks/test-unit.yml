@@ -13,4 +13,4 @@ inputs:
 params: {}
 
 run:
-  path: service-discovery-release/ci/tasks/service-discovery/test-unit
+  path: service-discovery-release/ci/tasks/test-unit
