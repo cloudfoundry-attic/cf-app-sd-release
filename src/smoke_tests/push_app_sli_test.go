@@ -81,7 +81,7 @@ var _ = Describe("Acceptance", func() {
 			})
 
 			Expect(proxyIPs).To(ConsistOf(strings.TrimSpace(proxyContainerIp)))
-		}, 3)
+		}, 1)
 	})
 })
 
