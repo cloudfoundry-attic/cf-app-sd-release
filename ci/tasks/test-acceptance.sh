@@ -21,6 +21,6 @@ ENVIRONMENT_PATH="test-config/environments/${ENVIRONMENT_NAME}/test-config.json"
 export CONFIG=${PWD}/${CONFIG:-"${ENVIRONMENT_PATH}"}
 
 
-pushd $GOPATH/src/acceptance_tests
+pushd $GOPATH/src/acceptance
     ginkgo -keepGoing -randomizeAllSpecs -randomizeSuites -race .
 popd
