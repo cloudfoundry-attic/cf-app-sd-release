@@ -19,8 +19,9 @@ export GOPATH=$PWD
 cd src/smoke_tests
 export APPS_DIR=../example-apps
 
+# Push App Smoke
 set +e
-ginkgo -r -v
+ginkgo -r -v --focus="Push App Smoke"
 EXIT_STATUS=$?
 set -e
 
@@ -28,7 +29,29 @@ CURRENT_TIME=$(date +%s)
 
 curl -X POST -H "Content-type: application/json" \
   -d "{ \"series\" :
-         [{\"metric\":\"cf-networking-smoke.status\",
+         [{\"metric\":\"service-discovery-smoke.ResolveAddSuccess\",
+          \"points\":[[$CURRENT_TIME, $EXIT_STATUS]],
+          \"type\":\"gauge\",
+          \"tags\":[\"deployment:$ENVIRONMENT_TAG\"]
+        }]
+      }" \
+"https://app.datadoghq.com/api/v1/series?api_key=${DATADOG_API_KEY}"
+
+if [ $EXIT_STATUS -ne 0 ]; then
+  exit $EXIT_STATUS
+fi
+
+# Delete App Smoke
+set +e
+ginkgo -r -v --focus="Delete App Smoke"
+EXIT_STATUS=$?
+set -e
+
+CURRENT_TIME=$(date +%s)
+
+curl -X POST -H "Content-type: application/json" \
+  -d "{ \"series\" :
+         [{\"metric\":\"service-discovery-smoke.ResolveDeleteSuccess\",
           \"points\":[[$CURRENT_TIME, $EXIT_STATUS]],
           \"type\":\"gauge\",
           \"tags\":[\"deployment:$ENVIRONMENT_TAG\"]
