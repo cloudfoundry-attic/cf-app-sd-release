@@ -16,7 +16,7 @@ echo "$CONFIG"
 cd service-discovery-release
 export GOPATH=$PWD
 
-cd src/smoke_tests
+cd src/smoke
 export APPS_DIR=../example-apps
 
 # Push App Smoke

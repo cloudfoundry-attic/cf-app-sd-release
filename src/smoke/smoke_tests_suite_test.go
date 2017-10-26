@@ -1,4 +1,4 @@
-package smoke_tests_test
+package smoke_test
 
 import (
 	"encoding/json"
