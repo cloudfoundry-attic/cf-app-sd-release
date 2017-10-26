@@ -1,4 +1,4 @@
-package acceptance_tests_test
+package acceptance_test
 
 import (
 	"time"
@@ -11,7 +11,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-const Timeout_Push = 2 * time.Minute
+const Timeout_Cf = 2 * time.Minute
 
 var _ = Describe("Push Acceptance", func() {
 	var (
@@ -31,7 +31,7 @@ var _ = Describe("Push Acceptance", func() {
 	})
 
 	AfterEach(func() {
-		Expect(cf.Cf("delete-org", orgName, "-f").Wait(Timeout_Push)).To(gexec.Exit(0))
+		Expect(cf.Cf("delete-org", orgName, "-f").Wait(Timeout_Cf)).To(gexec.Exit(0))
 	})
 
 	Describe("when performing a dns lookup for a domain configured to point to the bosh adapter", func() {

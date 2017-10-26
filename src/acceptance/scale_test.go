@@ -1,4 +1,4 @@
-package acceptance_tests_test
+package acceptance_test
 
 import (
 	"strings"
@@ -40,7 +40,7 @@ var _ = Describe("Scale Acceptance", func() {
 	})
 
 	AfterEach(func() {
-		Expect(cf.Cf("delete-org", orgName, "-f").Wait(Timeout_Push)).To(gexec.Exit(0))
+		Expect(cf.Cf("delete-org", orgName, "-f").Wait(Timeout_Cf)).To(gexec.Exit(0))
 	})
 
 	Describe("when performing a dns lookup for a domain configured to point to the bosh adapter", func() {

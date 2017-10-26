@@ -1,4 +1,4 @@
-package acceptance_tests_test
+package acceptance_test
 
 import (
 	"bytes"
@@ -22,9 +22,9 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-func TestAcceptanceTests(t *testing.T) {
+func TestAcceptance(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "AcceptanceTests Suite")
+	RunSpecs(t, "Acceptance Suite")
 }
 
 const Timeout_Short = 10 * time.Second
@@ -65,11 +65,11 @@ func Auth(username, password string) {
 }
 
 func createAndTargetOrgAndSpace(orgName, spaceName string) {
-	Expect(cf.Cf("create-org", orgName).Wait(Timeout_Push)).To(gexec.Exit(0))
-	Expect(cf.Cf("target", "-o", orgName).Wait(Timeout_Push)).To(gexec.Exit(0))
+	Expect(cf.Cf("create-org", orgName).Wait(Timeout_Cf)).To(gexec.Exit(0))
+	Expect(cf.Cf("target", "-o", orgName).Wait(Timeout_Cf)).To(gexec.Exit(0))
 
-	Expect(cf.Cf("create-space", spaceName, "-o", orgName).Wait(Timeout_Push)).To(gexec.Exit(0))
-	Expect(cf.Cf("target", "-o", orgName, "-s", spaceName).Wait(Timeout_Push)).To(gexec.Exit(0))
+	Expect(cf.Cf("create-space", spaceName, "-o", orgName).Wait(Timeout_Cf)).To(gexec.Exit(0))
+	Expect(cf.Cf("target", "-o", orgName, "-s", spaceName).Wait(Timeout_Cf)).To(gexec.Exit(0))
 }
 
 func getAppGUID(appName string) string {
@@ -104,7 +104,7 @@ func scaleApp(appName string, instances int) {
 	Expect(cf.Cf(
 		"scale", appName,
 		"-i", strconv.Itoa(instances),
-	).Wait(Timeout_Push)).To(gexec.Exit(0))
+	).Wait(Timeout_Cf)).To(gexec.Exit(0))
 }
 
 func appDir(appType string) string {
@@ -117,7 +117,7 @@ func pushApp(appName string, instances int) {
 		"-p", appDir("proxy"),
 		"-f", defaultManifest("proxy"),
 		"-i", strconv.Itoa(instances),
-	).Wait(Timeout_Push)).To(gexec.Exit(0))
+	).Wait(Timeout_Cf)).To(gexec.Exit(0))
 }
 
 func defaultManifest(appType string) string {

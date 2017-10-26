@@ -35,4 +35,4 @@ sed -i -- "s/{{admin-password}}/${ADMIN_PASSWORD}/g" /tmp/test-config.json
 ADMIN_SECRET=`grep uaa_admin_client_secret ${VARS_STORE} | cut -d' ' -f2`
 sed -i -- "s/{{admin-secret}}/${ADMIN_SECRET}/g" /tmp/test-config.json
 
-ginkgo -v ../src/acceptance_tests
+ginkgo -v ../src/acceptance
