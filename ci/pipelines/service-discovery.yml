@@ -16,11 +16,6 @@ resources:
     type: git
     source:
       uri: https://github.com/cloudfoundry-incubator/service-discovery-release
-  - name: bosh-dns-release
-    type: git
-    source:
-      uri: https://github.com/cf-container-networking/bosh-dns-release
-      branch: wip-http-json-spike
   - name: cf-deployment-concourse-tasks
     type: git
     source:
@@ -156,8 +151,6 @@ jobs:
           - get: service-discovery-release
             trigger: true
             passed: [unit-tests]
-          - get: bosh-dns-release
-            trigger: true
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -171,13 +164,6 @@ jobs:
         input_mapping:
           cf-networking-release: cf-networking-dev
           deployments-repo: cf-networking-deployments
-      - task: upload-local-bosh-dns-releases
-        file: service-discovery-release/ci/tasks/upload-local-release.yml
-        input_mapping:
-          bbl-state: cf-networking-deployments
-          local-release: bosh-dns-release
-        params:
-          BBL_STATE_DIR: environments/ushanka/
       - task: upload-local-service-discovery-releases
         file: service-discovery-release/ci/tasks/upload-local-release.yml
         input_mapping:
