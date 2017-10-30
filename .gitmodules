@@ -55,3 +55,6 @@
 [submodule "src/github.com/pivotal-cf/paraphernalia"]
 	path = src/github.com/pivotal-cf/paraphernalia
 	url = https://github.com/pivotal-cf/paraphernalia
+[submodule "src/github.com/nats-io/nats-top"]
+	path = src/github.com/nats-io/nats-top
+	url = https://github.com/nats-io/nats-top
