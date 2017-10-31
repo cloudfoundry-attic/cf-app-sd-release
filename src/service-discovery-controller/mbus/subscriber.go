@@ -2,15 +2,21 @@ package mbus
 
 import (
 	"encoding/json"
+	"time"
 
 	"sync"
 
 	"net/url"
 
-	"code.cloudfoundry.org/lager"
 	"fmt"
+
+	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
+)
+
+const (
+	registerMessagesReceived = "registerMessagesReceived"
 )
 
 type ServiceDiscoveryStartMessage struct {
@@ -46,6 +52,7 @@ type Subscriber struct {
 	localIP          string
 	natsClient       NatsConn
 	once             sync.Once
+	metricsSender    metricsSender
 }
 
 //go:generate counterfeiter -o fakes/nats_conn.go --fake-name NatsConn . NatsConn
@@ -62,12 +69,19 @@ type NatsConnProvider interface {
 	Connection(opts ...nats.Option) (NatsConn, error)
 }
 
+//go:generate counterfeiter -o fakes/metrics_sender.go --fake-name MetricsSender . metricsSender
+type metricsSender interface {
+	SendDuration(string, time.Duration)
+	IncrementCounter(string)
+}
+
 func NewSubscriber(
 	natsConnProvider NatsConnProvider,
 	subOpts SubscriberOpts,
 	table AddressTable,
 	localIP string,
 	logger lager.Logger,
+	metricsSender metricsSender,
 ) *Subscriber {
 	return &Subscriber{
 		natsConnProvider: natsConnProvider,
@@ -75,6 +89,7 @@ func NewSubscriber(
 		table:            table,
 		logger:           logger,
 		localIP:          localIP,
+		metricsSender:    metricsSender,
 	}
 }
 
@@ -211,6 +226,7 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 			"msgJson": string(msg.Data),
 		}))
 		s.table.Add(registryMessage.InfraNames, registryMessage.IP)
+		s.metricsSender.IncrementCounter(registerMessagesReceived)
 	}))
 
 	if err != nil {

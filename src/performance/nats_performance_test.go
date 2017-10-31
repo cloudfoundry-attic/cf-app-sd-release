@@ -1,18 +1,19 @@
 package performance_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	"fmt"
-	"github.com/nats-io/nats/bench"
-	"sync"
-	"log"
 	"flag"
-	"time"
-	"github.com/nats-io/nats"
+	"fmt"
+	"log"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/nats-io/nats"
+	"github.com/nats-io/nats/bench"
+	. "github.com/onsi/ginkgo"
 )
 
-var _ = Describe("SubscriberPerformance", func() {
+var _ = Describe("NatsPerformance", func() {
 	var msgSize = 1024
 
 	Measure(fmt.Sprintf("NATS CPU when publishing %s messages", config.NumMessages), func() {

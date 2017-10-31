@@ -17,10 +17,12 @@ import (
 	"service-discovery-controller/localip"
 	"strings"
 
-	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
-	"code.cloudfoundry.org/lager"
 	"crypto/tls"
 	"crypto/x509"
+
+	"code.cloudfoundry.org/cf-networking-helpers/metrics"
+	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
+	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
 )
 
@@ -172,7 +174,11 @@ func launchSubscriber(config *config.Config, addressTable *addresstable.AddressT
 		return &mbus.Subscriber{}, err
 	}
 
-	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger)
+	metricsSender := &metrics.MetricsSender{
+		Logger: logger.Session("time-metric-emitter"),
+	}
+
+	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger, metricsSender)
 
 	err = subscriber.Run()
 	if err != nil {
