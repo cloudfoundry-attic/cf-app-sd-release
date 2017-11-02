@@ -6,6 +6,8 @@ groups:
   - smoke-tests
   - ushanka-deploy
   - beret-deploy
+  - ship-what
+  - ship-it
 - name: ushanka
   jobs:
   - ushanka-bbl-up
@@ -22,14 +24,21 @@ resources:
     type: git
     source:
       uri: https://github.com/cloudfoundry-incubator/service-discovery-release
+      branch: master
       ignore_paths:
       - ci
   - name: service-discovery-ci
     type: git
     source:
       uri: https://github.com/cloudfoundry-incubator/service-discovery-release
+      branch: master
       paths:
       - ci
+  - name: service-discovery-shipped-master
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry-incubator/service-discovery-release
+      branch: master
   - name: cf-deployment-concourse-tasks
     type: git
     source:
@@ -78,6 +87,13 @@ resources:
       key: releases/current-version
       access_key_id: {{aws-access-key-id}}
       secret_access_key: {{aws-secret-access-key}}
+
+  - name: service-discovery-github-release
+    type: github-release
+    source:
+      user: cloudfoundry-incubator
+      repository: service-discovery-release
+      access_token: {{github-access-token}}
 
 
 jobs:
@@ -346,6 +362,8 @@ jobs:
       - put: service-discovery-tarball
         params:
           file: tarballs/cf-app-sd-*.tgz
+      - put: version
+        params: {file: version/number}
       - task: bosh-cleanup
         file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
         params:
@@ -353,3 +371,59 @@ jobs:
           CLEAN_ALL: false
         input_mapping:
           bbl-state: cf-networking-deployments
+
+  - name: ship-what
+    serial_groups: [version]
+    plan:
+    - do:
+      - aggregate:
+        - get: version
+          passed: [beret-deploy]
+        - get: cf-networking-dev
+          params:
+            submodules: none
+          passed: [beret-deploy]
+        - get: service-discovery-release
+          passed: [beret-deploy]
+          trigger: true
+        - get: cf-deployment
+          passed: [beret-deploy]
+        - get: service-discovery-tarball
+          passed: [beret-deploy]
+
+  - name: ship-it
+    serial_groups: [version]
+    plan:
+    - do:
+      - aggregate:
+        - get: version
+          params:
+            bump: final
+          passed: [ship-what]
+        - get: service-discovery-tarball
+          passed: [ship-what]
+        - get: service-discovery-ci
+        - get: service-discovery-release
+          passed: [ship-what]
+        - get: cf-networking-deployments
+      - task: ship-it
+        file: service-discovery-ci/ci/tasks/ship-it.yml
+        input_mapping:
+          service-discovery: service-discovery-release
+      - put: version
+        params: {file: version/number}
+      - put: service-discovery-shipped-master
+        params:
+          repository: release/master
+          tag: version/number
+          tag_prefix: v
+      - put: service-discovery-tarball
+        params:
+          file: final-release/cf-app-sd-*.tgz
+      - put: service-discovery-github-release
+        params:
+          name: version/number
+          tag: version/number
+          tag_prefix: v
+          globs:
+          - final-release/cf-app-sd-*.tgz
