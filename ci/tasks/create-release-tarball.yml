@@ -1,0 +1,20 @@
+---
+image_resource:
+  type: docker-image
+  source: { repository: c2cnetworking/deploy }
+
+platform: linux
+
+inputs:
+- name: service-discovery
+- name: version
+- name: service-discovery-ci
+
+outputs:
+- name: tarballs
+
+run:
+  path: service-discovery-ci/tasks/create-release-tarball
+
+params:
+  RELEASE_NAME: service-discovery
