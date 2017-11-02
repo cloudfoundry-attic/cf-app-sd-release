@@ -94,6 +94,8 @@ jobs:
     plan:
       - aggregate:
           - get: cf-networking-deployments
+          - get: cf-networking-dev
+            passed: [ushanka-deploy]
           - get: service-discovery-release
             passed: [ushanka-deploy]
             trigger: true
@@ -112,6 +114,8 @@ jobs:
       - aggregate:
           - get: every-fifteen-minutes
             trigger: true
+          - get: cf-networking-dev
+            passed: [ushanka-deploy]
           - get: cf-networking-deployments
           - get: service-discovery-release
             passed: [ushanka-deploy]
@@ -286,9 +290,14 @@ jobs:
           - get: cf-deployment
             trigger: true
           - get: cf-networking-dev
+            passed:
+            - smoke-tests
+            - acceptance-tests
           - get: service-discovery-release
+            passed:
+            - smoke-tests
+            - acceptance-tests
             trigger: true
-            passed: [unit-tests]
           - get: service-discovery-ci
           - get: version
             params:
