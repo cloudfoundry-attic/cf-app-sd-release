@@ -14,7 +14,7 @@ outputs:
 - name: tarballs
 
 run:
-  path: service-discovery-ci/tasks/create-release-tarball
+  path: service-discovery-ci/ci/tasks/create-release-tarball
 
 params:
   RELEASE_NAME: service-discovery
