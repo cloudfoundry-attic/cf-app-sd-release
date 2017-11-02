@@ -5,6 +5,7 @@ groups:
   - acceptance-tests
   - smoke-tests
   - ushanka-deploy
+  - beret-deploy
 - name: ushanka
   jobs:
   - ushanka-bbl-up
@@ -14,12 +15,21 @@ groups:
   jobs:
   - beret-bbl-up
   - beret-bbl-destroy
+  - beret-deploy
 
 resources:
   - name: service-discovery-release
     type: git
     source:
       uri: https://github.com/cloudfoundry-incubator/service-discovery-release
+      ignore_paths:
+      - ci
+  - name: service-discovery-ci
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry-incubator/service-discovery-release
+      paths:
+      - ci
   - name: cf-deployment-concourse-tasks
     type: git
     source:
@@ -49,6 +59,26 @@ resources:
     type: time
     source:
       interval: 15m
+  ####### Release management
+  - name: version
+    type: semver
+    source:
+      bucket: {{service-discovery-s3-bucket}}
+      region_name: us-west-2
+      initial_version: 0.1.0-rc.1
+      key: releases/current-version
+      access_key_id: {{aws-access-key-id}}
+      secret_access_key: {{aws-secret-access-key}}
+  - name: service-discovery-tarball
+    type: s3
+    source:
+      bucket: {{service-discovery-candidate-s3-bucket}}
+      region_name: us-west-2
+      regexp: releases/cf-app-sd-(.*).tgz
+      key: releases/current-version
+      access_key_id: {{aws-access-key-id}}
+      secret_access_key: {{aws-secret-access-key}}
+
 
 jobs:
   - name: unit-tests
@@ -201,7 +231,7 @@ jobs:
           bbl-state: cf-networking-deployments
 
   - name: beret-bbl-up
-    # serial_groups: [beret-deploy-group, beret-test-group]
+    serial_groups: [beret-deploy-group]
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
@@ -230,7 +260,7 @@ jobs:
             rebase: true
 
   - name: beret-bbl-destroy
-    # serial_groups: [ushanka-deploy-group, ushanka-test-group]
+    serial_groups: [beret-deploy-group]
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
@@ -246,3 +276,71 @@ jobs:
           params:
             repository: updated-bbl-state
             rebase: true
+
+  - name: beret-deploy
+    serial_groups: [beret-deploy-group]
+    plan:
+      - aggregate:
+          - get: cf-deployment-concourse-tasks
+          - get: cf-networking-deployments
+          - get: cf-deployment
+            trigger: true
+          - get: cf-networking-dev
+          - get: service-discovery-release
+            trigger: true
+            passed: [unit-tests]
+          - get: service-discovery-ci
+          - get: version
+            params:
+              pre: rc
+      - task: upload-stemcell
+        file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
+        params:
+          BBL_STATE_DIR: environments/beret/
+        input_mapping:
+          bbl-state: cf-networking-deployments
+      - task: collect-ops-files
+        file: service-discovery-release/ci/tasks/collect-ops-files.yml
+        params:
+          ENVIRONMENT_NAME: beret
+        input_mapping:
+          cf-networking-release: cf-networking-dev
+          deployments-repo: cf-networking-deployments
+      - task: upload-local-service-discovery-releases
+        file: service-discovery-release/ci/tasks/upload-local-release.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          local-release: service-discovery-release
+        params:
+          BBL_STATE_DIR: environments/beret/
+      - task: deploy-cf
+        file: cf-deployment-concourse-tasks/bosh-deploy-with-created-release/task.yml
+        params:
+          BBL_STATE_DIR: environments/beret/
+          SYSTEM_DOMAIN: beret.c2c.cf-app.com
+          OPS_FILES: use-compiled-releases.yml datadog.yml cf-networking.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml opsfile.yml
+          VARS_STORE_FILE: environments/beret/vars-store.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          release: cf-networking-dev
+          vars-files: cf-networking-deployments
+          vars-store: cf-networking-deployments
+        ensure:
+          put: cf-networking-deployments
+          params:
+            repository: updated-vars-store
+            rebase: true
+      - task: create-release-tarball
+        file: service-discovery-ci/ci/tasks/create-release-tarball.yml
+        input_mapping:
+          service-discovery: service-discovery-release
+      - put: service-discovery-tarball
+        params:
+          file: tarballs/cf-app-sd-*.tgz
+      - task: bosh-cleanup
+        file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
+        params:
+          BBL_STATE_DIR: environments/beret/
+          CLEAN_ALL: false
+        input_mapping:
+          bbl-state: cf-networking-deployments
