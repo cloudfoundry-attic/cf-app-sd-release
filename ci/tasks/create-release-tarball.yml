@@ -17,4 +17,4 @@ run:
   path: service-discovery-ci/ci/tasks/create-release-tarball
 
 params:
-  RELEASE_NAME: service-discovery
+  RELEASE_NAME: cf-app-sd
