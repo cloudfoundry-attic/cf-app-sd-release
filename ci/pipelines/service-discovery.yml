@@ -10,6 +10,10 @@ groups:
   - ushanka-bbl-up
   - ushanka-bbl-destroy
   - ushanka-deploy
+- name: beret
+  jobs:
+  - beret-bbl-up
+  - beret-bbl-destroy
 
 resources:
   - name: service-discovery-release
@@ -195,3 +199,50 @@ jobs:
           CLEAN_ALL: false
         input_mapping:
           bbl-state: cf-networking-deployments
+
+  - name: beret-bbl-up
+    # serial_groups: [beret-deploy-group, beret-test-group]
+    plan:
+      - aggregate:
+          - get: cf-deployment-concourse-tasks
+          - get: cf-networking-deployments
+      - task: bbl-up
+        file: cf-deployment-concourse-tasks/bbl-up/task.yml
+        params:
+          BBL_GCP_SERVICE_ACCOUNT_KEY: ../gcp/service-account.key.json
+          BBL_GCP_PROJECT_ID: cf-container-networking-gcp
+          BBL_GCP_REGION: us-east1
+          BBL_GCP_ZONE: us-east1-b
+          BBL_STATE_DIR: environments/beret/
+          BBL_IAAS: gcp
+          BBL_LB_CERT: {{beret-lb-cert}}
+          BBL_LB_KEY: {{beret-lb-key}}
+          LB_DOMAIN: beret.c2c.cf-app.com
+          BBL_ENV_NAME: beret
+          OPS_FILES: local-dns.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          ops-files: cf-networking-deployments
+        ensure:
+          put: cf-networking-deployments
+          params:
+            repository: updated-bbl-state
+            rebase: true
+
+  - name: beret-bbl-destroy
+    # serial_groups: [ushanka-deploy-group, ushanka-test-group]
+    plan:
+      - aggregate:
+          - get: cf-deployment-concourse-tasks
+          - get: cf-networking-deployments
+      - task: bbl-destroy
+        file: cf-deployment-concourse-tasks/bbl-destroy/task.yml
+        params:
+          BBL_STATE_DIR: environments/beret/
+        input_mapping:
+          bbl-state: cf-networking-deployments
+        ensure:
+          put: cf-networking-deployments
+          params:
+            repository: updated-bbl-state
+            rebase: true
