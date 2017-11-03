@@ -55,11 +55,11 @@ resources:
     source:
       branch: release-candidate
       uri: https://github.com/cloudfoundry/cf-deployment.git
-  - name: cf-networking-dev
+  - name: cf-networking-master
     type: git
     source:
       uri: git@github.com:cloudfoundry/cf-networking-release.git
-      branch: develop
+      branch: master
       ignore_paths:
         - docs
       private_key: {{cf-networking-deploy-key}}
@@ -110,7 +110,7 @@ jobs:
     plan:
       - aggregate:
           - get: cf-networking-deployments
-          - get: cf-networking-dev
+          - get: cf-networking-master
             passed: [ushanka-deploy]
           - get: service-discovery-release
             passed: [ushanka-deploy]
@@ -130,7 +130,7 @@ jobs:
       - aggregate:
           - get: every-fifteen-minutes
             trigger: true
-          - get: cf-networking-dev
+          - get: cf-networking-master
             passed: [ushanka-deploy]
           - get: cf-networking-deployments
           - get: service-discovery-release
@@ -201,7 +201,7 @@ jobs:
           - get: cf-networking-deployments
           - get: cf-deployment
             trigger: true
-          - get: cf-networking-dev
+          - get: cf-networking-master
           - get: service-discovery-release
             trigger: true
             passed: [unit-tests]
@@ -216,7 +216,7 @@ jobs:
         params:
           ENVIRONMENT_NAME: ushanka
         input_mapping:
-          cf-networking-release: cf-networking-dev
+          cf-networking-release: cf-networking-master
           deployments-repo: cf-networking-deployments
       - task: upload-local-service-discovery-releases
         file: service-discovery-release/ci/tasks/upload-local-release.yml
@@ -234,7 +234,7 @@ jobs:
           VARS_STORE_FILE: environments/ushanka/vars-store.yml
         input_mapping:
           bbl-state: cf-networking-deployments
-          release: cf-networking-dev
+          release: cf-networking-master
           vars-files: cf-networking-deployments
           vars-store: cf-networking-deployments
         ensure:
@@ -305,7 +305,7 @@ jobs:
           - get: cf-networking-deployments
           - get: cf-deployment
             trigger: true
-          - get: cf-networking-dev
+          - get: cf-networking-master
             passed:
             - smoke-tests
             - acceptance-tests
@@ -329,7 +329,7 @@ jobs:
         params:
           ENVIRONMENT_NAME: beret
         input_mapping:
-          cf-networking-release: cf-networking-dev
+          cf-networking-release: cf-networking-master
           deployments-repo: cf-networking-deployments
       - task: upload-local-service-discovery-releases
         file: service-discovery-release/ci/tasks/upload-local-release.yml
@@ -347,7 +347,7 @@ jobs:
           VARS_STORE_FILE: environments/beret/vars-store.yml
         input_mapping:
           bbl-state: cf-networking-deployments
-          release: cf-networking-dev
+          release: cf-networking-master
           vars-files: cf-networking-deployments
           vars-store: cf-networking-deployments
         ensure:
@@ -379,7 +379,7 @@ jobs:
       - aggregate:
         - get: version
           passed: [beret-deploy]
-        - get: cf-networking-dev
+        - get: cf-networking-master
           params:
             submodules: none
           passed: [beret-deploy]
