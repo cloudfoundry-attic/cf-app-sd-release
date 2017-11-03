@@ -12,6 +12,7 @@ import (
 	"bosh-dns-adapter/testhelpers"
 	"crypto/tls"
 	"crypto/x509"
+
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
@@ -290,6 +291,45 @@ var _ = Describe("Main", func() {
 				],
 				"service": ""
 			}`))
+		})
+
+		Context("when we hit the /route endpoint", func() {
+			It("should return a map of all hostnames to ips", func() {
+				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/routes")
+				Expect(err).ToNot(HaveOccurred())
+				respBody, err := ioutil.ReadAll(resp.Body)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(respBody).To(MatchJSON(`{
+					"addresses": [
+					{
+						"hostname": "app-id.internal.local.",
+						"ips": [
+							"192.168.0.1",
+							"192.168.0.2"
+							]
+					},
+					{
+						"hostname": "large-id.internal.local.",
+						"ips": [
+							"192.168.0.1",
+							"192.168.0.2",
+							"192.168.0.3",
+							"192.168.0.4",
+							"192.168.0.5",
+							"192.168.0.6",
+							"192.168.0.7",
+							"192.168.0.8",
+							"192.168.0.9",
+							"192.168.0.10",
+							"192.168.0.11",
+							"192.168.0.12",
+							"192.168.0.13"
+							]
+						}
+					]
+				}`))
+			})
 		})
 
 		Context("when one of the nats urls is invalid", func() {

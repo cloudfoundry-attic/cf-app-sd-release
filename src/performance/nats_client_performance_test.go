@@ -2,17 +2,14 @@ package performance_test
 
 import (
 	"fmt"
-	"os/exec"
-	"strconv"
 	"strings"
 
 	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("NatsClientPerformance", func() {
-	var msgSize = 1024
+var _ = PDescribe("NatsClientPerformance", func() {
+	// var msgSize = 1024
 
 	Measure(fmt.Sprintf("NATS CPU when publishing %s messages", config.NumMessages), func() {
 		opts := nats.GetDefaultOptions()
@@ -23,19 +20,23 @@ var _ = Describe("NatsClientPerformance", func() {
 			opts.Servers[i] = strings.Trim(s, " ")
 		}
 
-		runRoutePopulator := func(nats, backendHost string, backendPort int, appDomain, appName string, numRoutes int) *gexec.Session {
-			routePopulatorCommand := exec.Command(httpRoutePopulatorPath,
-				"-nats", nats,
-				"-backendHost", backendHost,
-				"-backendPort", strconv.Itoa(backendPort),
-				"-appDomain", appDomain,
-				"-appName", appName,
-				"-numRoutes", strconv.Itoa(numRoutes),
-			)
-			session, err := gexec.Start(routePopulatorCommand, GinkgoWriter, GinkgoWriter)
-			Expect(err).ToNot(HaveOccurred())
-			return session
-		}
+		// runRoutePopulator := func(nats, backendHost string, backendPort int, appDomain, appName string, numRoutes int) *gexec.Session {
+		// 	routePopulatorCommand := exec.Command(httpRoutePopulatorPath,
+		// 		"-nats", nats,
+		// 		"-backendHost", backendHost,
+		// 		"-backendPort", strconv.Itoa(backendPort),
+		// 		"-appDomain", appDomain,
+		// 		"-appName", appName,
+		// 		"-numRoutes", strconv.Itoa(numRoutes),
+		// 	)
+		// 	session, err := gexec.Start(routePopulatorCommand, GinkgoWriter, GinkgoWriter)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// 	return session
+		// }
+
+		// run the route populator with 1000 routes
+		// check that the SDC received 1000 routes
+		// hitting the /route endpoint and getting length
 
 		// // Now Publishers
 		// startwg.Add(config.NumPublisher)

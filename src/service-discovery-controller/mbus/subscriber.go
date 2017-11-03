@@ -222,11 +222,11 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 			}))
 			return
 		}
+		s.metricsSender.IncrementCounter(registerMessagesReceived)
 		s.logger.Debug("AddressMessageHandler register msg received", lager.Data(map[string]interface{}{
 			"msgJson": string(msg.Data),
 		}))
 		s.table.Add(registryMessage.InfraNames, registryMessage.IP)
-		s.metricsSender.IncrementCounter(registerMessagesReceived)
 	}))
 
 	if err != nil {

@@ -14,6 +14,7 @@ type Config struct {
 	ServerCert string       `json:"server_cert"`
 	ServerKey  string       `json:"server_key"`
 	CACert     string       `json:"ca_cert"`
+	MetronPort int          `json:"metron_port" validate:"min=1"`
 }
 
 type NatsConfig struct {

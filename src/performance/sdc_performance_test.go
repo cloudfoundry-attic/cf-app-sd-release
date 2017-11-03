@@ -3,15 +3,13 @@ package performance_test
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/nats-io/nats"
-	"github.com/nats-io/nats/bench"
 	. "github.com/onsi/ginkgo"
 )
 
-var _ = Describe("NatsClientPerformance", func() {
-	var msgSize = 1024
+var _ = PDescribe("NatsClientPerformance", func() {
+	// var msgSize = 1024
 
 	Measure(fmt.Sprintf("NATS CPU when publishing %s messages", config.NumMessages), func() {
 		opts := nats.GetDefaultOptions()
@@ -22,8 +20,8 @@ var _ = Describe("NatsClientPerformance", func() {
 			opts.Servers[i] = strings.Trim(s, " ")
 		}
 
-		var startwg sync.WaitGroup
-		natsBenchmark := bench.NewBenchmark("foo", 0, config.NumPublisher)
+		// var startwg sync.WaitGroup
+		// natsBenchmark := bench.NewBenchmark("foo", 0, config.NumPublisher)
 
 		// // Now Publishers
 		// startwg.Add(config.NumPublisher)

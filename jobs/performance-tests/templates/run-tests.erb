@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -exu
+set -o pipefail
+
+export GOROOT=$(readlink -nf /var/vcap/packages/golang)
+export GOPATH=/var/vcap/packages/performance-tests
+export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+
+DATA_DIR=/var/vcap/data/performance-tests
+export CF_HOME=$DATA_DIR/cf-home
+mkdir -p $CF_HOME
+
+export CONFIG=/var/vcap/jobs/performance-tests/config.json
+export APPS_DIR=$GOPATH/src/example-apps
+
+go install github.com/onsi/ginkgo/ginkgo
+
+cd $GOPATH/src/performance
+ginkgo -r -v
+

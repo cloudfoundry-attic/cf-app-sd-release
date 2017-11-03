@@ -14,7 +14,7 @@ VARS_STORE="$HOME/workspace/cf-networking-deployments/environments/$ENVIRONMENT_
 
 echo "
 {
-  \"nats_url\": \"api.$ENVIRONMENT_NAME.c2c.cf-app.com\",
+  \"nats_url\": \"10.0.16.19\",
   \"nats_username\": \"nats\",
   \"nats_password\": \"{{nats_password}}\",
   \"nats_monitoring_port\": 8222,
@@ -24,6 +24,6 @@ echo "
 " > ${CONFIG}
 
 NATS_PASSWORD=`grep nats_password ${VARS_STORE} | cut -d' ' -f2`
-sed -i -- "s/{{admin-nats_password}}/${NATS_PASSWORD}/g" /tmp/test-config.json
+sed -i -- "s/{{nats_password}}/${NATS_PASSWORD}/g" /tmp/test-config.json
 
 ginkgo -v ../src/performance

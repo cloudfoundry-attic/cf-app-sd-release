@@ -23,6 +23,7 @@ import (
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
 	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
 	"code.cloudfoundry.org/lager"
+	"github.com/cloudfoundry/dropsonde"
 	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
 )
 
@@ -40,6 +41,15 @@ type registration struct {
 	Hosts   []host `json:"hosts"`
 	Env     string `json:"env"`
 	Service string `json:"service"`
+}
+
+type routes struct {
+	Addresses []address `json:"addresses"`
+}
+
+type address struct {
+	Hostname string   `json:"hostname"`
+	Ips      []string `json:"ips"`
 }
 
 func main() {
@@ -65,6 +75,12 @@ func main() {
 	}
 
 	addressTable := addresstable.NewAddressTable()
+
+	metronAddress := fmt.Sprintf("127.0.0.1:%d", config.MetronPort)
+	err = dropsonde.Initialize(metronAddress, "service-discovery-controller")
+	if err != nil {
+		panic(err)
+	}
 
 	subscriber, err := launchSubscriber(config, addressTable, logger)
 	if err != nil {
@@ -110,6 +126,33 @@ func launchHttpServer(config *config.Config, addressTable *addresstable.AddressT
 
 		logger.Debug("HTTPServer access", lager.Data(map[string]interface{}{
 			"serviceKey":   serviceKey,
+			"responseJson": string(json),
+		}))
+	})
+
+	http.HandleFunc("/routes", func(resp http.ResponseWriter, req *http.Request) {
+		availableAddresses := addressTable.GetAllAddresses()
+		addresses := []address{}
+		for i, availableAddress := range availableAddresses {
+			addresses = append(addresses, address{
+				Hostname: i,
+				Ips:      availableAddress,
+			})
+		}
+
+		var err error
+		json, err := json.Marshal(routes{Addresses: addresses})
+		if err != nil {
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, err = resp.Write(json)
+		if err != nil {
+			logger.Debug("Error writing to http response body")
+		}
+
+		logger.Debug("HTTPServer access", lager.Data(map[string]interface{}{
 			"responseJson": string(json),
 		}))
 	})
@@ -175,7 +218,7 @@ func launchSubscriber(config *config.Config, addressTable *addresstable.AddressT
 	}
 
 	metricsSender := &metrics.MetricsSender{
-		Logger: logger.Session("time-metric-emitter"),
+		Logger: logger,
 	}
 
 	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger, metricsSender)

@@ -45,6 +45,21 @@ var _ = Describe("AddressTable", func() {
 		})
 	})
 
+	Describe("GetAllAddresses", func() {
+		BeforeEach(func() {
+			table.Add([]string{"foo.com"}, "192.0.0.1")
+			table.Add([]string{"foo.com"}, "192.0.0.2")
+			table.Add([]string{"bar.com"}, "192.0.0.4")
+		})
+
+		It("returns all addresses", func() {
+			Expect(table.GetAllAddresses()).To(Equal(map[string][]string{
+				"foo.com.": []string{"192.0.0.1", "192.0.0.2"},
+				"bar.com.": []string{"192.0.0.4"},
+			}))
+		})
+	})
+
 	Describe("Remove", func() {
 		It("removes an endpoint", func() {
 			table.Add([]string{"foo.com"}, "192.0.0.1")
