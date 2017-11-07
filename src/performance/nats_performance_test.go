@@ -15,11 +15,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const SdcRegisterTopic = "service-discovery.register"
+
 var _ = Describe("NatsPerformance", func() {
 
 	Measure(fmt.Sprintf("NATS subscriptions when publishing %d messages", config.NumMessages), func(b Benchmarker) {
 		By("building a benchmark of subscribers listening on service-discovery.register")
-		benchMarkNatsSubMap := collectNatsTop("service-discovery.register")
+		benchMarkNatsSubMap := collectNatsTop(SdcRegisterTopic)
 
 		By("publish messages onto service-discovery.register")
 		natsBenchmark := runNatsBencmarker()
@@ -27,7 +29,7 @@ var _ = Describe("NatsPerformance", func() {
 		Expect(int(natsBenchmark.MsgCnt)).To(Equal(config.NumMessages))
 
 		By("building an updated benchmark of subscribers listening on service-discovery.register")
-		natsSubMap := collectNatsTop("service-discovery.register")
+		natsSubMap := collectNatsTop(SdcRegisterTopic)
 
 		By("making sure service-discovery.register subscribers received every published message", func() {
 			for key, benchMarkVal := range benchMarkNatsSubMap {
@@ -53,7 +55,7 @@ func runNatsBencmarker() *bench.Benchmark {
 	startwg.Add(config.NumPublisher)
 	pubCounts := bench.MsgsPerClient(config.NumMessages, config.NumPublisher)
 	for _, pubCount := range pubCounts {
-		go runPublisher("service-discovery.register", natsBenchmark, &startwg, opts, pubCount, NATS_MSG_SIZE)
+		go runPublisher(SdcRegisterTopic, natsBenchmark, &startwg, opts, pubCount, NATS_MSG_SIZE)
 	}
 	startwg.Wait()
 	natsBenchmark.Close()
