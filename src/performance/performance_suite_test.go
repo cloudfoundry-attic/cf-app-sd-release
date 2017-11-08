@@ -1,16 +1,15 @@
 package performance_test
 
 import (
-	"fmt"
-
 	helpersConfig "github.com/cloudfoundry-incubator/cf-test-helpers/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"encoding/json"
-	"io/ioutil"
 	"testing"
+	"io/ioutil"
+	"encoding/json"
 )
+const NATS_MSG_SIZE = 1024
 
 var (
 	config Config
@@ -36,8 +35,6 @@ func TestPerformance(t *testing.T) {
 
 		err = json.Unmarshal(configBytes, &config)
 		Expect(err).NotTo(HaveOccurred())
-
-		fmt.Printf("%+v", config)
 	})
 	RunSpecs(t, "Performance Suite")
 }

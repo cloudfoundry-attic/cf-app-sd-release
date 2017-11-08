@@ -21,15 +21,15 @@ var _ = Describe("NatsPerformance", func() {
 		By("building a benchmark of subscribers listening on service-discovery.register")
 		benchMarkNatsSubMap := collectNatsTop("service-discovery.register")
 
-
 		By("publish messages onto service-discovery.register")
 		natsBenchmark := runNatsBencmarker()
 		generateBenchmarkGinkgoReport(b, natsBenchmark)
+		Expect(int(natsBenchmark.MsgCnt)).To(Equal(config.NumMessages))
 
 		By("building an updated benchmark of subscribers listening on service-discovery.register")
 		natsSubMap := collectNatsTop("service-discovery.register")
 
-		By("Making sure service-discovery.register subscribers received every published message", func() {
+		By("making sure service-discovery.register subscribers received every published message", func() {
 			for key, benchMarkVal := range benchMarkNatsSubMap {
 				Expect(int(natsSubMap[key].OutMsgs - benchMarkVal.OutMsgs)).To(Equal(config.NumMessages), fmt.Sprintf("Benchmark: %+v \\n \\n Got %+v", benchMarkVal, natsSubMap[key]))
 			}
@@ -53,7 +53,7 @@ func runNatsBencmarker() *bench.Benchmark {
 	startwg.Add(config.NumPublisher)
 	pubCounts := bench.MsgsPerClient(config.NumMessages, config.NumPublisher)
 	for _, pubCount := range pubCounts {
-		go runPublisher("service-discovery.register", natsBenchmark, &startwg, opts, pubCount, 1024)
+		go runPublisher("service-discovery.register", natsBenchmark, &startwg, opts, pubCount, NATS_MSG_SIZE)
 	}
 	startwg.Wait()
 	natsBenchmark.Close()
@@ -65,7 +65,7 @@ func generateBenchmarkGinkgoReport(b Benchmarker, bm *bench.Benchmark) {
 		if len(bm.Pubs.Samples) > 1 {
 			b.RecordValue("PubStats", float64(bm.Pubs.Rate()), "msgs/sec")
 			for i, stat := range bm.Pubs.Samples {
-				b.RecordValue("Pub", float64(stat.MsgCnt), fmt.Sprintf("subscriber # %d", i))
+				b.RecordValue(fmt.Sprintf("Pub %d", i), float64(stat.MsgCnt), fmt.Sprintf("publisher # %d", i))
 			}
 			b.RecordValue("min", float64(bm.Pubs.MinRate()))
 			b.RecordValue("avg", float64(bm.Pubs.AvgRate()))
@@ -80,7 +80,7 @@ func collectNatsTop(subscriber string) map[uint64]server.ConnInfo {
 	serviceDiscoverySubs := map[uint64]server.ConnInfo{}
 
 	timeoutChan := time.After(10 * time.Second)
-	natsTopEngine := toputils.NewEngine("localhost", 8822, 1000, 1)
+	natsTopEngine := toputils.NewEngine(config.NatsURL, config.NatsMonitoringPort, 1000, 1)
 	natsTopEngine.DisplaySubs = true
 	natsTopEngine.SetupHTTP()
 
