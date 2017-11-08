@@ -13,23 +13,41 @@ import (
 	"github.com/nats-io/gnatsd/server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/montanaflynn/stats"
 )
 
 const SdcRegisterTopic = "service-discovery.register"
 
+type NatsRun struct {
+	subscriberCount int
+	topic           string
+}
+
+var (
+	subLock                   sync.Mutex
+	subscriberNatsConnections []*nats.Conn
+)
+
 var _ = Describe("NatsPerformance", func() {
+	BeforeEach(func() {
+		subscriberNatsConnections = []*nats.Conn{}
+	})
+
+	AfterEach(func() {
+		closeSubscribers()
+	})
 
 	Measure(fmt.Sprintf("NATS subscriptions when publishing %d messages", config.NumMessages), func(b Benchmarker) {
 		By("building a benchmark of subscribers listening on service-discovery.register")
-		benchMarkNatsSubMap := collectNatsTop(SdcRegisterTopic)
+		benchMarkNatsSubMap := collectNatsSubscriberConnectionInfo(SdcRegisterTopic)
 
 		By("publish messages onto service-discovery.register")
-		natsBenchmark := runNatsBencmarker()
+		natsBenchmark := runNatsBenchmarker(NatsRun{0, SdcRegisterTopic})
 		generateBenchmarkGinkgoReport(b, natsBenchmark)
 		Expect(int(natsBenchmark.MsgCnt)).To(Equal(config.NumMessages))
 
 		By("building an updated benchmark of subscribers listening on service-discovery.register")
-		natsSubMap := collectNatsTop(SdcRegisterTopic)
+		natsSubMap := collectNatsSubscriberConnectionInfo(SdcRegisterTopic)
 
 		By("making sure service-discovery.register subscribers received every published message", func() {
 			for key, benchMarkVal := range benchMarkNatsSubMap {
@@ -39,9 +57,126 @@ var _ = Describe("NatsPerformance", func() {
 
 	}, 1)
 
+	Measure("SDC subscription CPU load does not greatly increase Nats CPU", func(b Benchmarker) {
+		var medianJustExternalRoutes float64
+		var meanJustExternalRoutes float64
+
+		var medianExternalAndInternalRoutes float64
+		var meanExternalAndInternalRoutes float64
+
+		By("Running benchmark for just external routes", func() {
+			cpuChannel := make(chan float64)
+			stopCpuProfiling := make(chan struct{})
+
+			go startCpuProfiler(b, "cpu_external_routes", stopCpuProfiling, cpuChannel)
+
+			var cpuValuesJustExternalRoutesSlice []float64
+			cpuMapperDone := make(chan struct{})
+
+			go func() {
+				for cpu := range cpuChannel {
+					cpuValuesJustExternalRoutesSlice = append(cpuValuesJustExternalRoutesSlice, cpu)
+				}
+				close(cpuMapperDone)
+			}()
+
+			natsBenchmark := runNatsBenchmarker(NatsRun{2, "router.register"})
+			close(stopCpuProfiling)
+
+			generateBenchmarkGinkgoReport(b, natsBenchmark)
+
+			<-cpuMapperDone
+			var err error
+			medianJustExternalRoutes, err = stats.Median(cpuValuesJustExternalRoutesSlice)
+			Expect(err).NotTo(HaveOccurred())
+			meanJustExternalRoutes, err = stats.Mean(cpuValuesJustExternalRoutesSlice)
+			Expect(err).NotTo(HaveOccurred())
+
+		})
+
+		By("closing subscribers from previous nats benchmark run", func() {
+			closeSubscribers()
+		})
+
+		By("Running benchmark for both external and internal routes", func() {
+			cpuChannel := make(chan float64)
+			stopCpuProfiling := make(chan struct{})
+
+			go startCpuProfiler(b, "cpu_external_and_internal_routes", stopCpuProfiling, cpuChannel)
+			var cpuValueExternalAndInternalRoutesSlice []float64
+			cpuMapperDone := make(chan struct{})
+
+			go func() {
+				for cpu := range cpuChannel {
+					cpuValueExternalAndInternalRoutesSlice = append(cpuValueExternalAndInternalRoutesSlice, cpu)
+				}
+
+				close(cpuMapperDone)
+			}()
+
+			natsBenchmarkExternalAndInternalRoutes := runNatsBenchmarker(NatsRun{2, "router.register"}, NatsRun{0, "service-discovery.register"})
+			close(stopCpuProfiling)
+
+			generateBenchmarkGinkgoReport(b, natsBenchmarkExternalAndInternalRoutes)
+
+			<-cpuMapperDone
+			var err error
+			medianExternalAndInternalRoutes, err = stats.Median(cpuValueExternalAndInternalRoutesSlice)
+			Expect(err).NotTo(HaveOccurred())
+			meanExternalAndInternalRoutes, err = stats.Mean(cpuValueExternalAndInternalRoutesSlice)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		b.RecordValue("medianExternalAndInternalRoutes", medianExternalAndInternalRoutes)
+		b.RecordValue("meanExternalAndInternalRoutes", meanExternalAndInternalRoutes)
+		b.RecordValue("medianJustExternalRoutes", medianJustExternalRoutes)
+		b.RecordValue("meanJustExternalRoutes", meanJustExternalRoutes)
+
+		Expect(medianExternalAndInternalRoutes).Should(BeNumerically("~", medianJustExternalRoutes, 5.00))
+		Expect(meanExternalAndInternalRoutes).Should(BeNumerically("~", meanJustExternalRoutes, 5.00))
+	}, 1)
 })
 
-func runNatsBencmarker() *bench.Benchmark {
+func closeSubscribers() {
+	for _, natsConn := range subscriberNatsConnections {
+		if natsConn == nil {
+			continue
+		}
+
+		natsConn.Close()
+	}
+
+	subscriberNatsConnections = []*nats.Conn{}
+}
+
+func startCpuProfiler(ginkgoBenchmarker Benchmarker, cpuKey string, stopCpuProfiling chan struct{}, cpuValuesJustExternalRoutes chan float64) {
+	defer GinkgoRecover()
+	natsTopEngine := toputils.NewEngine(config.NatsURL, config.NatsMonitoringPort, 1000, 0)
+	natsTopEngine.SetupHTTP()
+
+	go func() {
+		defer GinkgoRecover()
+		Expect(natsTopEngine.MonitorStats()).ShouldNot(HaveOccurred())
+	}()
+
+	for {
+		select {
+		case natsStats, ok := <-natsTopEngine.StatsCh:
+			if !ok {
+				continue
+			}
+			ginkgoBenchmarker.RecordValue(cpuKey, natsStats.Varz.CPU)
+			cpuValuesJustExternalRoutes <- natsStats.Varz.CPU
+		case <-stopCpuProfiling:
+			close(natsTopEngine.ShutdownCh)
+			close(cpuValuesJustExternalRoutes)
+			return
+		}
+
+	}
+}
+
+func runNatsBenchmarker(natsRuns ...NatsRun) *bench.Benchmark {
 	opts := nats.GetDefaultOptions()
 	opts.Servers = strings.Split(config.NatsURL, ",")
 	opts.User = config.NatsUsername
@@ -51,13 +186,37 @@ func runNatsBencmarker() *bench.Benchmark {
 	}
 
 	var startwg sync.WaitGroup
-	natsBenchmark := bench.NewBenchmark("SDC Nats Benchmark", 0, config.NumPublisher)
-	startwg.Add(config.NumPublisher)
-	pubCounts := bench.MsgsPerClient(config.NumMessages, config.NumPublisher)
-	for _, pubCount := range pubCounts {
-		go runPublisher(SdcRegisterTopic, natsBenchmark, &startwg, opts, pubCount, NATS_MSG_SIZE)
+
+	totalSubscriberCount := 0
+	for _, natsRun := range natsRuns {
+		totalSubscriberCount += natsRun.subscriberCount
 	}
+
+	natsBenchmark := bench.NewBenchmark("SDC Nats Benchmark", totalSubscriberCount, config.NumPublisher*len(natsRuns))
+
+	startSubscribers := time.Now()
+	for _, natsRun := range natsRuns {
+		startwg.Add(natsRun.subscriberCount)
+		for i := 0; i < natsRun.subscriberCount; i++ {
+			go runSubscriber(natsRun.topic, &startwg, opts)
+		}
+
+		startwg.Add(config.NumPublisher)
+		pubCounts := bench.MsgsPerClient(config.NumMessages, config.NumPublisher)
+		for _, pubCount := range pubCounts {
+			go runPublisher(natsRun.topic, natsBenchmark, &startwg, opts, pubCount, NATS_MSG_SIZE)
+		}
+
+	}
+
 	startwg.Wait()
+	for _, natsConn := range subscriberNatsConnections {
+		natsConn.Close()
+		end := time.Now()
+		time.Sleep(1 * time.Second)
+		natsBenchmark.AddSubSample(bench.NewSample(config.NumMessages, NATS_MSG_SIZE, startSubscribers, end, natsConn))
+	}
+
 	natsBenchmark.Close()
 	return natsBenchmark
 }
@@ -78,7 +237,7 @@ func generateBenchmarkGinkgoReport(b Benchmarker, bm *bench.Benchmark) {
 
 }
 
-func collectNatsTop(subscriber string) map[uint64]server.ConnInfo {
+func collectNatsSubscriberConnectionInfo(subscriber string) map[uint64]server.ConnInfo {
 	serviceDiscoverySubs := map[uint64]server.ConnInfo{}
 
 	timeoutChan := time.After(10 * time.Second)
@@ -93,7 +252,10 @@ func collectNatsTop(subscriber string) map[uint64]server.ConnInfo {
 
 	for {
 		select {
-		case stats := <-natsTopEngine.StatsCh:
+		case stats, ok := <-natsTopEngine.StatsCh:
+			if !ok {
+				continue
+			}
 			for _, statsConn := range stats.Connz.Conns {
 				if strings.Contains(strings.Join(statsConn.Subs, ","), subscriber) {
 					serviceDiscoverySubs[statsConn.Cid] = server.ConnInfo(statsConn)
@@ -110,9 +272,7 @@ func runPublisher(subject string, benchmark *bench.Benchmark, startwg *sync.Wait
 	defer GinkgoRecover()
 	defer startwg.Done()
 	nc, err := opts.Connect()
-
 	Expect(err).NotTo(HaveOccurred())
-	defer nc.Close()
 
 	var msg []byte
 	if msgSize > 0 {
@@ -125,5 +285,22 @@ func runPublisher(subject string, benchmark *bench.Benchmark, startwg *sync.Wait
 		nc.Publish(subject, msg)
 	}
 	nc.Flush()
-	benchmark.AddPubSample(bench.NewSample(numMsgs, msgSize, start, time.Now(), nc))
+	nc.Close()
+	end := time.Now()
+	time.Sleep(1 * time.Second)
+	benchmark.AddPubSample(bench.NewSample(numMsgs, msgSize, start, end, nc))
+}
+
+func runSubscriber(subject string, startwg *sync.WaitGroup, opts nats.Options) {
+	defer GinkgoRecover()
+	defer startwg.Done()
+	nc, err := opts.Connect()
+	Expect(err).NotTo(HaveOccurred())
+
+	_, err = nc.Subscribe(subject, func(*nats.Msg) {})
+	Expect(err).NotTo(HaveOccurred())
+
+	subLock.Lock()
+	defer subLock.Unlock()
+	subscriberNatsConnections = append(subscriberNatsConnections, nc)
 }
