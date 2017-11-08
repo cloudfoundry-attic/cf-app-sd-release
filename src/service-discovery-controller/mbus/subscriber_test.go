@@ -30,6 +30,7 @@ var _ = Describe("Subscriber", func() {
 		localIP          string
 		startMsgChan     chan *nats.Msg
 		greetMsgChan     chan *nats.Msg
+		metricsSender    *fakes.MetricsSender
 	)
 
 	BeforeEach(func() {
@@ -63,7 +64,9 @@ var _ = Describe("Subscriber", func() {
 
 		localIP = "192.168.0.1"
 
-		subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+		metricsSender = &fakes.MetricsSender{}
+
+		subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 		Expect(subscriber.Run()).ToNot(HaveOccurred())
 	})
 
@@ -440,7 +443,7 @@ var _ = Describe("Subscriber", func() {
 				provider.ConnectionReturns(natsConn, errors.New("CANT"))
 
 				subscriber.Close()
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 			})
 
 			It("run returns an error", func() {
@@ -453,7 +456,7 @@ var _ = Describe("Subscriber", func() {
 		Context("when calling run and sending start message fails", func() {
 			BeforeEach(func() {
 				natsConn.PublishMsgReturns(errors.New("NO START"))
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 			})
 
 			It("returns an error", func() {
@@ -473,7 +476,7 @@ var _ = Describe("Subscriber", func() {
 				natsConn.PublishMsgReturnsOnCall(0, nil)
 				natsConn.SubscribeReturns(nil, errors.New("NO GREET"))
 
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 			})
 
 			It("self closes", func() {
@@ -504,7 +507,7 @@ var _ = Describe("Subscriber", func() {
 				natsConn.PublishMsgReturnsOnCall(0, nil)
 				natsConn.SubscribeReturnsOnCall(1, nil, errors.New("NO SUBSCRIBE"))
 
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 			})
 
 			It("returns an error", func() {
@@ -535,7 +538,7 @@ var _ = Describe("Subscriber", func() {
 				natsConn.PublishMsgReturnsOnCall(0, nil)
 				natsConn.SubscribeReturnsOnCall(2, nil, errors.New("NO SUBSCRIBE when unregister"))
 
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 			})
 
 			It("returns an error", func() {
@@ -566,7 +569,7 @@ var _ = Describe("Subscriber", func() {
 				provider.ConnectionReturns(natsConn, nil)
 
 				subscriber.Close()
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 				natsConn.FlushReturns(errors.New("failed to flush"))
 			})
 
@@ -593,7 +596,7 @@ var _ = Describe("Subscriber", func() {
 				provider.ConnectionReturns(natsConn, nil)
 
 				subscriber.Close()
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger)
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 			})
 
 			It("should not have any side effects", func() {
