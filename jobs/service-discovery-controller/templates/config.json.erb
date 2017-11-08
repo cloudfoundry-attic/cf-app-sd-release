@@ -5,7 +5,8 @@ config = {
     "index" => "#{spec.index}",
     "server_cert" => "/var/vcap/jobs/service-discovery-controller/config/certs/server.crt",
     "server_key" => "/var/vcap/jobs/service-discovery-controller/config/certs/server.key",
-    "ca_cert" => "/var/vcap/jobs/service-discovery-controller/config/certs/client_ca.crt"
+    "ca_cert" => "/var/vcap/jobs/service-discovery-controller/config/certs/client_ca.crt",
+    "metron_port" => p("service_discovery_controller.metron_port")
 }
 
 nats_machines = nil

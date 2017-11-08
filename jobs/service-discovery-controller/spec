@@ -26,6 +26,10 @@ consumes:
   optional: true
 
 properties:
+  service_discovery_controller.metron_port:
+    description: "Forward metrics to this metron agent, listening on this port on localhost"
+    default: 3457
+
   address:
     description: "Address which service-discovery-controller will listen on."
     default: 0.0.0.0

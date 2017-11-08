@@ -53,6 +53,16 @@ func (at *AddressTable) Lookup(hostname string) []string {
 	return foundCopy
 }
 
+func (at *AddressTable) GetAllAddresses() map[string][]string {
+	at.mutex.RLock()
+
+	addresses := at.addresses
+
+	at.mutex.RUnlock()
+
+	return addresses
+}
+
 func (at *AddressTable) ipsForHostname(hostname string) []string {
 	if existing, ok := at.addresses[hostname]; ok {
 		return existing
