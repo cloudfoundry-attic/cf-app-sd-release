@@ -131,6 +131,30 @@ var _ = Describe("Main", func() {
 			Expect(sessionContents).To(MatchRegexp(`HTTPServer access.*\"ip_address\\":\\"192.168.0.2\\".*\"serviceKey\":\"app-id.internal.local.\"`))
 		})
 
+		FContext("when an ip for a domain is stale", func() {
+			JustBeforeEach(func() {
+				time.Sleep(60)
+			})
+
+			It("should not return ips for that domain", func() {
+				Eventually(func() string {
+					resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+					Expect(err).ToNot(HaveOccurred())
+					respBody, err := ioutil.ReadAll(resp.Body)
+					Expect(err).ToNot(HaveOccurred())
+					return string(respBody)
+				}).Should(MatchJSON(`{
+				"env": "",
+				"hosts": [],
+				"service": ""
+			}`))
+
+				sessionContents := string(session.Out.Contents())
+				Expect(sessionContents).NotTo(MatchRegexp(`HTTPServer access.*\"ip_address\\":\\"192.168.0.2\\".*\"serviceKey\":\"app-id.internal.local.\"`))
+				Expect(sessionContents).NotTo(MatchRegexp(`HTTPServer access.*\"ip_address\\":\\"192.168.0.1\\".*\"serviceKey\":\"app-id.internal.local.\"`))
+			})
+		})
+
 		It("should return a http app json", func() {
 			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/app-id.internal.local.")
 			Expect(err).ToNot(HaveOccurred())

@@ -2,16 +2,22 @@ package addresstable
 
 import (
 	"sync"
+	"time"
 )
 
+type IPAndTime struct {
+	IP        string
+	Timestamp time.Time
+}
+
 type AddressTable struct {
-	addresses map[string][]string
+	addresses map[string][]IPAndTime
 	mutex     sync.RWMutex
 }
 
 func NewAddressTable() *AddressTable {
 	return &AddressTable{
-		addresses: map[string][]string{},
+		addresses: map[string][]IPAndTime{},
 	}
 }
 
@@ -20,10 +26,16 @@ func (at *AddressTable) Add(hostnames []string, ip string) {
 	for _, hostname := range hostnames {
 		fqHostname := fqdn(hostname)
 		ips := at.ipsForHostname(fqHostname)
-		if indexOf(ips, ip) == -1 {
-			ips = append(ips, ip)
-			at.addresses[fqHostname] = ips
+		index := indexOf(ips, ip)
+		if index == -1 {
+			ips = append(ips, IPAndTime{
+				IP:        ip,
+				Timestamp: time.Now(),
+			})
+		} else {
+			ips[index].Timestamp = time.Now()
 		}
+		at.addresses[fqHostname] = ips
 	}
 	at.mutex.Unlock()
 }
@@ -41,11 +53,11 @@ func (at *AddressTable) Remove(hostnames []string, ip string) {
 	at.mutex.Unlock()
 }
 
-func (at *AddressTable) Lookup(hostname string) []string {
+func (at *AddressTable) Lookup(hostname string) []IPAndTime {
 	at.mutex.RLock()
 
 	found := at.ipsForHostname(fqdn(hostname))
-	foundCopy := make([]string, len(found))
+	foundCopy := make([]IPAndTime, len(found))
 	copy(foundCopy, found)
 
 	at.mutex.RUnlock()
@@ -58,22 +70,31 @@ func (at *AddressTable) GetAllAddresses() map[string][]string {
 
 	addresses := at.addresses
 
+	returnAddresses := map[string][]string{}
+	for hostname, ipAndTimes := range addresses {
+		ips := []string{}
+		for _, ipAndTime := range ipAndTimes {
+			ips = append(ips, ipAndTime.IP)
+		}
+		returnAddresses[hostname] = ips
+	}
+
 	at.mutex.RUnlock()
 
-	return addresses
+	return returnAddresses
 }
 
-func (at *AddressTable) ipsForHostname(hostname string) []string {
+func (at *AddressTable) ipsForHostname(hostname string) []IPAndTime {
 	if existing, ok := at.addresses[hostname]; ok {
 		return existing
 	} else {
-		return []string{}
+		return []IPAndTime{}
 	}
 }
 
-func indexOf(strings []string, value string) int {
-	for idx, str := range strings {
-		if str == value {
+func indexOf(ipAndTimes []IPAndTime, value string) int {
+	for idx, ipAndTime := range ipAndTimes {
+		if ipAndTime.IP == value {
 			return idx
 		}
 	}
