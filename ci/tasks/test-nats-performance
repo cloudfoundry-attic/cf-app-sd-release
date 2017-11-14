@@ -21,7 +21,7 @@ export PATH="${GOPATH}/bin":$PATH
 
 go install github.com/onsi/ginkgo/ginkgo
 
-export CONFIG="deployments-repo/environments/$ENVIRONMENT_NAME/perf-config.json"
+export CONFIG="$PWD/deployments-repo/environments/$ENVIRONMENT_NAME/perf-config.json"
 
 pushd service-discovery-release/src/performance
    ginkgo -race deploy/
