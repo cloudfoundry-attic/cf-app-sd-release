@@ -2,8 +2,9 @@ groups:
 - name: service-discovery
   jobs:
   - unit-tests
-  - acceptance-tests
-  - smoke-tests
+  - ushanka-acceptance-tests
+  - ushanka-smoke-tests
+  - ushanka-perf-tests
   - ushanka-deploy
   - beret-deploy
   - ship-what
@@ -13,6 +14,9 @@ groups:
   - ushanka-bbl-up
   - ushanka-bbl-destroy
   - ushanka-deploy
+  - ushanka-acceptance-tests
+  - ushanka-smoke-tests
+  - ushanka-perf-tests
 - name: beret
   jobs:
   - beret-bbl-up
@@ -105,7 +109,7 @@ jobs:
       - task: unit-tests
         file: service-discovery-release/ci/tasks/test-unit.yml
 
-  - name: acceptance-tests
+  - name: ushanka-acceptance-tests
     serial_groups: [ushanka-deploy-group, ushanka-test-group]
     plan:
       - aggregate:
@@ -115,7 +119,7 @@ jobs:
           - get: service-discovery-release
             passed: [ushanka-deploy]
             trigger: true
-      - task: acceptance-tests
+      - task: ushanka-acceptance-tests
         privileged: true
         file: service-discovery-release/ci/tasks/test-acceptance.yml
         input_mapping:
@@ -124,7 +128,7 @@ jobs:
         params:
           ENVIRONMENT_NAME: ushanka
 
-  - name: smoke-tests
+  - name: ushanka-smoke-tests
     serial_groups: [ushanka-test-group]
     plan:
       - aggregate:
@@ -136,7 +140,7 @@ jobs:
           - get: service-discovery-release
             passed: [ushanka-deploy]
             trigger: true
-      - task: smoke-tests
+      - task: ushanka-smoke-tests
         privileged: true
         file: service-discovery-release/ci/tasks/smoke-tests.yml
         input_mapping:
@@ -145,6 +149,29 @@ jobs:
           ENVIRONMENT_NAME: ushanka
           ENVIRONMENT_TAG: ushanka.c2c.cf-app.com
           DATADOG_API_KEY: {{datadog_api_key}}
+
+  - name: ushanka-perf-tests
+    serial_groups: [ushanka-deploy-group, ushanka-test-group]
+    plan:
+      - aggregate:
+          - get: cf-networking-master
+            passed:
+            - ushanka-smoke-tests
+            - ushanka-acceptance-tests
+          - get: cf-networking-deployments
+          - get: service-discovery-release
+            passed:
+            - ushanka-smoke-tests
+            - ushanka-acceptance-tests
+            trigger: true
+      - task: ushanka-perf-tests
+        privileged: true
+        file: service-discovery-release/ci/tasks/test-nats-performance.yml
+        input_mapping:
+          test-config: cf-networking-deployments
+          deployments-repo: cf-networking-deployments
+        params:
+          ENVIRONMENT_NAME: ushanka
 
   - name: ushanka-bbl-up
     serial_groups: [ushanka-deploy-group, ushanka-test-group]
@@ -307,12 +334,12 @@ jobs:
             trigger: true
           - get: cf-networking-master
             passed:
-            - smoke-tests
-            - acceptance-tests
+            - ushanka-smoke-tests
+            - ushanka-acceptance-tests
           - get: service-discovery-release
             passed:
-            - smoke-tests
-            - acceptance-tests
+            - ushanka-smoke-tests
+            - ushanka-acceptance-tests
             trigger: true
           - get: service-discovery-ci
           - get: version

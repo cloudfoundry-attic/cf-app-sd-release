@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e -u -x pipefail
+
 # Targetting director
 pushd "deployments-repo/environments/$ENVIRONMENT_NAME"
   BOSH_ENVIRONMENT="$(bbl director-address)"
@@ -19,17 +21,7 @@ export PATH="${GOPATH}/bin":$PATH
 
 go install github.com/onsi/ginkgo/ginkgo
 
-export CONFIG=/tmp/test-config.json
-echo "
-{
-  \"nats_url\": \"10.0.31.190\",
-  \"nats_username\": \"nats\",
-  \"nats_password\": \"any_password\",
-  \"nats_monitoring_port\": 8222,
-  \"num_messages\": 10,
-  \"num_publishers\": 10
-}
-" > ${CONFIG}
+export CONFIG="deployments-repo/environments/$ENVIRONMENT_NAME/perf-config.json"
 
 pushd service-discovery-release/src/performance
    ginkgo -race deploy/
