@@ -7,16 +7,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/montanaflynn/stats"
+	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/go-nats"
 	"github.com/nats-io/nats-top/util"
 	"github.com/nats-io/nats/bench"
-	"github.com/nats-io/gnatsd/server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/montanaflynn/stats"
 )
 
 const SdcRegisterTopic = "service-discovery.register"
+
+const ProfilerExternalRoutesCPUKey = "cpu_external_routes"
+const ProfilerExternalAndInternalRoutesCPUKey = "cpu_external_and_internal_routes"
+const ProfilerExternalRoutesMemKey = "mem_external_routes"
+const ProfilerExternalAndInternalRoutesMemKey = "mem_external_and_internal_routes"
 
 type NatsRun struct {
 	subscriberCount int
@@ -51,7 +56,7 @@ var _ = Describe("NatsPerformance", func() {
 
 		By("making sure service-discovery.register subscribers received every published message", func() {
 			for key, benchMarkVal := range benchMarkNatsSubMap {
-				Expect(int(natsSubMap[key].OutMsgs - benchMarkVal.OutMsgs)).To(Equal(config.NumMessages), fmt.Sprintf("Benchmark: %+v \\n \\n Got %+v", benchMarkVal, natsSubMap[key]))
+				Expect(int(natsSubMap[key].OutMsgs-benchMarkVal.OutMsgs)).To(Equal(config.NumMessages), fmt.Sprintf("Benchmark: %+v \\n \\n Got %+v", benchMarkVal, natsSubMap[key]))
 			}
 		})
 
@@ -68,7 +73,7 @@ var _ = Describe("NatsPerformance", func() {
 			cpuChannel := make(chan float64)
 			stopCpuProfiling := make(chan struct{})
 
-			go startCpuProfiler(b, "cpu_external_routes", stopCpuProfiling, cpuChannel)
+			go startProfiler(b, ProfilerExternalRoutesCPUKey, ProfilerExternalRoutesMemKey, stopCpuProfiling, cpuChannel)
 
 			var cpuValuesJustExternalRoutesSlice []float64
 			cpuMapperDone := make(chan struct{})
@@ -102,7 +107,7 @@ var _ = Describe("NatsPerformance", func() {
 			cpuChannel := make(chan float64)
 			stopCpuProfiling := make(chan struct{})
 
-			go startCpuProfiler(b, "cpu_external_and_internal_routes", stopCpuProfiling, cpuChannel)
+			go startProfiler(b, ProfilerExternalAndInternalRoutesCPUKey, ProfilerExternalAndInternalRoutesMemKey, stopCpuProfiling, cpuChannel)
 			var cpuValueExternalAndInternalRoutesSlice []float64
 			cpuMapperDone := make(chan struct{})
 
@@ -132,8 +137,8 @@ var _ = Describe("NatsPerformance", func() {
 		b.RecordValue("medianJustExternalRoutes", medianJustExternalRoutes)
 		b.RecordValue("meanJustExternalRoutes", meanJustExternalRoutes)
 
-		Expect(medianExternalAndInternalRoutes).Should(BeNumerically("~", medianJustExternalRoutes, 5.00))
-		Expect(meanExternalAndInternalRoutes).Should(BeNumerically("~", meanJustExternalRoutes, 5.00))
+		Expect(medianExternalAndInternalRoutes).Should(BeNumerically("~", medianJustExternalRoutes, 15.00))
+		Expect(meanExternalAndInternalRoutes).Should(BeNumerically("~", meanJustExternalRoutes, 15.00))
 	}, 1)
 })
 
@@ -149,7 +154,7 @@ func closeSubscribers() {
 	subscriberNatsConnections = []*nats.Conn{}
 }
 
-func startCpuProfiler(ginkgoBenchmarker Benchmarker, cpuKey string, stopCpuProfiling chan struct{}, cpuValuesJustExternalRoutes chan float64) {
+func startProfiler(ginkgoBenchmarker Benchmarker, cpuKey, memKey string, stopCpuProfiling chan struct{}, cpuValuesChannel chan float64) {
 	defer GinkgoRecover()
 	natsTopEngine := toputils.NewEngine(config.NatsURL, config.NatsMonitoringPort, 1000, 0)
 	natsTopEngine.SetupHTTP()
@@ -166,10 +171,12 @@ func startCpuProfiler(ginkgoBenchmarker Benchmarker, cpuKey string, stopCpuProfi
 				continue
 			}
 			ginkgoBenchmarker.RecordValue(cpuKey, natsStats.Varz.CPU)
-			cpuValuesJustExternalRoutes <- natsStats.Varz.CPU
+			ginkgoBenchmarker.RecordValue(memKey, float64(natsStats.Varz.Mem))
+			Expect(int(natsStats.Varz.SlowConsumers)).To(Equal(0))
+			cpuValuesChannel <- natsStats.Varz.CPU
 		case <-stopCpuProfiling:
 			close(natsTopEngine.ShutdownCh)
-			close(cpuValuesJustExternalRoutes)
+			close(cpuValuesChannel)
 			return
 		}
 
