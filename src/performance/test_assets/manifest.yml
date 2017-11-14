@@ -85,7 +85,7 @@ instance_groups:
     properties: {}
     release: service-discovery
   lifecycle: errand
-  name: performance-tests
+  name: performance
   networks:
   - name: private
   stemcell: default

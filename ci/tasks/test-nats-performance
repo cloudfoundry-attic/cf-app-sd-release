@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e -u -x pipefail
+set -euo pipefail
 
 # Targetting director
 pushd "deployments-repo/environments/$ENVIRONMENT_NAME"
