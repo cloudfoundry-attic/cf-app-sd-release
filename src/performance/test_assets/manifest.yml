@@ -131,7 +131,7 @@ instance_groups:
             certificate: ((service_discovery_client_tls.certificate))
             private_key: ((service_discovery_client_tls.private_key))
         server:
-          ca: ((service_discovery_ca))
+          ca: ((service_discovery_ca.ca))
     release: service-discovery
   - name: service-discovery-controller
     properties:

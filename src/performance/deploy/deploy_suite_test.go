@@ -1,4 +1,4 @@
-package performance_test
+package deploy_test
 
 import (
 	helpersConfig "github.com/cloudfoundry-incubator/cf-test-helpers/config"
@@ -6,8 +6,15 @@ import (
 	. "github.com/onsi/gomega"
 
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"testing"
+	"time"
+
+	"os"
+
+	"github.com/onsi/gomega/gexec"
 )
 
 const NATS_MSG_SIZE = 1024
@@ -36,6 +43,22 @@ func TestPerformance(t *testing.T) {
 
 		err = json.Unmarshal(configBytes, &config)
 		Expect(err).NotTo(HaveOccurred())
+
+		By("deploying bosh-dns, bosh-dns-adapter, and service-discovery-controller, nats", func() {
+			tempVarsStore, err := ioutil.TempFile("", "")
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = tempVarsStore.Write([]byte(fmt.Sprintf(
+				`nats_password: %s
+nats_ip: %s`, config.NatsPassword, config.NatsURL)))
+			Expect(err).ToNot(HaveOccurred())
+
+			cmd := exec.Command("bosh", "deploy", "-n", "-d", "performance", "../test_assets/manifest.yml", "--vars-store", tempVarsStore.Name())
+			session, err := gexec.Start(cmd, os.Stdout, os.Stderr)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(session, 20*time.Minute).Should(gexec.Exit(0))
+		})
 	})
-	RunSpecs(t, "Performance Suite")
+	RunSpecs(t, "Deploy")
 }
