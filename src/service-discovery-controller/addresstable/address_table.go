@@ -2,28 +2,42 @@ package addresstable
 
 import (
 	"sync"
+	"time"
+
+	"code.cloudfoundry.org/clock"
 )
 
 type AddressTable struct {
-	addresses map[string][]string
-	mutex     sync.RWMutex
+	addresses          map[string][]entry
+	clock              clock.Clock
+	stalenessThreshold time.Duration
+	mutex              sync.RWMutex
 }
 
-func NewAddressTable() *AddressTable {
-	return &AddressTable{
-		addresses: map[string][]string{},
+type entry struct {
+	ip         string
+	updateTime time.Time
+}
+
+func NewAddressTable(stalenessThreshold, pruningInterval time.Duration, clock clock.Clock) *AddressTable {
+	table := &AddressTable{
+		addresses:          map[string][]entry{},
+		clock:              clock,
+		stalenessThreshold: stalenessThreshold,
 	}
+	table.pruneStaleEntries(pruningInterval)
+	return table
 }
 
 func (at *AddressTable) Add(hostnames []string, ip string) {
 	at.mutex.Lock()
 	for _, hostname := range hostnames {
 		fqHostname := fqdn(hostname)
-		ips := at.ipsForHostname(fqHostname)
-		if indexOf(ips, ip) == -1 {
-			ips = append(ips, ip)
-			at.addresses[fqHostname] = ips
+		entries := at.entriesForHostname(fqHostname)
+		if indexOf(entries, ip) == -1 {
+			at.addresses[fqHostname] = append(entries, entry{ip: ip, updateTime: at.clock.Now()})
 		}
+		// TODO update the update time if it has already been added
 	}
 	at.mutex.Unlock()
 }
@@ -32,10 +46,14 @@ func (at *AddressTable) Remove(hostnames []string, ip string) {
 	at.mutex.Lock()
 	for _, hostname := range hostnames {
 		fqHostname := fqdn(hostname)
-		ips := at.ipsForHostname(fqHostname)
-		index := indexOf(ips, ip)
+		entries := at.entriesForHostname(fqHostname)
+		index := indexOf(entries, ip)
 		if index > -1 {
-			at.addresses[fqHostname] = append(ips[:index], ips[index+1:]...)
+			if len(entries) == 1 {
+				delete(at.addresses, fqHostname)
+			} else {
+				at.addresses[fqHostname] = append(entries[:index], entries[index+1:]...)
+			}
 		}
 	}
 	at.mutex.Unlock()
@@ -44,36 +62,86 @@ func (at *AddressTable) Remove(hostnames []string, ip string) {
 func (at *AddressTable) Lookup(hostname string) []string {
 	at.mutex.RLock()
 
-	found := at.ipsForHostname(fqdn(hostname))
-	foundCopy := make([]string, len(found))
-	copy(foundCopy, found)
+	found := at.entriesForHostname(fqdn(hostname))
 
 	at.mutex.RUnlock()
 
-	return foundCopy
+	return entriesToIPs(found)
 }
 
 func (at *AddressTable) GetAllAddresses() map[string][]string {
 	at.mutex.RLock()
 
-	addresses := at.addresses
+	addresses := map[string][]string{}
+	for address, entries := range at.addresses {
+		addresses[address] = entriesToIPs(entries)
+	}
 
 	at.mutex.RUnlock()
 
 	return addresses
 }
 
-func (at *AddressTable) ipsForHostname(hostname string) []string {
+func (at *AddressTable) entriesForHostname(hostname string) []entry {
 	if existing, ok := at.addresses[hostname]; ok {
 		return existing
 	} else {
-		return []string{}
+		return []entry{}
 	}
 }
 
-func indexOf(strings []string, value string) int {
-	for idx, str := range strings {
-		if str == value {
+func entriesToIPs(entries []entry) []string {
+	ips := make([]string, len(entries))
+	for idx, entry := range entries {
+		ips[idx] = entry.ip
+	}
+
+	return ips
+}
+
+func (at *AddressTable) pruneStaleEntries(pruningInterval time.Duration) {
+	ticker := at.clock.NewTicker(pruningInterval)
+	go func() {
+		defer ticker.Stop()
+		for _ = range ticker.C() {
+			staleAddresses := []string{}
+			at.mutex.RLock()
+			for address, entries := range at.addresses {
+				for _, entry := range entries {
+					if at.clock.Since(entry.updateTime) > at.stalenessThreshold {
+						staleAddresses = append(staleAddresses, address)
+						break
+					}
+				}
+			}
+			at.mutex.RUnlock()
+
+			if len(staleAddresses) > 0 {
+				at.mutex.Lock()
+
+				for _, staleAddr := range staleAddresses {
+					entries, ok := at.addresses[staleAddr]
+					if ok {
+						freshEntries := []entry{}
+						for _, entry := range entries {
+							if at.clock.Since(entry.updateTime) <= at.stalenessThreshold {
+								freshEntries = append(freshEntries, entry)
+							}
+						}
+						at.addresses[staleAddr] = freshEntries
+					}
+				}
+
+				at.mutex.Unlock()
+			}
+
+		}
+	}()
+}
+
+func indexOf(entries []entry, value string) int {
+	for idx, entry := range entries {
+		if entry.ip == value {
 			return idx
 		}
 	}

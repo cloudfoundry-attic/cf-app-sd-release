@@ -23,18 +23,22 @@ import (
 
 var _ = Describe("Main", func() {
 	var (
-		session      *gexec.Session
-		configPath   string
-		natsServer   *server.Server
-		routeEmitter *nats.Conn
-		clientCert   tls.Certificate
-		caFile       string
-		serverCert   string
-		serverKey    string
+		session                   *gexec.Session
+		configPath                string
+		natsServer                *server.Server
+		routeEmitter              *nats.Conn
+		clientCert                tls.Certificate
+		caFile                    string
+		serverCert                string
+		serverKey                 string
+		stalenessThresholdSeconds int
+		pruningIntervalSeconds    int
 	)
 
 	BeforeEach(func() {
 		caFile, serverCert, serverKey, clientCert = testhelpers.GenerateCaAndMutualTlsCerts()
+		stalenessThresholdSeconds = 1
+		pruningIntervalSeconds = 1
 
 		natsServer = RunNatsServerOnPort(8080)
 		configPath = writeConfigFile(fmt.Sprintf(`{
@@ -50,8 +54,10 @@ var _ = Describe("Main", func() {
 					"user":"",
 					"pass":""
 				}
-			]
-		}`, caFile, serverCert, serverKey))
+			],
+			"staleness_threshold_seconds": %d,
+			"pruning_interval_seconds": %d
+		}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds))
 	})
 
 	AfterEach(func() {
@@ -67,7 +73,7 @@ var _ = Describe("Main", func() {
 			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(session).Should(gbytes.Say("Server Started"))
+			Eventually(session, 5*time.Second).Should(gbytes.Say("Server Started"))
 
 			routeEmitter = newFakeRouteEmitter("nats://" + natsServer.Addr().String())
 			register(routeEmitter, "192.168.0.1", "app-id.internal.local.")
@@ -293,23 +299,36 @@ var _ = Describe("Main", func() {
 			}`))
 		})
 
-		Context("when we hit the /route endpoint", func() {
+		It("eventually removes stale routes", func() {
+			client := NewClient(testhelpers.CertPool(caFile), clientCert)
+			waitDuration := time.Duration(stalenessThresholdSeconds+pruningIntervalSeconds+1) * time.Second
+
+			Eventually(func() []byte {
+				resp, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				Expect(err).ToNot(HaveOccurred())
+
+				respBody, err := ioutil.ReadAll(resp.Body)
+				Expect(err).ToNot(HaveOccurred())
+
+				return respBody
+			}, waitDuration).Should(MatchJSON(`{ "env": "", "hosts": [], "service": "" }`))
+		})
+
+		Context("when we hit the /routes endpoint", func() {
 			It("should return a map of all hostnames to ips", func() {
 				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/routes")
 				Expect(err).ToNot(HaveOccurred())
 				respBody, err := ioutil.ReadAll(resp.Body)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(respBody).To(MatchJSON(`{
-					"addresses": [
-					{
+				Expect(respBody).To(Or(MatchJSON(`{
+					"addresses": [{
 						"hostname": "app-id.internal.local.",
 						"ips": [
 							"192.168.0.1",
 							"192.168.0.2"
 							]
-					},
-					{
+					}, {
 						"hostname": "large-id.internal.local.",
 						"ips": [
 							"192.168.0.1",
@@ -328,7 +347,36 @@ var _ = Describe("Main", func() {
 							]
 						}
 					]
-				}`))
+				}`),
+					MatchJSON(`{
+					"addresses": [
+						{
+							"hostname": "large-id.internal.local.",
+							"ips": [
+								"192.168.0.1",
+								"192.168.0.2",
+								"192.168.0.3",
+								"192.168.0.4",
+								"192.168.0.5",
+								"192.168.0.6",
+								"192.168.0.7",
+								"192.168.0.8",
+								"192.168.0.9",
+								"192.168.0.10",
+								"192.168.0.11",
+								"192.168.0.12",
+								"192.168.0.13"
+							]
+						}, {
+							"hostname": "app-id.internal.local.",
+							"ips": [
+								"192.168.0.1",
+								"192.168.0.2"
+							]
+						}
+					]
+				}`),
+				))
 			})
 		})
 
@@ -354,8 +402,10 @@ var _ = Describe("Main", func() {
 							"user":"",
 							"pass":""
 						}
-					]
-				}`, caFile, serverCert, serverKey))
+					],
+					"staleness_threshold_seconds": %d,
+					"pruning_interval_seconds": %d
+				}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds))
 			})
 
 			It("connects to NATs successfully", func() {
@@ -390,6 +440,7 @@ var _ = Describe("Main", func() {
 				}`))
 			})
 		})
+
 	})
 
 	Context("when none of the nats urls are valid", func() {
@@ -414,7 +465,7 @@ var _ = Describe("Main", func() {
 			var err error
 			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session).Should(gexec.Exit(2))
+			Eventually(session, 5*time.Second).Should(gexec.Exit(2))
 		})
 	})
 })

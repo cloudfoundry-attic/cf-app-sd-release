@@ -30,7 +30,9 @@ var _ = Describe("Config", func() {
 						"user": "b-nats-user",
 						"pass": "b-nats-pass"
 					}
-				]
+				],
+				"staleness_threshold_seconds": 5,
+				"pruning_interval_seconds": 3
 			}`)
 
 			parsedConfig, err := NewConfig(configJSON)
@@ -43,9 +45,10 @@ var _ = Describe("Config", func() {
 			Expect(parsedConfig.ServerKey).To(Equal("some_path_server_key"))
 			Expect(parsedConfig.CACert).To(Equal("some_path_ca_cert"))
 			Expect(parsedConfig.Index).To(Equal("62"))
-			Expect(parsedConfig.Index).To(Equal("62"))
 			Expect(parsedConfig.NatsServers()).To(ContainElement("nats://a-nats-user:a-nats-pass@a-nats-host:1"))
 			Expect(parsedConfig.NatsServers()).To(ContainElement("nats://b-nats-user:b-nats-pass@b-nats-host:2"))
+			Expect(parsedConfig.StalenessThresholdSeconds).To(Equal(5))
+			Expect(parsedConfig.PruningIntervalSeconds).To(Equal(3))
 		})
 	})
 

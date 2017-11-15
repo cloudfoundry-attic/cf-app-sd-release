@@ -13,6 +13,7 @@ import (
 	"service-discovery-controller/config"
 	"service-discovery-controller/mbus"
 	"syscall"
+	"time"
 
 	"service-discovery-controller/localip"
 	"strings"
@@ -22,6 +23,7 @@ import (
 
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
 	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
+	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
@@ -74,7 +76,10 @@ func main() {
 		os.Exit(2)
 	}
 
-	addressTable := addresstable.NewAddressTable()
+	addressTable := addresstable.NewAddressTable(
+		time.Duration(config.StalenessThresholdSeconds)*time.Second,
+		time.Duration(config.PruningIntervalSeconds)*time.Second,
+		clock.NewClock())
 
 	metronAddress := fmt.Sprintf("127.0.0.1:%d", config.MetronPort)
 	err = dropsonde.Initialize(metronAddress, "service-discovery-controller")

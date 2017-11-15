@@ -2,17 +2,21 @@ package addresstable_test
 
 import (
 	"service-discovery-controller/addresstable"
+	"time"
 
+	"code.cloudfoundry.org/clock/fakeclock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("AddressTable", func() {
 	var (
-		table *addresstable.AddressTable
+		table     *addresstable.AddressTable
+		fakeClock *fakeclock.FakeClock
 	)
 	BeforeEach(func() {
-		table = addresstable.NewAddressTable()
+		fakeClock = fakeclock.NewFakeClock(time.Now())
+		table = addresstable.NewAddressTable(5*time.Second, 1*time.Second, fakeClock)
 	})
 	Describe("Add", func() {
 		It("adds an endpoint", func() {
@@ -78,6 +82,17 @@ var _ = Describe("AddressTable", func() {
 			})
 		})
 
+		Context("when removing an IP for an endpoint for a hostname that has multiple endpoints", func() {
+			BeforeEach(func() {
+				table.Add([]string{"foo.com"}, "192.0.0.3")
+				table.Add([]string{"foo.com"}, "192.0.0.4")
+			})
+			It("removes only the IPs", func() {
+				table.Remove([]string{"foo.com"}, "192.0.0.3")
+				Expect(table.Lookup("foo.com")).To(Equal([]string{"192.0.0.4"}))
+			})
+		})
+
 		Context("when removing an IP that does not exist", func() {
 			BeforeEach(func() {
 				table.Add([]string{"foo.com"}, "192.0.0.2")
@@ -99,6 +114,23 @@ var _ = Describe("AddressTable", func() {
 	Describe("Lookup", func() {
 		It("returns an empty array for an unknown hostname", func() {
 			Expect(table.Lookup("foo.com")).To(Equal([]string{}))
+		})
+		Context("when routes go stale", func() {
+			BeforeEach(func() {
+				table.Add([]string{"foo.com"}, "192.0.0.1")
+			})
+			It("excludes stale routes", func() {
+				fakeClock.Increment(4 * time.Second)
+
+				Expect(table.Lookup("foo.com")).To(Equal([]string{"192.0.0.1"}))
+				table.Add([]string{"bar.com"}, "192.0.0.2")
+
+				fakeClock.Increment(1001 * time.Millisecond)
+				Eventually(func() []string { return table.Lookup("foo.com") }).Should(Equal([]string{}))
+				Eventually(func() []string { return table.Lookup("bar.com") }).Should(Equal([]string{"192.0.0.2"}))
+
+			})
+
 		})
 	})
 

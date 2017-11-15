@@ -7,14 +7,16 @@ import (
 )
 
 type Config struct {
-	Address    string       `json:"address"`
-	Port       string       `json:"port"`
-	Nats       []NatsConfig `json:"nats"`
-	Index      string       `json:"index"`
-	ServerCert string       `json:"server_cert"`
-	ServerKey  string       `json:"server_key"`
-	CACert     string       `json:"ca_cert"`
-	MetronPort int          `json:"metron_port" validate:"min=1"`
+	Address                   string       `json:"address"`
+	Port                      string       `json:"port"`
+	Nats                      []NatsConfig `json:"nats"`
+	Index                     string       `json:"index"`
+	ServerCert                string       `json:"server_cert"`
+	ServerKey                 string       `json:"server_key"`
+	CACert                    string       `json:"ca_cert"`
+	MetronPort                int          `json:"metron_port" validate:"min=1"`
+	StalenessThresholdSeconds int          `json:"staleness_threshold_seconds"`
+	PruningIntervalSeconds    int          `json:"pruning_interval_seconds"`
 }
 
 type NatsConfig struct {
