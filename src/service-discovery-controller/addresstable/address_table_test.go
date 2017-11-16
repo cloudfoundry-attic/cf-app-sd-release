@@ -11,12 +11,16 @@ import (
 
 var _ = Describe("AddressTable", func() {
 	var (
-		table     *addresstable.AddressTable
-		fakeClock *fakeclock.FakeClock
+		table              *addresstable.AddressTable
+		fakeClock          *fakeclock.FakeClock
+		stalenessThreshold time.Duration
+		pruningInterval    time.Duration
 	)
 	BeforeEach(func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
-		table = addresstable.NewAddressTable(5*time.Second, 1*time.Second, fakeClock)
+		stalenessThreshold = 5 * time.Second
+		pruningInterval = 1 * time.Second
+		table = addresstable.NewAddressTable(stalenessThreshold, pruningInterval, fakeClock)
 	})
 	Describe("Add", func() {
 		It("adds an endpoint", func() {
@@ -120,7 +124,7 @@ var _ = Describe("AddressTable", func() {
 				table.Add([]string{"stale.com"}, "192.0.0.1")
 				table.Add([]string{"fresh.updated.com"}, "192.0.0.2")
 
-				fakeClock.Increment(4 * time.Second)
+				fakeClock.Increment(stalenessThreshold - 1*time.Second)
 
 				By("adding/updating routes to make them fresh", func() {
 					table.Add([]string{"fresh.updated.com"}, "192.0.0.2")
@@ -146,11 +150,18 @@ var _ = Describe("AddressTable", func() {
 			go func() {
 				table.Add([]string{"foo.com"}, "192.0.0.1")
 			}()
+			go func() {
+				fakeClock.Increment(stalenessThreshold - time.Second)
+			}()
 			Eventually(func() []string { return table.Lookup("foo.com") }).Should(ConsistOf([]string{
 				"192.0.0.1",
 				"192.0.0.2",
 			}))
 
+			table.Add([]string{"foo.com"}, "192.0.0.2")
+			go func() {
+				fakeClock.Increment(stalenessThreshold - time.Second)
+			}()
 			go func() {
 				table.Remove([]string{"foo.com"}, "192.0.0.2")
 			}()

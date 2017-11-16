@@ -25,7 +25,7 @@ func NewAddressTable(stalenessThreshold, pruningInterval time.Duration, clock cl
 		clock:              clock,
 		stalenessThreshold: stalenessThreshold,
 	}
-	table.pruneStaleEntries(pruningInterval)
+	table.pruneStaleEntriesOnInterval(pruningInterval)
 	return table
 }
 
@@ -38,7 +38,7 @@ func (at *AddressTable) Add(hostnames []string, ip string) {
 		if entryIndex == -1 {
 			at.addresses[fqHostname] = append(entries, entry{ip: ip, updateTime: at.clock.Now()})
 		} else {
-			at.addresses[fqHostname][entryIndex] = entry{ip: ip, updateTime: at.clock.Now()}
+			at.addresses[fqHostname][entryIndex].updateTime = at.clock.Now()
 		}
 	}
 	at.mutex.Unlock()
@@ -101,44 +101,51 @@ func entriesToIPs(entries []entry) []string {
 	return ips
 }
 
-func (at *AddressTable) pruneStaleEntries(pruningInterval time.Duration) {
+func (at *AddressTable) pruneStaleEntriesOnInterval(pruningInterval time.Duration) {
 	ticker := at.clock.NewTicker(pruningInterval)
 	go func() {
 		defer ticker.Stop()
 		for _ = range ticker.C() {
-			staleAddresses := []string{}
-			at.mutex.RLock()
-			for address, entries := range at.addresses {
-				for _, entry := range entries {
-					if at.clock.Since(entry.updateTime) > at.stalenessThreshold {
-						staleAddresses = append(staleAddresses, address)
-						break
-					}
-				}
-			}
-			at.mutex.RUnlock()
-
-			if len(staleAddresses) > 0 {
-				at.mutex.Lock()
-
-				for _, staleAddr := range staleAddresses {
-					entries, ok := at.addresses[staleAddr]
-					if ok {
-						freshEntries := []entry{}
-						for _, entry := range entries {
-							if at.clock.Since(entry.updateTime) <= at.stalenessThreshold {
-								freshEntries = append(freshEntries, entry)
-							}
-						}
-						at.addresses[staleAddr] = freshEntries
-					}
-				}
-
-				at.mutex.Unlock()
-			}
-
+			staleAddresses := at.addressesWithStaleEntriesWithReadLock()
+			at.pruneStaleEntriesWithWriteLock(staleAddresses)
 		}
 	}()
+}
+
+func (at *AddressTable) pruneStaleEntriesWithWriteLock(candidateAddresses []string) {
+	if len(candidateAddresses) == 0 {
+		return
+	}
+
+	at.mutex.Lock()
+	for _, staleAddr := range candidateAddresses {
+		entries, ok := at.addresses[staleAddr]
+		if ok {
+			freshEntries := []entry{}
+			for _, entry := range entries {
+				if at.clock.Since(entry.updateTime) <= at.stalenessThreshold {
+					freshEntries = append(freshEntries, entry)
+				}
+			}
+			at.addresses[staleAddr] = freshEntries
+		}
+	}
+	at.mutex.Unlock()
+}
+
+func (at *AddressTable) addressesWithStaleEntriesWithReadLock() []string {
+	staleAddresses := []string{}
+	at.mutex.RLock()
+	for address, entries := range at.addresses {
+		for _, entry := range entries {
+			if at.clock.Since(entry.updateTime) > at.stalenessThreshold {
+				staleAddresses = append(staleAddresses, address)
+				break
+			}
+		}
+	}
+	at.mutex.RUnlock()
+	return staleAddresses
 }
 
 func indexOf(entries []entry, value string) int {
