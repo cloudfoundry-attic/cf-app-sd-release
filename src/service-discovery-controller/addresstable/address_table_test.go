@@ -117,18 +117,22 @@ var _ = Describe("AddressTable", func() {
 		})
 		Context("when routes go stale", func() {
 			BeforeEach(func() {
-				table.Add([]string{"foo.com"}, "192.0.0.1")
-			})
-			It("excludes stale routes", func() {
+				table.Add([]string{"stale.com"}, "192.0.0.1")
+				table.Add([]string{"fresh.updated.com"}, "192.0.0.2")
+
 				fakeClock.Increment(4 * time.Second)
 
-				Expect(table.Lookup("foo.com")).To(Equal([]string{"192.0.0.1"}))
-				table.Add([]string{"bar.com"}, "192.0.0.2")
+				By("adding/updating routes to make them fresh", func() {
+					table.Add([]string{"fresh.updated.com"}, "192.0.0.2")
+					table.Add([]string{"fresh.just.added.com"}, "192.0.0.3")
+				})
 
 				fakeClock.Increment(1001 * time.Millisecond)
-				Eventually(func() []string { return table.Lookup("foo.com") }).Should(Equal([]string{}))
-				Eventually(func() []string { return table.Lookup("bar.com") }).Should(Equal([]string{"192.0.0.2"}))
-
+			})
+			It("excludes stale routes", func() {
+				Eventually(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{}))
+				Eventually(func() []string { return table.Lookup("fresh.updated.com") }).Should(Equal([]string{"192.0.0.2"}))
+				Eventually(func() []string { return table.Lookup("fresh.just.added.com") }).Should(Equal([]string{"192.0.0.3"}))
 			})
 
 		})

@@ -34,10 +34,12 @@ func (at *AddressTable) Add(hostnames []string, ip string) {
 	for _, hostname := range hostnames {
 		fqHostname := fqdn(hostname)
 		entries := at.entriesForHostname(fqHostname)
-		if indexOf(entries, ip) == -1 {
+		entryIndex := indexOf(entries, ip)
+		if entryIndex == -1 {
 			at.addresses[fqHostname] = append(entries, entry{ip: ip, updateTime: at.clock.Now()})
+		} else {
+			at.addresses[fqHostname][entryIndex] = entry{ip: ip, updateTime: at.clock.Now()}
 		}
-		// TODO update the update time if it has already been added
 	}
 	at.mutex.Unlock()
 }
