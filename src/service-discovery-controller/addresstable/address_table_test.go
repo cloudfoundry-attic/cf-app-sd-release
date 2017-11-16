@@ -2,6 +2,7 @@ package addresstable_test
 
 import (
 	"service-discovery-controller/addresstable"
+	"sync"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -21,6 +22,9 @@ var _ = Describe("AddressTable", func() {
 		stalenessThreshold = 5 * time.Second
 		pruningInterval = 1 * time.Second
 		table = addresstable.NewAddressTable(stalenessThreshold, pruningInterval, fakeClock)
+	})
+	AfterEach(func() {
+		table.Shutdown()
 	})
 	Describe("Add", func() {
 		It("adds an endpoint", func() {
@@ -138,37 +142,57 @@ var _ = Describe("AddressTable", func() {
 				Eventually(func() []string { return table.Lookup("fresh.updated.com") }).Should(Equal([]string{"192.0.0.2"}))
 				Eventually(func() []string { return table.Lookup("fresh.just.added.com") }).Should(Equal([]string{"192.0.0.3"}))
 			})
+		})
+	})
 
+	Describe("Shutdown", func() {
+		It("stops pruning", func() {
+			table.Add([]string{"foo.com"}, "192.0.0.1")
+			table.Shutdown()
+			fakeClock.Increment(stalenessThreshold + time.Second)
+			Consistently(func() []string { return table.Lookup("foo.com") }).Should(Equal([]string{"192.0.0.1"}))
+			Expect(fakeClock.WatcherCount()).To(Equal(0))
 		})
 	})
 
 	Describe("Concurrency", func() {
 		It("handles requests properly", func() {
+			var wg sync.WaitGroup
+			wg.Add(3)
 			go func() {
 				table.Add([]string{"foo.com"}, "192.0.0.2")
+				wg.Done()
 			}()
 			go func() {
 				table.Add([]string{"foo.com"}, "192.0.0.1")
+				wg.Done()
 			}()
 			go func() {
 				fakeClock.Increment(stalenessThreshold - time.Second)
+				wg.Done()
 			}()
 			Eventually(func() []string { return table.Lookup("foo.com") }).Should(ConsistOf([]string{
 				"192.0.0.1",
 				"192.0.0.2",
 			}))
+			wg.Wait()
 
+			wg.Add(3)
 			table.Add([]string{"foo.com"}, "192.0.0.2")
 			go func() {
 				fakeClock.Increment(stalenessThreshold - time.Second)
+				wg.Done()
 			}()
 			go func() {
 				table.Remove([]string{"foo.com"}, "192.0.0.2")
+				wg.Done()
 			}()
 			go func() {
 				table.Remove([]string{"foo.com"}, "192.0.0.1")
+				wg.Done()
 			}()
 			Eventually(func() []string { return table.Lookup("foo.com") }).Should(ConsistOf([]string{}))
+			wg.Wait()
 		})
 	})
 })

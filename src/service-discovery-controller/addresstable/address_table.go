@@ -12,6 +12,7 @@ type AddressTable struct {
 	clock              clock.Clock
 	stalenessThreshold time.Duration
 	mutex              sync.RWMutex
+	ticker             clock.Ticker
 }
 
 type entry struct {
@@ -24,7 +25,9 @@ func NewAddressTable(stalenessThreshold, pruningInterval time.Duration, clock cl
 		addresses:          map[string][]entry{},
 		clock:              clock,
 		stalenessThreshold: stalenessThreshold,
+		ticker:             clock.NewTicker(pruningInterval),
 	}
+
 	table.pruneStaleEntriesOnInterval(pruningInterval)
 	return table
 }
@@ -84,6 +87,10 @@ func (at *AddressTable) GetAllAddresses() map[string][]string {
 	return addresses
 }
 
+func (at *AddressTable) Shutdown() {
+	at.ticker.Stop()
+}
+
 func (at *AddressTable) entriesForHostname(hostname string) []entry {
 	if existing, ok := at.addresses[hostname]; ok {
 		return existing
@@ -102,10 +109,9 @@ func entriesToIPs(entries []entry) []string {
 }
 
 func (at *AddressTable) pruneStaleEntriesOnInterval(pruningInterval time.Duration) {
-	ticker := at.clock.NewTicker(pruningInterval)
 	go func() {
-		defer ticker.Stop()
-		for _ = range ticker.C() {
+		defer at.ticker.Stop()
+		for _ = range at.ticker.C() {
 			staleAddresses := at.addressesWithStaleEntriesWithReadLock()
 			at.pruneStaleEntriesWithWriteLock(staleAddresses)
 		}

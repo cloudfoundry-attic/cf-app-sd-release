@@ -100,6 +100,7 @@ func main() {
 	select {
 	case <-signalChannel:
 		subscriber.Close()
+		addressTable.Shutdown()
 		fmt.Println("Shutting service-discovery-controller down")
 		return
 	}
