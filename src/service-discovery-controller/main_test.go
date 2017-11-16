@@ -441,6 +441,57 @@ var _ = Describe("Main", func() {
 			})
 		})
 
+		Context("when disconnected from the nats server", func() {
+			var client *http.Client
+			BeforeEach(func() {
+				client = NewClient(testhelpers.CertPool(caFile), clientCert)
+			})
+			JustBeforeEach(func() {
+				natsServer.Shutdown()
+			})
+			It("does not prune stale entries", func() {
+				waitDuration := time.Duration(stalenessThresholdSeconds+pruningIntervalSeconds+1) * time.Second
+				Consistently(func() []byte {
+					resp, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+					Expect(err).ToNot(HaveOccurred())
+
+					respBody, err := ioutil.ReadAll(resp.Body)
+					Expect(err).ToNot(HaveOccurred())
+
+					return respBody
+				}, waitDuration).Should(MatchJSON(`{
+					"env": "",
+					"hosts": [
+					{
+						"ip_address": "192.168.0.1",
+						"last_check_in": "",
+						"port": 0,
+						"revision": "",
+						"service": "",
+						"service_repo_name": "",
+						"tags": {}
+					},
+					{
+						"ip_address": "192.168.0.2",
+						"last_check_in": "",
+						"port": 0,
+						"revision": "",
+						"service": "",
+						"service_repo_name": "",
+						"tags": {}
+					}],
+					"service": ""
+				}`))
+			})
+			Context("when reconnected to the nats server", func() {
+				BeforeEach(func() {
+					// start up nats server
+				})
+				It("resumes pruning after a delay", func() {
+
+				})
+			})
+		})
 	})
 
 	Context("when none of the nats urls are valid", func() {

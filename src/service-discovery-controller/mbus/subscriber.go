@@ -42,6 +42,8 @@ type RegistryMessage struct {
 type AddressTable interface {
 	Add(infraNames []string, ip string)
 	Remove(infraNames []string, ip string)
+	// PausePruning()
+	// ResumePruning()
 }
 
 type Subscriber struct {
