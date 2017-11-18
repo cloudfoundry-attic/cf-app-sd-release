@@ -1,6 +1,6 @@
 set -e -x
 
-source /var/vcap/packages/golang-1.8-linux/bosh/compile.env
+source /var/vcap/packages/golang-1.9-linux/bosh/compile.env
 
 mkdir ../src && cp -a * ../src/ && mv ../src ./src
 
