@@ -37,7 +37,7 @@ cf push server-app
 
 cf allow-access consumer-app server-app --port 808 --protocol tcp
 
-cf set-env consumer SERVER_HOSTNAME "$(cf app --guid server-app).sd-local
+cf set-env consumer SERVER_HOSTNAME "$(cf app --guid server-app).sd-local"
 cf start consumer-app
 ```
 
@@ -45,7 +45,7 @@ You can run `cf allow-access` even after both apps are started, and you don't ne
 
 From consumer-app, the following will work:
 ```
-curl $SERVER_HOSTNAME.sd-local:8080
+curl "$SERVER_HOSTNAME.sd-local:8080"
 ```
 
 ## Architecture
