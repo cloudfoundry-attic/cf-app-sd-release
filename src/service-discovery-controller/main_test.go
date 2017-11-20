@@ -442,24 +442,27 @@ var _ = Describe("Main", func() {
 		})
 
 		Context("when disconnected from the nats server", func() {
-			var client *http.Client
+			var (
+				client       *http.Client
+				waitDuration time.Duration
+			)
+
 			BeforeEach(func() {
 				client = NewClient(testhelpers.CertPool(caFile), clientCert)
-			})
-			JustBeforeEach(func() {
-				natsServer.Shutdown()
+				waitDuration = time.Duration(stalenessThresholdSeconds+pruningIntervalSeconds+1) * time.Second
 			})
 			It("does not prune stale entries", func() {
-				waitDuration := time.Duration(stalenessThresholdSeconds+pruningIntervalSeconds+1) * time.Second
-				Consistently(func() []byte {
-					resp, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
-					Expect(err).ToNot(HaveOccurred())
+				By("stopping the nats server and still returning routes past staleness threshold", func() {
+					natsServer.Shutdown()
+					Consistently(func() []byte {
+						resp, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+						Expect(err).ToNot(HaveOccurred())
 
-					respBody, err := ioutil.ReadAll(resp.Body)
-					Expect(err).ToNot(HaveOccurred())
+						respBody, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
 
-					return respBody
-				}, waitDuration).Should(MatchJSON(`{
+						return respBody
+					}, waitDuration).Should(MatchJSON(`{
 					"env": "",
 					"hosts": [
 					{
@@ -482,14 +485,25 @@ var _ = Describe("Main", func() {
 					}],
 					"service": ""
 				}`))
-			})
-			Context("when reconnected to the nats server", func() {
-				BeforeEach(func() {
-					// start up nats server
 				})
-				It("resumes pruning after a delay", func() {
 
+				By("resuming pruning when nats server is back up", func() {
+					natsServer = RunNatsServerOnPort(8080)
+					Eventually(func() []byte {
+						resp, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+						Expect(err).ToNot(HaveOccurred())
+
+						respBody, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
+
+						return respBody
+					}, waitDuration).Should(MatchJSON(`{
+					"env": "",
+					"hosts": [],
+					"service": ""
+				}`))
 				})
+
 			})
 		})
 	})

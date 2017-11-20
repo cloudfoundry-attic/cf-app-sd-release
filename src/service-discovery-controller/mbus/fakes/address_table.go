@@ -19,8 +19,14 @@ type AddressTable struct {
 		infraNames []string
 		ip         string
 	}
-	invocations      map[string][][]interface{}
-	invocationsMutex sync.RWMutex
+	PausePruningStub         func()
+	pausePruningMutex        sync.RWMutex
+	pausePruningArgsForCall  []struct{}
+	ResumePruningStub        func()
+	resumePruningMutex       sync.RWMutex
+	resumePruningArgsForCall []struct{}
+	invocations              map[string][][]interface{}
+	invocationsMutex         sync.RWMutex
 }
 
 func (fake *AddressTable) Add(infraNames []string, ip string) {
@@ -83,6 +89,38 @@ func (fake *AddressTable) RemoveArgsForCall(i int) ([]string, string) {
 	return fake.removeArgsForCall[i].infraNames, fake.removeArgsForCall[i].ip
 }
 
+func (fake *AddressTable) PausePruning() {
+	fake.pausePruningMutex.Lock()
+	fake.pausePruningArgsForCall = append(fake.pausePruningArgsForCall, struct{}{})
+	fake.recordInvocation("PausePruning", []interface{}{})
+	fake.pausePruningMutex.Unlock()
+	if fake.PausePruningStub != nil {
+		fake.PausePruningStub()
+	}
+}
+
+func (fake *AddressTable) PausePruningCallCount() int {
+	fake.pausePruningMutex.RLock()
+	defer fake.pausePruningMutex.RUnlock()
+	return len(fake.pausePruningArgsForCall)
+}
+
+func (fake *AddressTable) ResumePruning() {
+	fake.resumePruningMutex.Lock()
+	fake.resumePruningArgsForCall = append(fake.resumePruningArgsForCall, struct{}{})
+	fake.recordInvocation("ResumePruning", []interface{}{})
+	fake.resumePruningMutex.Unlock()
+	if fake.ResumePruningStub != nil {
+		fake.ResumePruningStub()
+	}
+}
+
+func (fake *AddressTable) ResumePruningCallCount() int {
+	fake.resumePruningMutex.RLock()
+	defer fake.resumePruningMutex.RUnlock()
+	return len(fake.resumePruningArgsForCall)
+}
+
 func (fake *AddressTable) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -90,6 +128,10 @@ func (fake *AddressTable) Invocations() map[string][][]interface{} {
 	defer fake.addMutex.RUnlock()
 	fake.removeMutex.RLock()
 	defer fake.removeMutex.RUnlock()
+	fake.pausePruningMutex.RLock()
+	defer fake.pausePruningMutex.RUnlock()
+	fake.resumePruningMutex.RLock()
+	defer fake.resumePruningMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

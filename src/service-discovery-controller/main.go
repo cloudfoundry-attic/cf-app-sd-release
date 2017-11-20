@@ -79,7 +79,8 @@ func main() {
 	addressTable := addresstable.NewAddressTable(
 		time.Duration(config.StalenessThresholdSeconds)*time.Second,
 		time.Duration(config.PruningIntervalSeconds)*time.Second,
-		clock.NewClock())
+		clock.NewClock(),
+		logger.Session("address-table"))
 
 	metronAddress := fmt.Sprintf("127.0.0.1:%d", config.MetronPort)
 	err = dropsonde.Initialize(metronAddress, "service-discovery-controller")
@@ -224,10 +225,10 @@ func launchSubscriber(config *config.Config, addressTable *addresstable.AddressT
 	}
 
 	metricsSender := &metrics.MetricsSender{
-		Logger: logger,
+		Logger: logger.Session("metrics"),
 	}
 
-	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger, metricsSender)
+	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger.Session("mbus"), metricsSender)
 
 	err = subscriber.Run()
 	if err != nil {

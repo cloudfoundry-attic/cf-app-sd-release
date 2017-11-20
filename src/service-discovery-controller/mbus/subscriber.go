@@ -42,8 +42,8 @@ type RegistryMessage struct {
 type AddressTable interface {
 	Add(infraNames []string, ip string)
 	Remove(infraNames []string, ip string)
-	// PausePruning()
-	// ResumePruning()
+	PausePruning()
+	ResumePruning()
 }
 
 type Subscriber struct {
@@ -111,6 +111,8 @@ func (s *Subscriber) Run() error {
 					}
 				}
 
+				s.table.ResumePruning()
+
 				s.sendStartMessage()
 			})),
 			nats.DisconnectHandler(nats.ConnHandler(func(conn *nats.Conn) {
@@ -118,6 +120,8 @@ func (s *Subscriber) Run() error {
 					"DisconnectHandler disconnected from nats server",
 					lager.Data{"last_error": conn.LastError()},
 				)
+
+				s.table.PausePruning()
 			})),
 			nats.ClosedHandler(nats.ConnHandler(func(conn *nats.Conn) {
 				s.logger.Info(
