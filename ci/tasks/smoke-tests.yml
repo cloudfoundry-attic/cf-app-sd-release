@@ -6,7 +6,7 @@ image_resource:
   source: { repository: c2cnetworking/dev-postgres }
 
 inputs:
-  - name: service-discovery-release
+  - name: cf-app-sd-release
   - name: test-config
 
 params:
@@ -16,4 +16,4 @@ params:
     DATADOG_API_KEY: ~
 
 run:
-  path: service-discovery-release/ci/tasks/smoke-tests
+  path: cf-app-sd-release/ci/tasks/smoke-tests

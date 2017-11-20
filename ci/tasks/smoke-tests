@@ -13,7 +13,7 @@ export CONFIG=${PWD}/${CONFIG:-"${ENVIRONMENT_PATH}"}
 
 echo "$CONFIG"
 
-cd service-discovery-release
+cd cf-app-sd-release
 export GOPATH=$PWD
 
 cd src/smoke
@@ -29,7 +29,7 @@ CURRENT_TIME=$(date +%s)
 
 curl -X POST -H "Content-type: application/json" \
   -d "{ \"series\" :
-         [{\"metric\":\"service-discovery-smoke.ResolveAddSuccess\",
+         [{\"metric\":\"cf-app-sd-smoke.ResolveAddSuccess\",
           \"points\":[[$CURRENT_TIME, $EXIT_STATUS]],
           \"type\":\"gauge\",
           \"tags\":[\"deployment:$ENVIRONMENT_TAG\"]
@@ -51,7 +51,7 @@ CURRENT_TIME=$(date +%s)
 
 curl -X POST -H "Content-type: application/json" \
   -d "{ \"series\" :
-         [{\"metric\":\"service-discovery-smoke.ResolveDeleteSuccess\",
+         [{\"metric\":\"cf-app-sd-smoke.ResolveDeleteSuccess\",
           \"points\":[[$CURRENT_TIME, $EXIT_STATUS]],
           \"type\":\"gauge\",
           \"tags\":[\"deployment:$ENVIRONMENT_TAG\"]

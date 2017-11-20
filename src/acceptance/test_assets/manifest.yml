@@ -18,11 +18,11 @@ instance_groups:
   - name: default
   jobs:
   - name: bosh-dns-adapter
-    release: service-discovery
+    release: cf-app-sd
     properties:
       port: 8055
   - name: service-discovery-controller
-    release: service-discovery
+    release: cf-app-sd
     properties:
       address: 127.0.0.1
       port: 8054
@@ -37,7 +37,7 @@ instance_groups:
             url: http://127.0.0.1:8055
 
 releases:
-- name: service-discovery
+- name: cf-app-sd
   version: latest
 - name: bosh-dns
   version: latest

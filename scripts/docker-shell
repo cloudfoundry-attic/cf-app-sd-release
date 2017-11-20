@@ -6,8 +6,8 @@ cd ${ROOT_DIR_PATH}
 
 docker run \
    -it \
-   -v ${PWD}:/service-discovery-release \
-   -e GOPATH=/service-discovery-release \
+   -v ${PWD}:/cf-app-sd-release \
+   -e GOPATH=/cf-app-sd-release \
    -w / \
    golang:1.9 \
    /bin/bash "$@"

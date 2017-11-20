@@ -6,15 +6,15 @@ image_resource:
 platform: linux
 
 inputs:
-- name: service-discovery
+- name: cf-app-sd
 - name: version
-- name: service-discovery-ci
+- name: cf-app-sd-ci
 
 outputs:
 - name: tarballs
 
 run:
-  path: service-discovery-ci/ci/tasks/create-release-tarball
+  path: cf-app-sd-ci/ci/tasks/create-release-tarball
 
 params:
   RELEASE_NAME: cf-app-sd

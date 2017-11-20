@@ -1,4 +1,4 @@
 #!/bin/bash
 set -xeu
 
-./service-discovery-release/scripts/unit-tests.sh
+./cf-app-sd-release/scripts/unit-tests.sh

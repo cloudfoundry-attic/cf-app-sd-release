@@ -8,9 +8,9 @@ image_resource:
     tag: '1.9'
 
 inputs:
-  - name: service-discovery-release
+  - name: cf-app-sd-release
 
 params: {}
 
 run:
-  path: service-discovery-release/ci/tasks/test-unit
+  path: cf-app-sd-release/ci/tasks/test-unit

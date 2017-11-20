@@ -6,7 +6,7 @@ image_resource:
 platform: linux
 
 inputs:
-  - name: service-discovery-release
+  - name: cf-app-sd-release
   - name: cf-deployment
   - name: deployments-repo
   - name: cf-networking-release
@@ -15,7 +15,7 @@ outputs:
   - name: ops-files
 
 run:
-  path: service-discovery-release/ci/tasks/collect-ops-files
+  path: cf-app-sd-release/ci/tasks/collect-ops-files
 
 params:
   ENVIRONMENT_NAME: ~

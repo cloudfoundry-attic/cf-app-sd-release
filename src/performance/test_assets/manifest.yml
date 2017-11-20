@@ -83,7 +83,7 @@ instance_groups:
   jobs:
   - name: performance-tests
     properties: {}
-    release: service-discovery
+    release: cf-app-sd
   lifecycle: errand
   name: performance
   networks:
@@ -132,7 +132,7 @@ instance_groups:
             private_key: ((service_discovery_client_tls.private_key))
         server:
           ca: ((service_discovery_ca.ca))
-    release: service-discovery
+    release: cf-app-sd
   - name: service-discovery-controller
     properties:
       dnshttps:
@@ -143,8 +143,8 @@ instance_groups:
             ca: ((service_discovery_ca.ca))
             certificate: ((service_discovery_server_tls.certificate))
             private_key: ((service_discovery_server_tls.private_key))
-    release: service-discovery
-  name: service-discovery
+    release: cf-app-sd
+  name: cf-app-sd
   networks:
   - name: default
   stemcell: default
@@ -166,7 +166,7 @@ releases:
   sha1: daa521930560a5f8543823b2a2984131561362c5
   url: https://bosh.io/d/github.com/cloudfoundry/bosh-dns-release?v=0.0.10
   version: 0.0.10
-- name: service-discovery
+- name: cf-app-sd
   version: latest
 stemcells:
 - alias: default

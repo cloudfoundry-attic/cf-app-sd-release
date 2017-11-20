@@ -9,12 +9,12 @@ platform: linux
 
 inputs:
   - name: bbl-state
-  - name: service-discovery-release
+  - name: cf-app-sd-release
   - name: cf-deployment-concourse-tasks
   - name: local-release
 
 run:
-  path: service-discovery-release/ci/tasks/upload-local-release
+  path: cf-app-sd-release/ci/tasks/upload-local-release
 
 params:
   BBL_STATE_DIR:

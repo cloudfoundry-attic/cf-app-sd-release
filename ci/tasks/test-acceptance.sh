@@ -2,9 +2,9 @@
 
 set -eu
 
-export GOPATH=$PWD/service-discovery-release
+export GOPATH=$PWD/cf-app-sd-release
 export PATH="${GOPATH}/bin":$PATH
-export APPS_DIR=$PWD/service-discovery-release/src/example-apps
+export APPS_DIR=$PWD/cf-app-sd-release/src/example-apps
 
 go install github.com/onsi/ginkgo/ginkgo
 

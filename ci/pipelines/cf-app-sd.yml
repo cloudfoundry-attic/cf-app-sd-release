@@ -1,5 +1,5 @@
 groups:
-- name: service-discovery
+- name: cf-app-sd 
   jobs:
   - unit-tests
   - ushanka-acceptance-tests
@@ -24,24 +24,24 @@ groups:
   - beret-deploy
 
 resources:
-  - name: service-discovery-release
+  - name: cf-app-sd-release
     type: git
     source:
-      uri: https://github.com/cloudfoundry-incubator/service-discovery-release
+      uri: https://github.com/cloudfoundry-incubator/cf-app-sd-release
       branch: master
       ignore_paths:
       - ci
-  - name: service-discovery-ci
+  - name: cf-app-sd-ci
     type: git
     source:
-      uri: https://github.com/cloudfoundry-incubator/service-discovery-release
+      uri: https://github.com/cloudfoundry-incubator/cf-app-sd-release
       branch: master
       paths:
       - ci
-  - name: service-discovery-shipped-master
+  - name: cf-app-sd-shipped-master
     type: git
     source:
-      uri: https://github.com/cloudfoundry-incubator/service-discovery-release
+      uri: https://github.com/cloudfoundry-incubator/cf-app-sd-release
       branch: master
   - name: cf-deployment-concourse-tasks
     type: git
@@ -76,27 +76,27 @@ resources:
   - name: version
     type: semver
     source:
-      bucket: {{service-discovery-s3-bucket}}
+      bucket: {{cf-app-sd-s3-bucket}}
       region_name: us-west-2
       initial_version: 0.1.0-rc.1
       key: releases/current-version
       access_key_id: {{aws-access-key-id}}
       secret_access_key: {{aws-secret-access-key}}
-  - name: service-discovery-tarball
+  - name: cf-app-sd-tarball
     type: s3
     source:
-      bucket: {{service-discovery-candidate-s3-bucket}}
+      bucket: {{cf-app-sd-candidate-s3-bucket}}
       region_name: us-west-2
       regexp: releases/cf-app-sd-(.*).tgz
       key: releases/current-version
       access_key_id: {{aws-access-key-id}}
       secret_access_key: {{aws-secret-access-key}}
 
-  - name: service-discovery-github-release
+  - name: cf-app-sd-github-release
     type: github-release
     source:
       user: cloudfoundry-incubator
-      repository: service-discovery-release
+      repository: cf-app-sd-release
       access_token: {{github-access-token}}
 
 
@@ -104,10 +104,10 @@ jobs:
   - name: unit-tests
     plan:
       - aggregate:
-          - get: service-discovery-release
+          - get: cf-app-sd-release
             trigger: true
       - task: unit-tests
-        file: service-discovery-release/ci/tasks/test-unit.yml
+        file: cf-app-sd-release/ci/tasks/test-unit.yml
 
   - name: ushanka-acceptance-tests
     serial_groups: [ushanka-deploy-group, ushanka-test-group]
@@ -116,12 +116,12 @@ jobs:
           - get: cf-networking-deployments
           - get: cf-networking-master
             passed: [ushanka-deploy]
-          - get: service-discovery-release
+          - get: cf-app-sd-release
             passed: [ushanka-deploy]
             trigger: true
       - task: ushanka-acceptance-tests
         privileged: true
-        file: service-discovery-release/ci/tasks/test-acceptance.yml
+        file: cf-app-sd-release/ci/tasks/test-acceptance.yml
         input_mapping:
           test-config: cf-networking-deployments
           vars-store: cf-networking-deployments
@@ -137,12 +137,12 @@ jobs:
           - get: cf-networking-master
             passed: [ushanka-deploy]
           - get: cf-networking-deployments
-          - get: service-discovery-release
+          - get: cf-app-sd-release
             passed: [ushanka-deploy]
             trigger: true
       - task: ushanka-smoke-tests
         privileged: true
-        file: service-discovery-release/ci/tasks/smoke-tests.yml
+        file: cf-app-sd-release/ci/tasks/smoke-tests.yml
         input_mapping:
           test-config: cf-networking-deployments
         params:
@@ -159,14 +159,14 @@ jobs:
             - ushanka-smoke-tests
             - ushanka-acceptance-tests
           - get: cf-networking-deployments
-          - get: service-discovery-release
+          - get: cf-app-sd-release
             passed:
             - ushanka-smoke-tests
             - ushanka-acceptance-tests
             trigger: true
       - task: ushanka-perf-tests
         privileged: true
-        file: service-discovery-release/ci/tasks/test-nats-performance.yml
+        file: cf-app-sd-release/ci/tasks/test-nats-performance.yml
         input_mapping:
           test-config: cf-networking-deployments
           deployments-repo: cf-networking-deployments
@@ -229,7 +229,7 @@ jobs:
           - get: cf-deployment
             trigger: true
           - get: cf-networking-master
-          - get: service-discovery-release
+          - get: cf-app-sd-release
             trigger: true
             passed: [unit-tests]
       - task: upload-stemcell
@@ -239,17 +239,17 @@ jobs:
         input_mapping:
           bbl-state: cf-networking-deployments
       - task: collect-ops-files
-        file: service-discovery-release/ci/tasks/collect-ops-files.yml
+        file: cf-app-sd-release/ci/tasks/collect-ops-files.yml
         params:
           ENVIRONMENT_NAME: ushanka
         input_mapping:
           cf-networking-release: cf-networking-master
           deployments-repo: cf-networking-deployments
-      - task: upload-local-service-discovery-releases
-        file: service-discovery-release/ci/tasks/upload-local-release.yml
+      - task: upload-local-cf-app-sd-releases
+        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
         input_mapping:
           bbl-state: cf-networking-deployments
-          local-release: service-discovery-release
+          local-release: cf-app-sd-release
         params:
           BBL_STATE_DIR: environments/ushanka/
       - task: deploy-cf
@@ -336,12 +336,12 @@ jobs:
             passed:
             - ushanka-smoke-tests
             - ushanka-acceptance-tests
-          - get: service-discovery-release
+          - get: cf-app-sd-release
             passed:
             - ushanka-smoke-tests
             - ushanka-acceptance-tests
             trigger: true
-          - get: service-discovery-ci
+          - get: cf-app-sd-ci
           - get: version
             params:
               pre: rc
@@ -352,17 +352,17 @@ jobs:
         input_mapping:
           bbl-state: cf-networking-deployments
       - task: collect-ops-files
-        file: service-discovery-release/ci/tasks/collect-ops-files.yml
+        file: cf-app-sd-release/ci/tasks/collect-ops-files.yml
         params:
           ENVIRONMENT_NAME: beret
         input_mapping:
           cf-networking-release: cf-networking-master
           deployments-repo: cf-networking-deployments
-      - task: upload-local-service-discovery-releases
-        file: service-discovery-release/ci/tasks/upload-local-release.yml
+      - task: upload-local-cf-app-sd-releases
+        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
         input_mapping:
           bbl-state: cf-networking-deployments
-          local-release: service-discovery-release
+          local-release: cf-app-sd-release
         params:
           BBL_STATE_DIR: environments/beret/
       - task: deploy-cf
@@ -383,10 +383,10 @@ jobs:
             repository: updated-vars-store
             rebase: true
       - task: create-release-tarball
-        file: service-discovery-ci/ci/tasks/create-release-tarball.yml
+        file: cf-app-sd-ci/ci/tasks/create-release-tarball.yml
         input_mapping:
-          service-discovery: service-discovery-release
-      - put: service-discovery-tarball
+          cf-app-sd: cf-app-sd-release
+      - put: cf-app-sd-tarball
         params:
           file: tarballs/cf-app-sd-*.tgz
       - put: version
@@ -410,12 +410,12 @@ jobs:
           params:
             submodules: none
           passed: [beret-deploy]
-        - get: service-discovery-release
+        - get: cf-app-sd-release
           passed: [beret-deploy]
           trigger: true
         - get: cf-deployment
           passed: [beret-deploy]
-        - get: service-discovery-tarball
+        - get: cf-app-sd-tarball
           passed: [beret-deploy]
 
   - name: ship-it
@@ -427,27 +427,27 @@ jobs:
           params:
             bump: final
           passed: [ship-what]
-        - get: service-discovery-tarball
+        - get: cf-app-sd-tarball
           passed: [ship-what]
-        - get: service-discovery-ci
-        - get: service-discovery-release
+        - get: cf-app-sd-ci
+        - get: cf-app-sd-release
           passed: [ship-what]
         - get: cf-networking-deployments
       - task: ship-it
-        file: service-discovery-ci/ci/tasks/ship-it.yml
+        file: cf-app-sd-ci/ci/tasks/ship-it.yml
         input_mapping:
-          service-discovery: service-discovery-release
+          cf-app-sd: cf-app-sd-release
       - put: version
         params: {file: version/number}
-      - put: service-discovery-shipped-master
+      - put: cf-app-sd-shipped-master
         params:
           repository: release/master
           tag: version/number
           tag_prefix: v
-      - put: service-discovery-tarball
+      - put: cf-app-sd-tarball
         params:
           file: final-release/cf-app-sd-*.tgz
-      - put: service-discovery-github-release
+      - put: cf-app-sd-github-release
         params:
           name: version/number
           tag: version/number

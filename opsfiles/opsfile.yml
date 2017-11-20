@@ -4,7 +4,7 @@
   path: /instance_groups/name=diego-cell/jobs/-
   value:
     name: bosh-dns-adapter
-    release: service-discovery
+    release: cf-app-sd
     properties:
       dnshttps:
         server:
@@ -16,7 +16,7 @@
   path: /instance_groups/name=diego-cell/jobs/-
   value:
     name: service-discovery-controller
-    release: service-discovery
+    release: cf-app-sd
     properties:
       dnshttps:
         server:
@@ -40,7 +40,7 @@
 - type: replace
   path: /releases/-
   value:
-    name: service-discovery
+    name: cf-app-sd
     version: latest
 
 - type: replace

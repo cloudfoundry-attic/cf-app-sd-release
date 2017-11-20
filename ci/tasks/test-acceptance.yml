@@ -7,7 +7,7 @@ image_resource:
     repository: c2cnetworking/deploy-light
 
 inputs:
-  - name: service-discovery-release
+  - name: cf-app-sd-release
   - name: test-config
   - name: vars-store
 
@@ -15,4 +15,4 @@ params:
   ENVIRONMENT_NAME: ~
 
 run:
-  path: service-discovery-release/ci/tasks/test-acceptance.sh
+  path: cf-app-sd-release/ci/tasks/test-acceptance.sh

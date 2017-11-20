@@ -9,4 +9,4 @@ cp cf-networking-release/manifest-generation/opsfiles/*.yml ops-files/
 
 cp deployments-repo/environments/${ENVIRONMENT_NAME}/opsfile*.yml ops-files/ || true # if we don't have an env specific opsfile
 
-cp service-discovery-release/ci/opsfiles/*.yml ops-files/
+cp cf-app-sd-release/ci/opsfiles/*.yml ops-files/

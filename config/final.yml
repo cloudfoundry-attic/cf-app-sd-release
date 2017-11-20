@@ -1,7 +1,7 @@
 ---
-name: service-discovery
+name: cf-app-sd
 blobstore:
   provider: s3
   options:
-    bucket_name: service-discovery-blobs
+    bucket_name: cf-app-sd-blobs
     region: us-east-1
