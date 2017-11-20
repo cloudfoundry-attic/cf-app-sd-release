@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/lager"
 )
 
 type AddressTable struct {
@@ -13,6 +14,8 @@ type AddressTable struct {
 	stalenessThreshold time.Duration
 	mutex              sync.RWMutex
 	ticker             clock.Ticker
+	pausedPruning      bool
+	logger             lager.Logger
 }
 
 type entry struct {
@@ -20,12 +23,14 @@ type entry struct {
 	updateTime time.Time
 }
 
-func NewAddressTable(stalenessThreshold, pruningInterval time.Duration, clock clock.Clock) *AddressTable {
+func NewAddressTable(stalenessThreshold, pruningInterval time.Duration, clock clock.Clock, logger lager.Logger) *AddressTable {
 	table := &AddressTable{
 		addresses:          map[string][]entry{},
 		clock:              clock,
 		stalenessThreshold: stalenessThreshold,
 		ticker:             clock.NewTicker(pruningInterval),
+		pausedPruning:      false,
+		logger:             logger,
 	}
 
 	table.pruneStaleEntriesOnInterval(pruningInterval)
@@ -91,6 +96,20 @@ func (at *AddressTable) Shutdown() {
 	at.ticker.Stop()
 }
 
+func (at *AddressTable) PausePruning() {
+	at.logger.Info("pruning-pause")
+	at.mutex.Lock()
+	at.pausedPruning = true
+	at.mutex.Unlock()
+}
+
+func (at *AddressTable) ResumePruning() {
+	at.logger.Info("pruning-resume")
+	at.mutex.Lock()
+	at.pausedPruning = false
+	at.mutex.Unlock()
+}
+
 func (at *AddressTable) entriesForHostname(hostname string) []entry {
 	if existing, ok := at.addresses[hostname]; ok {
 		return existing
@@ -112,6 +131,12 @@ func (at *AddressTable) pruneStaleEntriesOnInterval(pruningInterval time.Duratio
 	go func() {
 		defer at.ticker.Stop()
 		for _ = range at.ticker.C() {
+			at.mutex.RLock()
+			if at.pausedPruning {
+				at.mutex.RUnlock()
+				continue
+			}
+			at.mutex.RUnlock()
 			staleAddresses := at.addressesWithStaleEntriesWithReadLock()
 			at.pruneStaleEntriesWithWriteLock(staleAddresses)
 		}
@@ -123,10 +148,12 @@ func (at *AddressTable) pruneStaleEntriesWithWriteLock(candidateAddresses []stri
 		return
 	}
 
+	var oldTotal, newTotal int
 	at.mutex.Lock()
 	for _, staleAddr := range candidateAddresses {
 		entries, ok := at.addresses[staleAddr]
 		if ok {
+			oldCount := len(entries)
 			freshEntries := []entry{}
 			for _, entry := range entries {
 				if at.clock.Since(entry.updateTime) <= at.stalenessThreshold {
@@ -134,9 +161,13 @@ func (at *AddressTable) pruneStaleEntriesWithWriteLock(candidateAddresses []stri
 				}
 			}
 			at.addresses[staleAddr] = freshEntries
+			newCount := len(freshEntries)
+			oldTotal += oldCount
+			newTotal += newCount
 		}
 	}
 	at.mutex.Unlock()
+	at.logger.Info("pruned", lager.Data{"old-total": oldTotal, "new-total": newTotal})
 }
 
 func (at *AddressTable) addressesWithStaleEntriesWithReadLock() []string {

@@ -153,22 +153,25 @@ var _ = Describe("Subscriber", func() {
 	})
 
 	Context("when the nats server stops", func() {
+		BeforeEach(func() {
+			gnatsServer.Shutdown()
+		})
 		It("logs a message", func() {
-			By("gnatsd server stops", func() {
-				gnatsServer.Shutdown()
-			})
-
 			Eventually(subcriberLogger, 5*time.Second).Should(HaveLogged(
 				Info(
 					Message("test.DisconnectHandler disconnected from nats server"),
 					Data("last_error", nil),
 				)))
 		})
+		It("tells the address table stop pruning", func() {
+			Eventually(addressTable.PausePruningCallCount).Should(Equal(1))
+		})
 	})
 
 	Context("when subscriber loses nats server connectivity and then regains connectivity", func() {
-		It("should send a start message", func() {
-			msgChan := make(chan *nats.Msg, 1)
+		var msgChan chan *nats.Msg
+		BeforeEach(func() {
+			msgChan = make(chan *nats.Msg, 1)
 			_, err := fakeRouteEmitter.ChanSubscribe("service-discovery.start", msgChan)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeRouteEmitter.Flush()).To(Succeed())
@@ -186,6 +189,8 @@ var _ = Describe("Subscriber", func() {
 				return fakeRouteEmitter.IsConnected()
 			}, 10*time.Second).Should(BeTrue())
 
+		})
+		It("should send a start message", func() {
 			var msg *nats.Msg
 			Eventually(msgChan, 4).ShouldNot(Receive(&msg))
 
@@ -194,7 +199,7 @@ var _ = Describe("Subscriber", func() {
 
 			Expect(msg).ToNot(BeNil())
 
-			err = json.Unmarshal(msg.Data, &serviceDiscoveryData)
+			err := json.Unmarshal(msg.Data, &serviceDiscoveryData)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(serviceDiscoveryData.Id).To(Equal(subOpts.ID))
@@ -202,13 +207,16 @@ var _ = Describe("Subscriber", func() {
 			Expect(serviceDiscoveryData.PruneThresholdInSeconds).To(Equal(subOpts.PruneThresholdInSeconds))
 			Expect(serviceDiscoveryData.Host).ToNot(BeEmpty())
 			Expect(serviceDiscoveryData.Host).To(Equal("192.168.0.1"))
-
+		})
+		It("logs a message", func() {
 			Eventually(subcriberLogger, 5*time.Second).Should(HaveLogged(
 				Info(
 					Message("test.ReconnectHandler reconnected to nats server"),
 					Data("nats_host", "nats://"+gnatsServer.Addr().String()),
 				)))
-
+		})
+		It("tells the address table to resume pruning", func() {
+			Eventually(addressTable.ResumePruningCallCount, 5*time.Second).Should(Equal(1))
 		})
 	})
 

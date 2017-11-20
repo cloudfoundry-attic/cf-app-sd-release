@@ -1,11 +1,14 @@
 package addresstable_test
 
 import (
+	"fmt"
+	"math/rand"
 	"service-discovery-controller/addresstable"
 	"sync"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
+	"code.cloudfoundry.org/lager/lagertest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -16,12 +19,14 @@ var _ = Describe("AddressTable", func() {
 		fakeClock          *fakeclock.FakeClock
 		stalenessThreshold time.Duration
 		pruningInterval    time.Duration
+		logger             *lagertest.TestLogger
 	)
 	BeforeEach(func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		stalenessThreshold = 5 * time.Second
 		pruningInterval = 1 * time.Second
-		table = addresstable.NewAddressTable(stalenessThreshold, pruningInterval, fakeClock)
+		logger = lagertest.NewTestLogger("test")
+		table = addresstable.NewAddressTable(stalenessThreshold, pruningInterval, fakeClock, logger)
 	})
 	AfterEach(func() {
 		table.Shutdown()
@@ -137,10 +142,37 @@ var _ = Describe("AddressTable", func() {
 
 				fakeClock.Increment(1001 * time.Millisecond)
 			})
-			It("excludes stale routes", func() {
+			It("prunes stale routes", func() {
 				Eventually(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{}))
 				Eventually(func() []string { return table.Lookup("fresh.updated.com") }).Should(Equal([]string{"192.0.0.2"}))
 				Eventually(func() []string { return table.Lookup("fresh.just.added.com") }).Should(Equal([]string{"192.0.0.3"}))
+			})
+		})
+	})
+
+	Describe("PausePruning", func() {
+		BeforeEach(func() {
+			table.Add([]string{"stale.com"}, "192.0.0.1")
+		})
+		It("does not prune stale routes", func() {
+			table.PausePruning()
+
+			fakeClock.Increment(stalenessThreshold + 1*time.Second)
+			Consistently(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{"192.0.0.1"}))
+		})
+	})
+
+	Describe("ResumePruning", func() {
+		Context("when pruning is initially paused", func() {
+			BeforeEach(func() {
+				table.Add([]string{"stale.com"}, "192.0.0.1")
+				table.PausePruning()
+				fakeClock.Increment(stalenessThreshold + 1*time.Second)
+			})
+			It("starts pruning again", func() {
+				table.ResumePruning()
+				fakeClock.Increment(stalenessThreshold + 1*time.Second)
+				Eventually(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{}))
 			})
 		})
 	})
@@ -156,9 +188,13 @@ var _ = Describe("AddressTable", func() {
 	})
 
 	Describe("Concurrency", func() {
-		It("handles requests properly", func() {
+		It("keeps the datastore consistent", func() {
 			var wg sync.WaitGroup
-			wg.Add(3)
+			wg.Add(4)
+			go func() {
+				table.ResumePruning()
+				wg.Done()
+			}()
 			go func() {
 				table.Add([]string{"foo.com"}, "192.0.0.2")
 				wg.Done()
@@ -192,6 +228,31 @@ var _ = Describe("AddressTable", func() {
 				wg.Done()
 			}()
 			Eventually(func() []string { return table.Lookup("foo.com") }).Should(ConsistOf([]string{}))
+			wg.Wait()
+		})
+		It("does not deadlock in the face of multiple concurrent operations", func() {
+			var wg sync.WaitGroup
+			const nRoutines = 30
+			wg.Add(nRoutines)
+			for r := 0; r < nRoutines; r++ {
+				go func(i int) {
+					switch rand.Intn(6) {
+					case 0:
+						table.Add([]string{fmt.Sprintf("%d-foo.com", i)}, fmt.Sprintf("192.0.0.%d", i))
+					case 1:
+						table.Remove([]string{fmt.Sprintf("%d-foo.com", i)}, fmt.Sprintf("192.0.0.%d", i))
+					case 2:
+						fakeClock.Increment(stalenessThreshold / 2)
+					case 3:
+						table.PausePruning()
+					case 4:
+						table.ResumePruning()
+					case 5:
+						table.GetAllAddresses()
+					}
+					wg.Done()
+				}(r)
+			}
 			wg.Wait()
 		})
 	})
