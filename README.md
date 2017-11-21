@@ -55,7 +55,9 @@ curl "$SERVER_HOSTNAME.sd-local:8080"
 
 ## How To Deploy
 
-### Link to Experimental Ops File for cf-deployment (Coming Soon)
+### Experimental Ops File for cf-deployment
+
+See [opsfile](opsfiles/enable-service-discovery.yml) and our [pipeline](ci/pipelines/cf-app-sd.yml) that uses this opsfile.
 
 ### Deploying to cf-release (Coming Soon)
 

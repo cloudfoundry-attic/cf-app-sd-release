@@ -29,8 +29,6 @@ resources:
     source:
       uri: https://github.com/cloudfoundry/cf-app-sd-release
       branch: master
-      ignore_paths:
-      - ci
   - name: cf-app-sd-ci
     type: git
     source:
@@ -257,11 +255,11 @@ jobs:
         params:
           BBL_STATE_DIR: environments/ushanka/
           SYSTEM_DOMAIN: ushanka.c2c.cf-app.com
-          OPS_FILES: use-compiled-releases.yml datadog.yml cf-networking.yml use-bosh-dns-for-containers.yml opsfile.yml
+          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml enable-service-discovery.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/ushanka/vars-store.yml
         input_mapping:
           bbl-state: cf-networking-deployments
-          release: cf-networking-master
+          release: cf-app-sd-release
           vars-files: cf-networking-deployments
           vars-store: cf-networking-deployments
         ensure:
@@ -370,11 +368,11 @@ jobs:
         params:
           BBL_STATE_DIR: environments/beret/
           SYSTEM_DOMAIN: beret.c2c.cf-app.com
-          OPS_FILES: use-compiled-releases.yml datadog.yml cf-networking.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml opsfile.yml
+          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml enable-service-discovery.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/beret/vars-store.yml
         input_mapping:
           bbl-state: cf-networking-deployments
-          release: cf-networking-master
+          release: cf-app-sd-release
           vars-files: cf-networking-deployments
           vars-store: cf-networking-deployments
         ensure:
