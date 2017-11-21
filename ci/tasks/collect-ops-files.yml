@@ -9,7 +9,6 @@ inputs:
   - name: cf-app-sd-release
   - name: cf-deployment
   - name: deployments-repo
-  - name: cf-networking-release
 
 outputs:
   - name: ops-files
