@@ -27,21 +27,21 @@ resources:
   - name: cf-app-sd-release
     type: git
     source:
-      uri: https://github.com/cloudfoundry-incubator/cf-app-sd-release
+      uri: https://github.com/cloudfoundry/cf-app-sd-release
       branch: master
       ignore_paths:
       - ci
   - name: cf-app-sd-ci
     type: git
     source:
-      uri: https://github.com/cloudfoundry-incubator/cf-app-sd-release
+      uri: https://github.com/cloudfoundry/cf-app-sd-release
       branch: master
       paths:
       - ci
   - name: cf-app-sd-shipped-master
     type: git
     source:
-      uri: https://github.com/cloudfoundry-incubator/cf-app-sd-release
+      uri: https://github.com/cloudfoundry/cf-app-sd-release
       branch: master
   - name: cf-deployment-concourse-tasks
     type: git
