@@ -65,6 +65,11 @@ resources:
       ignore_paths:
         - docs
       private_key: {{cf-networking-deploy-key}}
+  - name: bosh-dns-cf-networking
+    type: git
+    source:
+      uri: https://github.com/cf-container-networking/bosh-dns-release
+      branch: master
   ####### Timers
   - name: every-fifteen-minutes
     type: time
@@ -230,6 +235,7 @@ jobs:
           - get: cf-app-sd-release
             trigger: true
             passed: [unit-tests]
+          - get: bosh-dns-cf-networking
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -250,6 +256,16 @@ jobs:
           local-release: cf-app-sd-release
         params:
           BBL_STATE_DIR: environments/ushanka/
+
+      # Temporary until https://github.com/cloudfoundry/bosh-dns-release/pull/10 makes it into bosh-dns-release
+      - task: upload-local-bosh-dns-release
+        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          local-release: bosh-dns-cf-networking
+        params:
+          BBL_STATE_DIR: environments/ushanka/
+
       - task: deploy-cf
         file: cf-deployment-concourse-tasks/bosh-deploy-with-created-release/task.yml
         params:
@@ -343,6 +359,7 @@ jobs:
           - get: version
             params:
               pre: rc
+          - get: bosh-dns-cf-networking
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -363,6 +380,16 @@ jobs:
           local-release: cf-app-sd-release
         params:
           BBL_STATE_DIR: environments/beret/
+
+      # Temporary until https://github.com/cloudfoundry/bosh-dns-release/pull/10 makes it into bosh-dns-release
+      - task: upload-local-bosh-dns-release
+        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          local-release: bosh-dns-cf-networking
+        params:
+          BBL_STATE_DIR: environments/ushanka/
+
       - task: deploy-cf
         file: cf-deployment-concourse-tasks/bosh-deploy-with-created-release/task.yml
         params:

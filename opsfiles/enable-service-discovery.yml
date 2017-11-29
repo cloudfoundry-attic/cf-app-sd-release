@@ -29,14 +29,6 @@
     enabled: true
 
 - type: replace
-  path: /addons/name=bosh-dns/jobs/name=bosh-dns/properties/handlers?
-  value:
-    - domain: sd-local.
-      source:
-        type: http
-        url: http://127.0.0.1:8053
-
-- type: replace
   path: /variables/-
   value:
     name: cf_app_sd_ca
@@ -66,3 +58,10 @@
       common_name: service-discovery-controller.internal
       extended_key_usage:
       - client_auth
+
+# Temporary until https://github.com/cloudfoundry/bosh-dns-release/pull/10 makes it into bosh-dns-release
+- type: replace
+  path: /releases/-
+  value:
+    name: bosh-dns
+    version: latest

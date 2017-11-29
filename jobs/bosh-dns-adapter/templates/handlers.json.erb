@@ -1,0 +1,16 @@
+ <%=
+
+config = [
+  {
+    "domain" => "sd-local.",
+    "cache" => {"enabled" => false},
+    "source" => {
+      "type" => "http",
+      "recursors" => ["http://#{p("address")}:#{p("port")}"]
+    }
+  }
+]
+
+require 'json'
+JSON.dump(config)
+%>
