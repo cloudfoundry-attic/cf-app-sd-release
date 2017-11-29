@@ -6,7 +6,7 @@ config = [
     "cache" => {"enabled" => false},
     "source" => {
       "type" => "http",
-      "recursors" => ["http://#{p("address")}:#{p("port")}"]
+      "recursors" => ["#{p("address")}:#{p("port")}"]
     }
   }
 ]
