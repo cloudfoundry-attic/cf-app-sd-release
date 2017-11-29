@@ -15,13 +15,13 @@ In order to support all types of apps, languages and frameworks, we plan to buil
 
 When a user pushes an app, their app is automatically given an internal DNS entry, e.g.
 ```
-app-guid.sd-tld
+app-guid.apps.internal
 ```
-This DNS entry will automatically load balance between all instances of this app.
+This DNS entry will automatically load balance between all instances of this app. For the time being, your tld will always be `apps.internal`.
 
 Each instance of the application also receives a specific DNS entry, e.g.
 ```
-instance-index.app-guid.sd-tld
+instance-index.app-guid.apps.internal
 ```
 that you can use to access one instance of the app, so it will not load balance between all instances.
 
@@ -37,7 +37,7 @@ cf push server-app
 
 cf allow-access consumer-app server-app --port 808 --protocol tcp
 
-cf set-env consumer SERVER_HOSTNAME "$(cf app --guid server-app).sd-local"
+cf set-env consumer SERVER_HOSTNAME "$(cf app --guid server-app).apps.internal"
 cf start consumer-app
 ```
 
@@ -45,7 +45,7 @@ You can run `cf allow-access` even after both apps are started, and you don't ne
 
 From consumer-app, the following will work:
 ```
-curl "$SERVER_HOSTNAME.sd-local:8080"
+curl "$SERVER_HOSTNAME.apps.internal:8080"
 ```
 
 ## Architecture
