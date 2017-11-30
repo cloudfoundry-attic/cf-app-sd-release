@@ -12,7 +12,7 @@
           tls: ((cf_app_sd_client_tls))
 
 - type: replace
-  path: /instance_groups/name=diego-cell/jobs/-
+  path: /instance_groups/name=router/jobs/-
   value:
     name: service-discovery-controller
     release: cf-app-sd
