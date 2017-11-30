@@ -58,14 +58,3 @@
       common_name: service-discovery-controller.internal
       extended_key_usage:
       - client_auth
-
-# Temporary until https://github.com/cloudfoundry/bosh-dns-release/pull/10 makes it into bosh-dns-release
-- type: replace
-  path: /releases/name=bosh-dns?/version
-  value: latest
-
-- type: remove
-  path: /releases/name=bosh-dns/url?
-
-- type: remove
-  path: /releases/name=bosh-dns/sha1?

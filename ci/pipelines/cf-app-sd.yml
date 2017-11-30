@@ -271,7 +271,7 @@ jobs:
         params:
           BBL_STATE_DIR: environments/ushanka/
           SYSTEM_DOMAIN: ushanka.c2c.cf-app.com
-          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml enable-service-discovery.yml use-latest.yml opsfile.yml
+          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-latest-bosh-dns.yml enable-service-discovery.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/ushanka/vars-store.yml
         input_mapping:
           bbl-state: cf-networking-deployments
@@ -395,7 +395,7 @@ jobs:
         params:
           BBL_STATE_DIR: environments/beret/
           SYSTEM_DOMAIN: beret.c2c.cf-app.com
-          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml enable-service-discovery.yml use-latest.yml opsfile.yml
+          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-latest-bosh-dns.yml enable-service-discovery.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/beret/vars-store.yml
         input_mapping:
           bbl-state: cf-networking-deployments
