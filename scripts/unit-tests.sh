@@ -12,7 +12,7 @@ go get github.com/onsi/ginkgo/ginkgo
 
 echo -e "\n Formatting packages..."
 
-for packageToFmt in bosh-dns-adapter service-discovery-controller acceptance_tests smoke_tests; do
+for packageToFmt in bosh-dns-adapter service-discovery-controller acceptance smoke; do
     reformatted_packages=$(go fmt $packageToFmt/...)
     if [[ $reformatted_packages = *[![:space:]]* ]]; then
       echo "FAILURE: go fmt reformatted the following packages:"

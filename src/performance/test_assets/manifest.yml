@@ -159,7 +159,7 @@ releases:
   sha1: bdb04d0d18a71d8b3144e477c43c0f5c72c2eccb
   stemcell:
     os: ubuntu-trusty
-    version: '3468'
+    version: latest
   url: https://storage.googleapis.com/cf-deployment-compiled-releases/nats-22-ubuntu-trusty-3468-20171006-173847-874271262.tgz
   version: '22'
 - name: bosh-dns
@@ -171,7 +171,7 @@ releases:
 stemcells:
 - alias: default
   os: ubuntu-trusty
-  version: '3468'
+  version: latest
 update:
   canaries: 1
   canary_watch_time: 30000-1200000
