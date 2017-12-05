@@ -38,6 +38,10 @@ files:
   - github.com/nu7hatch/gouuid/*.go # gosub
   - github.com/pivotal-cf/paraphernalia/secure/tlsconfig/*.go # gosub
   - github.com/pkg/errors/*.go # gosub
+  - github.com/tedsuo/ifrit/*.go # gosub
+  - github.com/tedsuo/ifrit/grouper/*.go # gosub
+  - github.com/tedsuo/ifrit/sigmon/*.go # gosub
+  - gopkg.in/validator.v2/*.go # gosub
   - service-discovery-controller/*.go # gosub
   - service-discovery-controller/addresstable/*.go # gosub
   - service-discovery-controller/config/*.go # gosub
