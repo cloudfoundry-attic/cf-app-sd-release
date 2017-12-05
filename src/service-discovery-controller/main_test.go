@@ -456,9 +456,17 @@ var _ = Describe("Service Discovery Controller process", func() {
 					return ev.Name
 				}, Equal(name))
 			}
+			withOrigin := func(origin string) types.GomegaMatcher {
+				return WithTransform(func(ev metrics.Event) string {
+					return ev.Origin
+				}, Equal(origin))
+			}
 
 			It("emits an uptime metric", func() {
-				Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(withName("uptime")))
+				Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+					withName("uptime"),
+					withOrigin("service-discovery-controller"),
+				)))
 			})
 		})
 
