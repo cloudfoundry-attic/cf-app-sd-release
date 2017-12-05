@@ -1,9 +1,12 @@
 package config_test
 
 import (
+	"encoding/json"
+	"fmt"
 	. "service-discovery-controller/config"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
@@ -32,7 +35,9 @@ var _ = Describe("Config", func() {
 					}
 				],
 				"staleness_threshold_seconds": 5,
-				"pruning_interval_seconds": 3
+				"pruning_interval_seconds": 3,
+				"metrics_emit_seconds": 6,
+				"metron_port": 8080
 			}`)
 
 			parsedConfig, err := NewConfig(configJSON)
@@ -49,6 +54,7 @@ var _ = Describe("Config", func() {
 			Expect(parsedConfig.NatsServers()).To(ContainElement("nats://b-nats-user:b-nats-pass@b-nats-host:2"))
 			Expect(parsedConfig.StalenessThresholdSeconds).To(Equal(5))
 			Expect(parsedConfig.PruningIntervalSeconds).To(Equal(3))
+			Expect(parsedConfig.MetricsEmitSeconds).To(Equal(6))
 		})
 	})
 
@@ -56,7 +62,42 @@ var _ = Describe("Config", func() {
 		It("returns an error", func() {
 			configJSON := []byte(`garbage`)
 			_, err := NewConfig(configJSON)
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("unmarshal config")))
 		})
 	})
+
+	var requiredFields map[string]interface{}
+	BeforeEach(func() {
+		requiredFields = map[string]interface{}{
+			"metron_port":                 8080,
+			"staleness_threshold_seconds": 5,
+			"pruning_interval_seconds":    3,
+			"metrics_emit_seconds":        678,
+		}
+	})
+
+	DescribeTable("when config file field contains an invalid value",
+		func(invalidField string, value interface{}, errorString string) {
+			cfg := cloneMap(requiredFields)
+			cfg[invalidField] = value
+
+			cfgBytes, _ := json.Marshal(cfg)
+			_, err := NewConfig(cfgBytes)
+
+			Expect(err).To(MatchError(fmt.Sprintf("invalid config: %s", errorString)))
+		},
+
+		Entry("invalid metron_port", "metron_port", -2, "MetronPort: less than min"),
+		Entry("invalid staleness_threshold_seconds", "staleness_threshold_seconds", -2, "StalenessThresholdSeconds: less than min"),
+		Entry("invalid pruning_interval_seconds", "pruning_interval_seconds", -2, "PruningIntervalSeconds: less than min"),
+		Entry("invalid metrics_emit_seconds", "metrics_emit_seconds", -2, "MetricsEmitSeconds: less than min"),
+	)
 })
+
+func cloneMap(original map[string]interface{}) map[string]interface{} {
+	new := map[string]interface{}{}
+	for k, v := range original {
+		new[k] = v
+	}
+	return new
+}

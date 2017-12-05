@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/metrics"
+
 	"fmt"
 	"time"
 
@@ -19,9 +21,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/onsi/gomega/types"
 )
 
-var _ = Describe("Main", func() {
+var _ = Describe("Service Discovery Controller process", func() {
 	var (
 		session                   *gexec.Session
 		configPath                string
@@ -33,12 +36,14 @@ var _ = Describe("Main", func() {
 		serverKey                 string
 		stalenessThresholdSeconds int
 		pruningIntervalSeconds    int
+		fakeMetron                metrics.FakeMetron
 	)
 
 	BeforeEach(func() {
 		caFile, serverCert, serverKey, clientCert = testhelpers.GenerateCaAndMutualTlsCerts()
 		stalenessThresholdSeconds = 1
 		pruningIntervalSeconds = 1
+		fakeMetron = metrics.NewFakeMetron()
 
 		natsServer = RunNatsServerOnPort(8080)
 		configPath = writeConfigFile(fmt.Sprintf(`{
@@ -56,8 +61,10 @@ var _ = Describe("Main", func() {
 				}
 			],
 			"staleness_threshold_seconds": %d,
-			"pruning_interval_seconds": %d
-		}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds))
+			"pruning_interval_seconds": %d,
+			"metron_port": %d,
+			"metrics_emit_seconds": 2
+		}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port()))
 	})
 
 	AfterEach(func() {
@@ -73,7 +80,7 @@ var _ = Describe("Main", func() {
 			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(session, 5*time.Second).Should(gbytes.Say("Server Started"))
+			Eventually(session, 5*time.Second).Should(gbytes.Say("server-started"))
 
 			routeEmitter = newFakeRouteEmitter("nats://" + natsServer.Addr().String())
 			register(routeEmitter, "192.168.0.1", "app-id.internal.local.")
@@ -404,8 +411,10 @@ var _ = Describe("Main", func() {
 						}
 					],
 					"staleness_threshold_seconds": %d,
-					"pruning_interval_seconds": %d
-				}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds))
+					"pruning_interval_seconds": %d,
+					"metrics_emit_seconds": 2,
+					"metron_port": %d
+				}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port()))
 			})
 
 			It("connects to NATs successfully", func() {
@@ -438,6 +447,18 @@ var _ = Describe("Main", func() {
 					}],
 					"service": ""
 				}`))
+			})
+		})
+
+		Describe("emitting metrics", func() {
+			withName := func(name string) types.GomegaMatcher {
+				return WithTransform(func(ev metrics.Event) string {
+					return ev.Name
+				}, Equal(name))
+			}
+
+			It("emits an uptime metric", func() {
+				Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(withName("uptime")))
 			})
 		})
 

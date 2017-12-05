@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+
+	validator "gopkg.in/validator.v2"
 )
 
 type Config struct {
@@ -15,8 +17,9 @@ type Config struct {
 	ServerKey                 string       `json:"server_key"`
 	CACert                    string       `json:"ca_cert"`
 	MetronPort                int          `json:"metron_port" validate:"min=1"`
-	StalenessThresholdSeconds int          `json:"staleness_threshold_seconds"`
-	PruningIntervalSeconds    int          `json:"pruning_interval_seconds"`
+	StalenessThresholdSeconds int          `json:"staleness_threshold_seconds" validate:"min=1"`
+	PruningIntervalSeconds    int          `json:"pruning_interval_seconds" validate:"min=1"`
+	MetricsEmitSeconds        int          `json:"metrics_emit_seconds" validate:"min=1"`
 }
 
 type NatsConfig struct {
@@ -29,6 +32,13 @@ type NatsConfig struct {
 func NewConfig(configJSON []byte) (*Config, error) {
 	sdcConfig := &Config{}
 	err := json.Unmarshal(configJSON, sdcConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal config: %s", err)
+	}
+
+	if err = validator.Validate(sdcConfig); err != nil {
+		return nil, fmt.Errorf("invalid config: %s", err)
+	}
 	return sdcConfig, err
 }
 

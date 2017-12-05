@@ -27,6 +27,9 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
+	"github.com/tedsuo/ifrit/sigmon"
 )
 
 type host struct {
@@ -96,7 +99,26 @@ func main() {
 
 	launchHttpServer(config, addressTable, logger)
 
-	fmt.Println("Server Started")
+	uptimeSource := metrics.NewUptimeSource()
+	metricsEmitter := metrics.NewMetricsEmitter(
+		logger,
+		time.Duration(config.MetricsEmitSeconds)*time.Second,
+		uptimeSource,
+	)
+	members := grouper.Members{
+		{"metrics-emitter", metricsEmitter},
+	}
+	group := grouper.NewOrdered(os.Interrupt, members)
+	monitor := ifrit.Invoke(sigmon.New(group))
+
+	go func() {
+		err = <-monitor.Wait()
+		if err != nil {
+			logger.Fatal("ifrit-failure", err)
+		}
+	}()
+
+	logger.Info("server-started")
 
 	select {
 	case <-signalChannel:

@@ -76,3 +76,9 @@
 [submodule "src/code.cloudfoundry.org/clock"]
 	path = src/code.cloudfoundry.org/clock
 	url = https://github.com/cloudfoundry/clock
+[submodule "src/github.com/tedsuo/ifrit"]
+	path = src/github.com/tedsuo/ifrit
+	url = https://github.com/tedsuo/ifrit.git
+[submodule "src/gopkg.in/validator.v2"]
+	path = src/gopkg.in/validator.v2
+	url = https://github.com/go-validator/validator.git
