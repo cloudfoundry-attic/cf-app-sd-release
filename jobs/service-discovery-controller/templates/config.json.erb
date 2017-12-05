@@ -8,7 +8,8 @@ config = {
     "ca_cert" => "/var/vcap/jobs/service-discovery-controller/config/certs/client_ca.crt",
     "metron_port" => p("service_discovery_controller.metron_port"),
     "staleness_threshold_seconds" => 60,
-    "pruning_interval_seconds" => 10
+    "pruning_interval_seconds" => 10,
+    "metrics_emit_seconds" => 10
 }
 
 nats_machines = nil
