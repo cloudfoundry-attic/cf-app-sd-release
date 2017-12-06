@@ -70,11 +70,6 @@ resources:
     source:
       uri: https://github.com/cf-container-networking/bosh-dns-release
       branch: master
-  - name: capi-cf-networking
-    type: git
-    source:
-      uri: https://github.com/cf-container-networking/capi-release
-      branch: apps-internal
   ####### Timers
   - name: every-fifteen-minutes
     type: time
@@ -241,7 +236,6 @@ jobs:
             trigger: true
             passed: [unit-tests]
           - get: bosh-dns-cf-networking
-          - get: capi-cf-networking
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -271,17 +265,6 @@ jobs:
         input_mapping:
           bbl-state: cf-networking-deployments
           local-release: bosh-dns-cf-networking
-        params:
-          BBL_STATE_DIR: environments/ushanka/
-
-      # Temporary until
-      # https://github.com/cloudfoundry/cloud_controller_ng/pull/1026 makes it
-      # into cloud_controller_ng, capi-release, and cf-deployment
-      - task: upload-local-capi-release
-        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
-        input_mapping:
-          bbl-state: cf-networking-deployments
-          local-release: capi-cf-networking
         params:
           BBL_STATE_DIR: environments/ushanka/
 
@@ -379,7 +362,6 @@ jobs:
             params:
               pre: rc
           - get: bosh-dns-cf-networking
-          - get: capi-cf-networking
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -409,17 +391,6 @@ jobs:
         input_mapping:
           bbl-state: cf-networking-deployments
           local-release: bosh-dns-cf-networking
-        params:
-          BBL_STATE_DIR: environments/beret/
-
-      # Temporary until
-      # https://github.com/cloudfoundry/cloud_controller_ng/pull/1026 makes it
-      # into cloud_controller_ng, capi-release, and cf-deployment
-      - task: upload-local-capi-release
-        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
-        input_mapping:
-          bbl-state: cf-networking-deployments
-          local-release: capi-cf-networking
         params:
           BBL_STATE_DIR: environments/beret/
 
