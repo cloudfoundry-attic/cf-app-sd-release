@@ -35,7 +35,7 @@ var _ = Describe("Stop Acceptance", func() {
 		pushApp(dstAppName, 1)
 
 		proxyGuid := getAppGUID(dstAppName)
-		hostName = "http://" + srcAppName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".sd-local."
+		hostName = "http://" + srcAppName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal."
 		proxyIPs := digForNumberOfIPs(hostName, 1)
 
 		Expect(proxyIPs).To(ContainElement(getInternalIP(dstAppName, 0)))

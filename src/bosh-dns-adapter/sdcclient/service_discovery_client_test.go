@@ -39,7 +39,7 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := NewServiceDiscoveryClient("app-id.sd-local.", caFileName, clientCertFileName, clientKeyFileName)
+				_, err := NewServiceDiscoveryClient("app-id.apps.internal.", caFileName, clientCertFileName, clientKeyFileName)
 				Expect(err).To(MatchError("read CA file: open non-existent: no such file or directory"))
 
 			})
@@ -51,7 +51,7 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := NewServiceDiscoveryClient("app-id.sd-local.", caFileName, clientCertFileName, clientKeyFileName)
+				_, err := NewServiceDiscoveryClient("app-id.apps.internal.", caFileName, clientCertFileName, clientKeyFileName)
 				Expect(err).To(MatchError("load CA file into cert pool"))
 
 			})
@@ -63,7 +63,7 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 				clientCertFileName = "non-existent"
 			})
 			It("returns an error", func() {
-				_, err := NewServiceDiscoveryClient("app-id.sd-local.", caFileName, clientCertFileName, clientKeyFileName)
+				_, err := NewServiceDiscoveryClient("app-id.apps.internal.", caFileName, clientCertFileName, clientKeyFileName)
 				Expect(err).To(MatchError("load client key pair: open non-existent: no such file or directory"))
 			})
 		})
@@ -99,7 +99,7 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 		Context("when the server responds successfully", func() {
 			BeforeEach(func() {
 				fakeServerResponse = ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
 					ghttp.RespondWith(http.StatusOK, `{
 							"env": "",
 							"Hosts": [
@@ -127,7 +127,7 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 			})
 
 			It("returns the ips in the server response", func() {
-				actualIPs, err := client.IPs("app-id.sd-local.")
+				actualIPs, err := client.IPs("app-id.apps.internal.")
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(actualIPs).To(Equal([]string{"192.168.0.1", "192.168.0.2"}))
@@ -137,13 +137,13 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 		Context("when the server responds with malformed JSON", func() {
 			BeforeEach(func() {
 				fakeServerResponse = ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
 					ghttp.RespondWith(http.StatusOK, `garbage`))
 				fakeServer.AppendHandlers(fakeServerResponse)
 			})
 
 			It("returns an error", func() {
-				_, err := client.IPs("app-id.sd-local.")
+				_, err := client.IPs("app-id.apps.internal.")
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -151,13 +151,13 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 		Context("when the server responds a non-200 response", func() {
 			BeforeEach(func() {
 				fakeServerResponse = ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/v1/registration/app-id.sd-local.", ""),
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
 					ghttp.RespondWith(http.StatusBadRequest, `{}`))
 				fakeServer.AppendHandlers(fakeServerResponse)
 			})
 
 			It("returns an error", func() {
-				_, err := client.IPs("app-id.sd-local.")
+				_, err := client.IPs("app-id.apps.internal.")
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("Received non successful response from server:"))
 			})

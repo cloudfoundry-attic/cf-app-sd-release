@@ -39,7 +39,7 @@ var _ = Describe("Push Acceptance", func() {
 			pushApp(appName, 1)
 
 			proxyGuid := getAppGUID(appName)
-			hostName := "http://" + appName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".sd-local."
+			hostName := "http://" + appName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal."
 			proxyIPs := digForNumberOfIPs(hostName, 1)
 
 			Expect(proxyIPs).To(ContainElement(getInternalIP(appName, 0)))

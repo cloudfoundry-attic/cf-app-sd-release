@@ -47,7 +47,7 @@ var _ = Describe("Delete App Smoke", func() {
 
 		By("making sure the app is resolved to the correct ip")
 		proxyIPs := []string{}
-		hostName = "http://" + queryAppName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".sd-local."
+		hostName = "http://" + queryAppName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal."
 		Eventually(func() []string {
 			resp, err := http.Get(hostName)
 

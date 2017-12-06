@@ -61,7 +61,7 @@ var _ = Describe("Push App Smoke", func() {
 			proxyIPs := []string{}
 			b.Time("digAnswer", func() {
 				Eventually(func() []string {
-					resp, err := http.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".sd-local.")
+					resp, err := http.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal.")
 
 					Expect(err).NotTo(HaveOccurred())
 					Expect(resp.StatusCode).To(Equal(http.StatusOK))
