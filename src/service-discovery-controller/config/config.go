@@ -9,13 +9,13 @@ import (
 )
 
 type Config struct {
-	Address                   string       `json:"address"`
-	Port                      string       `json:"port"`
+	Address                   string       `json:"address" validate:"nonzero"`
+	Port                      string       `json:"port" validate:"nonzero"`
 	Nats                      []NatsConfig `json:"nats"`
 	Index                     string       `json:"index"`
-	ServerCert                string       `json:"server_cert"`
-	ServerKey                 string       `json:"server_key"`
-	CACert                    string       `json:"ca_cert"`
+	ServerCert                string       `json:"server_cert" validate:"nonzero"`
+	ServerKey                 string       `json:"server_key" validate:"nonzero"`
+	CACert                    string       `json:"ca_cert" validate:"nonzero"`
 	MetronPort                int          `json:"metron_port" validate:"min=1"`
 	StalenessThresholdSeconds int          `json:"staleness_threshold_seconds" validate:"min=1"`
 	PruningIntervalSeconds    int          `json:"pruning_interval_seconds" validate:"min=1"`

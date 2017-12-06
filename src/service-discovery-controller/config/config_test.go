@@ -69,6 +69,11 @@ var _ = Describe("Config", func() {
 	var requiredFields map[string]interface{}
 	BeforeEach(func() {
 		requiredFields = map[string]interface{}{
+			"address":                     "example.com",
+			"port":                        "80053",
+			"server_cert":                 "path_to_cert",
+			"server_key":                  "path_to_key",
+			"ca_cert":                     "path_to_ca_cert",
 			"metron_port":                 8080,
 			"staleness_threshold_seconds": 5,
 			"pruning_interval_seconds":    3,
@@ -91,6 +96,11 @@ var _ = Describe("Config", func() {
 		Entry("invalid staleness_threshold_seconds", "staleness_threshold_seconds", -2, "StalenessThresholdSeconds: less than min"),
 		Entry("invalid pruning_interval_seconds", "pruning_interval_seconds", -2, "PruningIntervalSeconds: less than min"),
 		Entry("invalid metrics_emit_seconds", "metrics_emit_seconds", -2, "MetricsEmitSeconds: less than min"),
+		Entry("invalid address", "address", "", "Address: zero value"),
+		Entry("invalid port", "port", "", "Port: zero value"),
+		Entry("invalid server_cert", "server_cert", "", "ServerCert: zero value"),
+		Entry("invalid server_key", "server_key", "", "ServerKey: zero value"),
+		Entry("invalid ca_cert", "ca_cert", "", "CACert: zero value"),
 	)
 })
 
