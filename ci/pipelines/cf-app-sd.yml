@@ -70,6 +70,11 @@ resources:
     source:
       uri: https://github.com/cf-container-networking/bosh-dns-release
       branch: master
+  - name: capi-cf-networking
+    type: git
+    source:
+      uri: https://github.com/cf-container-networking/capi-release
+      branch: apps-internal
   ####### Timers
   - name: every-fifteen-minutes
     type: time
@@ -257,7 +262,9 @@ jobs:
         params:
           BBL_STATE_DIR: environments/ushanka/
 
-      # Temporary until https://github.com/cloudfoundry/bosh-dns-release/pull/10 makes it into bosh-dns-release
+      # Temporary until
+      # https://github.com/cloudfoundry/bosh-dns-release/pull/10 makes it into
+      # bosh-dns-release and cf-deployment
       - task: upload-local-bosh-dns-release
         file: cf-app-sd-release/ci/tasks/upload-local-release.yml
         input_mapping:
@@ -266,12 +273,23 @@ jobs:
         params:
           BBL_STATE_DIR: environments/ushanka/
 
+      # Temporary until
+      # https://github.com/cloudfoundry/cloud_controller_ng/pull/1026 makes it
+      # into cloud_controller_ng, capi-release, and cf-deployment
+      - task: upload-local-capi-release
+        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          local-release: capi-cf-networking
+        params:
+          BBL_STATE_DIR: environments/ushanka/
+
       - task: deploy-cf
         file: cf-deployment-concourse-tasks/bosh-deploy-with-created-release/task.yml
         params:
           BBL_STATE_DIR: environments/ushanka/
           SYSTEM_DOMAIN: ushanka.c2c.cf-app.com
-          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-latest-bosh-dns.yml enable-service-discovery.yml use-latest.yml opsfile.yml
+          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-latest-bosh-dns.yml use-latest-capi.yml enable-service-discovery.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/ushanka/vars-store.yml
         input_mapping:
           bbl-state: cf-networking-deployments
@@ -381,21 +399,34 @@ jobs:
         params:
           BBL_STATE_DIR: environments/beret/
 
-      # Temporary until https://github.com/cloudfoundry/bosh-dns-release/pull/10 makes it into bosh-dns-release
+      # Temporary until
+      # https://github.com/cloudfoundry/bosh-dns-release/pull/10 makes it into
+      # bosh-dns-release and cf-deployment
       - task: upload-local-bosh-dns-release
         file: cf-app-sd-release/ci/tasks/upload-local-release.yml
         input_mapping:
           bbl-state: cf-networking-deployments
           local-release: bosh-dns-cf-networking
         params:
-          BBL_STATE_DIR: environments/ushanka/
+          BBL_STATE_DIR: environments/beret/
+
+      # Temporary until
+      # https://github.com/cloudfoundry/cloud_controller_ng/pull/1026 makes it
+      # into cloud_controller_ng, capi-release, and cf-deployment
+      - task: upload-local-capi-release
+        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          local-release: capi-cf-networking
+        params:
+          BBL_STATE_DIR: environments/beret/
 
       - task: deploy-cf
         file: cf-deployment-concourse-tasks/bosh-deploy-with-created-release/task.yml
         params:
           BBL_STATE_DIR: environments/beret/
           SYSTEM_DOMAIN: beret.c2c.cf-app.com
-          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-latest-bosh-dns.yml enable-service-discovery.yml use-latest.yml opsfile.yml
+          OPS_FILES: use-compiled-releases.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-latest-bosh-dns.yml use-latest-capi.yml enable-service-discovery.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/beret/vars-store.yml
         input_mapping:
           bbl-state: cf-networking-deployments

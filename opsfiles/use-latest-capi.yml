@@ -1,0 +1,10 @@
+# Temporary until https://github.com/cloudfoundry/cloud_controller_ng/pull/1026 makes it into cloud_controller_ng
+- type: replace
+  path: /releases/name=capi?/version
+  value: latest
+
+- type: remove
+  path: /releases/name=capi?
+
+- type: remove
+  path: /releases/name=capi?
