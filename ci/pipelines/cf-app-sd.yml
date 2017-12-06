@@ -241,6 +241,7 @@ jobs:
             trigger: true
             passed: [unit-tests]
           - get: bosh-dns-cf-networking
+          - get: capi-cf-networking
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -378,6 +379,7 @@ jobs:
             params:
               pre: rc
           - get: bosh-dns-cf-networking
+          - get: capi-cf-networking
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
