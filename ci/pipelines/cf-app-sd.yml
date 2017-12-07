@@ -7,6 +7,7 @@ groups:
   - ushanka-perf-tests
   - ushanka-update-capi
   - ushanka-deploy
+  - beret-update-capi
   - beret-deploy
   - ship-what
   - ship-it
@@ -23,6 +24,7 @@ groups:
   jobs:
   - beret-bbl-up
   - beret-bbl-destroy
+  - beret-update-capi
   - beret-deploy
 
 resource_types:
@@ -389,6 +391,31 @@ jobs:
           params:
             repository: updated-bbl-state
             rebase: true
+
+  - name: beret-update-capi
+    serial_groups: [beret-deploy-group]
+    plan:
+      - aggregate:
+          - get: cf-networking-deployments
+          - get: capi-cf-networking
+          - get: capi-ci
+          - get: capi-version
+      # Temporary until
+      # https://github.com/cloudfoundry/cloud_controller_ng/pull/1026
+      # makes it into cloud_controller_ng, capi-release, cf-deployment
+      - task: create-capi-release
+        file: capi-ci/ci/bosh/create_capi_release.yml
+        input_mapping:
+          capi-release: capi-cf-networking
+          version: capi-version
+          cloud_controller_ng: capi-version # does not matter, we won't use this
+      - task: upload-capi-release
+        file: capi-ci/ci/bosh/upload-release.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          release-tarball: created-capi-release
+        params:
+          BBL_STATE_DIR: environments/beret/
 
   - name: beret-deploy
     serial_groups: [beret-deploy-group]
