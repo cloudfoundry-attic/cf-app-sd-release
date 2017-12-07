@@ -17,6 +17,8 @@ var _ = Describe("Config", func() {
 				"address":"example.com",
 				"port":"80053",
 				"index":"62",
+				"log_level_address": "localhost",
+				"log_level_port": 8012,
 				"server_cert": "some_path_server_cert",
 				"server_key": "some_path_server_key",
 				"ca_cert": "some_path_ca_cert",
@@ -46,6 +48,8 @@ var _ = Describe("Config", func() {
 			Expect(parsedConfig.Address).To(Equal("example.com"))
 			Expect(parsedConfig.Port).To(Equal("80053"))
 			Expect(parsedConfig.Index).To(Equal("62"))
+			Expect(parsedConfig.LogLevelAddress).To(Equal("localhost"))
+			Expect(parsedConfig.LogLevelPort).To(Equal(8012))
 			Expect(parsedConfig.ServerCert).To(Equal("some_path_server_cert"))
 			Expect(parsedConfig.ServerKey).To(Equal("some_path_server_key"))
 			Expect(parsedConfig.CACert).To(Equal("some_path_ca_cert"))

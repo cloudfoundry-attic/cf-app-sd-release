@@ -44,6 +44,13 @@ properties:
   dnshttps.client.ca:
     description: "client-side mutual TLS configuration for dns over http"
 
+  log_level_port:
+    description: "Port which log level endpoint listens on"
+    default: 8055
+  log_level_address:
+    description: "Address which log level endpoint listens on"
+    default: 127.0.0.1
+
   nats.user:
     description: User name for NATS authentication
     example: nats

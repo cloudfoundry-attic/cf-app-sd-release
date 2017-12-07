@@ -17,6 +17,8 @@ type Config struct {
 	ServerKey                 string       `json:"server_key" validate:"nonzero"`
 	CACert                    string       `json:"ca_cert" validate:"nonzero"`
 	MetronPort                int          `json:"metron_port" validate:"min=1"`
+	LogLevelAddress           string       `json:"log_level_address"`
+	LogLevelPort              int          `json:"log_level_port"`
 	StalenessThresholdSeconds int          `json:"staleness_threshold_seconds" validate:"min=1"`
 	PruningIntervalSeconds    int          `json:"pruning_interval_seconds" validate:"min=1"`
 	MetricsEmitSeconds        int          `json:"metrics_emit_seconds" validate:"min=1"`

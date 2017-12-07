@@ -64,7 +64,9 @@ func main() {
 	flag.Parse()
 
 	logger := lager.NewLogger("service-discovery-controller")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	writerSink := lager.NewWriterSink(os.Stdout, lager.DEBUG)
+	sink := lager.NewReconfigurableSink(writerSink, lager.INFO)
+	logger.RegisterSink(sink)
 
 	var err error
 	bytes, err := ioutil.ReadFile(*configPath)
@@ -98,6 +100,7 @@ func main() {
 	}
 
 	launchHttpServer(config, addressTable, logger)
+	launchLogSettingHttpServer(config, sink, logger)
 
 	uptimeSource := metrics.NewUptimeSource()
 	metricsEmitter := metrics.NewMetricsEmitter(
@@ -128,6 +131,51 @@ func main() {
 		return
 	}
 }
+
+func launchLogSettingHttpServer(config *config.Config, sink *lager.ReconfigurableSink, logger lager.Logger) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/log-level", func(resp http.ResponseWriter, req *http.Request) {
+		bytes, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			panic("omg2")
+		}
+
+		body := string(bytes)
+
+		var returnStatus int
+
+		switch body {
+		case "info":
+			sink.SetMinLevel(lager.INFO)
+			returnStatus = http.StatusNoContent
+			logger.Info("Log level set to INFO")
+		case "debug":
+			sink.SetMinLevel(lager.DEBUG)
+			returnStatus = http.StatusNoContent
+			logger.Info("Log level set to DEBUG")
+		default:
+			returnStatus = http.StatusBadRequest
+			logger.Info(fmt.Sprintf("Invalid log level requested: `%s`. Skipping.", body))
+		}
+
+		resp.WriteHeader(returnStatus)
+	})
+
+	server := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", config.LogLevelAddress, config.LogLevelPort),
+		Handler: mux,
+	}
+	server.SetKeepAlivesEnabled(false)
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			logger.Error("Failed to launch log level endpoint", err)
+			os.Exit(1)
+		}
+	}()
+}
+
 func launchHttpServer(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) {
 	http.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
 		serviceKey := path.Base(req.URL.Path)

@@ -22,6 +22,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/types"
+	"strings"
 )
 
 var _ = Describe("Service Discovery Controller process", func() {
@@ -36,6 +37,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 		serverKey                 string
 		stalenessThresholdSeconds int
 		pruningIntervalSeconds    int
+		logLevelEndpointPort      int
+		logLevelEndpointAddress   string
 		fakeMetron                metrics.FakeMetron
 	)
 
@@ -43,6 +46,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 		caFile, serverCert, serverKey, clientCert = testhelpers.GenerateCaAndMutualTlsCerts()
 		stalenessThresholdSeconds = 1
 		pruningIntervalSeconds = 1
+		logLevelEndpointPort = 8056
+		logLevelEndpointAddress = "localhost"
 		fakeMetron = metrics.NewFakeMetron()
 
 		natsServer = RunNatsServerOnPort(8080)
@@ -62,9 +67,11 @@ var _ = Describe("Service Discovery Controller process", func() {
 			],
 			"staleness_threshold_seconds": %d,
 			"pruning_interval_seconds": %d,
+			"log_level_address": "%s",
+			"log_level_port": %d,
 			"metron_port": %d,
 			"metrics_emit_seconds": 2
-		}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port()))
+		}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
 	})
 
 	AfterEach(func() {
@@ -116,6 +123,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 		})
 
 		It("should not return ips for unregistered domains", func() {
+			requestLogChange("debug")
+
 			unregister(routeEmitter, "192.168.0.1", "app-id.internal.local.")
 			Expect(routeEmitter.Flush()).ToNot(HaveOccurred())
 
@@ -535,6 +544,88 @@ var _ = Describe("Service Discovery Controller process", func() {
 
 			})
 		})
+
+		Context("Attempting to adjust log level", func() {
+			It("it accepts the debug request", func() {
+				response := requestLogChange("debug")
+				Expect(response.StatusCode).To(Equal(http.StatusNoContent))
+				Eventually(session).Should(gbytes.Say("Log level set to DEBUG"))
+			})
+
+			It("it accepts the info request", func() {
+				response := requestLogChange("info")
+				Expect(response.StatusCode).To(Equal(http.StatusNoContent))
+				Eventually(session).Should(gbytes.Say("Log level set to INFO"))
+			})
+
+			It("it refuses the error request", func() {
+				response := requestLogChange("error")
+				Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
+				Eventually(session).Should(gbytes.Say("Invalid log level requested: `error`. Skipping."))
+			})
+
+			It("it refuses the critical request", func() {
+				response := requestLogChange("fatal")
+				Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
+				Eventually(session).Should(gbytes.Say("Invalid log level requested: `fatal`. Skipping."))
+			})
+
+			It("logs at info level by default", func() {
+				client := NewClient(testhelpers.CertPool(caFile), clientCert)
+				_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(session).ToNot(gbytes.Say("HTTPServer access"))
+			})
+
+			It("logs at debug level when configured", func() {
+				requestLogChange("debug")
+				client := NewClient(testhelpers.CertPool(caFile), clientCert)
+				_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(session).Should(gbytes.Say("HTTPServer access"))
+			})
+
+			It("logs at info level when switched back to info", func() {
+				requestLogChange("debug")
+				requestLogChange("info")
+
+				client := NewClient(testhelpers.CertPool(caFile), clientCert)
+				_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(session).ToNot(gbytes.Say("HTTPServer access"))
+			})
+		})
+	})
+
+	Context("when the log level endpoint fails to start successfully", func() {
+		var conflictingServer *http.Server
+
+		BeforeEach(func() {
+			conflictingServer = &http.Server{
+				Addr: fmt.Sprintf("%s:%d", logLevelEndpointAddress, logLevelEndpointPort),
+			}
+			go func() {
+				conflictingServer.ListenAndServe()
+			}()
+		})
+
+		AfterEach(func() {
+			conflictingServer.Close()
+		})
+
+		It("exits", func() {
+			startCmd := exec.Command(pathToServer, "-c", configPath)
+			var err error
+			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(session, 5*time.Second).Should(gbytes.Say("server-started"))
+			Eventually(session, 5*time.Second).Should(gbytes.Say("Failed to launch log level endpoint"))
+			Expect(session).To(gexec.Exit(1))
+		})
 	})
 
 	Context("when none of the nats urls are valid", func() {
@@ -563,6 +654,14 @@ var _ = Describe("Service Discovery Controller process", func() {
 		})
 	})
 })
+
+func requestLogChange(logLevel string) *http.Response {
+	client := &http.Client{}
+	postBody := strings.NewReader(logLevel)
+	response, err := client.Post("http://localhost:8056/log-level", "text/plain", postBody)
+	Expect(err).ToNot(HaveOccurred())
+	return response
+}
 
 func register(routeEmitter *nats.Conn, ip string, url string) {
 	natsRegistryMsg := nats.Msg{
