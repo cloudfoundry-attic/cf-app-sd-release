@@ -17,6 +17,8 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/onsi/gomega/types"
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/metrics"
 )
 
 var _ = Describe("Main", func() {
@@ -28,9 +30,12 @@ var _ = Describe("Main", func() {
 		fakeServiceDiscoveryControllerResponse http.HandlerFunc
 		dnsAdapterAddress                      string
 		dnsAdapterPort                         string
+		fakeMetron                             metrics.FakeMetron
 	)
 
 	BeforeEach(func() {
+		fakeMetron = metrics.NewFakeMetron()
+
 		fakeServiceDiscoveryControllerResponse = ghttp.CombineHandlers(
 			ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
 			ghttp.RespondWith(200, `{
@@ -78,11 +83,14 @@ var _ = Describe("Main", func() {
 			"service_discovery_controller_port": "%s",
 			"client_cert": "%s",
 			"client_key": "%s",
-			"ca_cert": "%s"
+			"ca_cert": "%s",
+			"metron_port": %d,
+			"metrics_emit_seconds": 2
 		}`, dnsAdapterAddress, dnsAdapterPort, strings.TrimPrefix(urlParts[1], "//"), urlParts[2],
 			clientCertFileName,
 			clientKeyFileName,
-			caFileName)
+			caFileName,
+			fakeMetron.Port())
 
 		tempConfigFile, err = ioutil.TempFile(os.TempDir(), "sd")
 		Expect(err).ToNot(HaveOccurred())
@@ -151,6 +159,26 @@ var _ = Describe("Main", func() {
 
 		Eventually(session).Should(gexec.Exit())
 		Eventually(session).Should(gbytes.Say("Shutting bosh-dns-adapter down"))
+	})
+
+	Describe("emitting metrics", func() {
+		withName := func(name string) types.GomegaMatcher {
+			return WithTransform(func(ev metrics.Event) string {
+				return ev.Name
+			}, Equal(name))
+		}
+		withOrigin := func(origin string) types.GomegaMatcher {
+			return WithTransform(func(ev metrics.Event) string {
+				return ev.Origin
+			}, Equal(origin))
+		}
+
+		It("emits an uptime metric", func() {
+			Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+				withName("uptime"),
+				withOrigin("bosh-dns-adapter"),
+			)))
+		})
 	})
 
 	Context("when a process is already listening on the port", func() {

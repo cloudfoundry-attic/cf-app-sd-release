@@ -15,6 +15,13 @@ import (
 	"syscall"
 
 	"golang.org/x/net/dns/dnsmessage"
+	"github.com/cloudfoundry/dropsonde"
+	"time"
+	"github.com/tedsuo/ifrit/grouper"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/sigmon"
+	"code.cloudfoundry.org/cf-networking-helpers/metrics"
+	"code.cloudfoundry.org/lager"
 )
 
 func main() {
@@ -48,6 +55,12 @@ func main() {
 		config.ServiceDiscoveryControllerPort,
 	)
 
+	metronAddress := fmt.Sprintf("127.0.0.1:%d", config.MetronPort)
+	err = dropsonde.Initialize(metronAddress, "bosh-dns-adapter")
+	if err != nil {
+		panic(err)
+	}
+
 	sdcClient, err := sdcclient.NewServiceDiscoveryClient(sdcServerUrl, config.CACert, config.ClientCert, config.ClientKey)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Unable to create service discovery client: %s", err))
@@ -78,6 +91,26 @@ func main() {
 
 			writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, ips)
 		}))
+	}()
+
+	uptimeSource := metrics.NewUptimeSource()
+	metricsEmitter := metrics.NewMetricsEmitter(
+		lager.NewLogger("bosh-dns-adapter"),
+		time.Duration(config.MetricsEmitSeconds)*time.Second,
+		uptimeSource,
+	)
+	members := grouper.Members{
+		{"metrics-emitter", metricsEmitter},
+	}
+	group := grouper.NewOrdered(os.Interrupt, members)
+	monitor := ifrit.Invoke(sigmon.New(group))
+
+	go func() {
+		err = <-monitor.Wait()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, fmt.Sprintf("ifrit-failure: %s", err))
+			os.Exit(1)
+		}
 	}()
 
 	fmt.Println("Server Started")
