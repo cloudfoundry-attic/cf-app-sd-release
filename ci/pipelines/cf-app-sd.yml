@@ -5,6 +5,7 @@ groups:
   - ushanka-acceptance-tests
   - ushanka-smoke-tests
   - ushanka-perf-tests
+  - ushanka-update-capi
   - ushanka-deploy
   - beret-deploy
   - ship-what
@@ -13,6 +14,7 @@ groups:
   jobs:
   - ushanka-bbl-up
   - ushanka-bbl-destroy
+  - ushanka-update-capi
   - ushanka-deploy
   - ushanka-acceptance-tests
   - ushanka-smoke-tests
@@ -22,6 +24,12 @@ groups:
   - beret-bbl-up
   - beret-bbl-destroy
   - beret-deploy
+
+resource_types:
+- name: staticfile
+  type: docker-image
+  source:
+    repository: czero/staticfile-resource
 
 resources:
   - name: cf-app-sd-release
@@ -70,6 +78,23 @@ resources:
     source:
       uri: https://github.com/cf-container-networking/bosh-dns-release
       branch: master
+  - name: capi-cf-networking
+    type: git
+    source:
+      uri: https://github.com/cf-container-networking/capi-release
+      branch: apps-internal-cherrypicked
+  - name: capi-ci
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/capi-ci
+      branch: master
+  - name: capi-version
+    type: staticfile
+    source:
+      files:
+      - filename: version
+        data: cf-networking-fork-1.45.0
+
   ####### Timers
   - name: every-fifteen-minutes
     type: time
@@ -222,6 +247,31 @@ jobs:
           params:
             repository: updated-bbl-state
             rebase: true
+
+  - name: ushanka-update-capi
+    serial_groups: [ushanka-deploy-group]
+    plan:
+      - aggregate:
+          - get: cf-networking-deployments
+          - get: capi-cf-networking
+          - get: capi-ci
+          - get: capi-version
+      # Temporary until
+      # https://github.com/cloudfoundry/cloud_controller_ng/pull/1026
+      # makes it into cloud_controller_ng, capi-release, cf-deployment
+      - task: create-capi-release
+        file: capi-ci/ci/bosh/create_capi_release.yml
+        input_mapping:
+          capi-release: capi-cf-networking
+          version: capi-version
+          cloud_controller_ng: capi-version # does not matter, we won't use this
+      - task: upload-capi-release
+        file: capi-ci/ci/bosh/upload-release.yml
+        input_mapping:
+          bbl-state: cf-networking-deployments
+          release-tarball: created-capi-release
+        params:
+          BBL_STATE_DIR: environments/ushanka/
 
   - name: ushanka-deploy
     serial_groups: [ushanka-deploy-group]
