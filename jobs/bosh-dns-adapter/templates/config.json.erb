@@ -7,7 +7,9 @@ config = {
     "service_discovery_controller_port" => "#{link('service-discovery-controller').p('port')}",
     "client_cert" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/client.crt",
     "client_key" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/client.key",
-    "ca_cert" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/server_ca.crt"
+    "ca_cert" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/server_ca.crt",
+    "metron_port" => p("metron_port"),
+    "metrics_emit_seconds" => 10
 }
 
 JSON.dump(config)

@@ -34,3 +34,7 @@ properties:
 
   dnshttps.server.ca:
     description: "server-side mutual TLS configuration for dns over http"
+
+  metron_port:
+    description: "Forward metrics to this metron agent, listening on this port on localhost"
+    default: 3457
