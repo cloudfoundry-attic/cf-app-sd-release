@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/onsi/gomega/types"
-	"code.cloudfoundry.org/cf-networking-helpers/testsupport/metrics"
 )
 
 var _ = Describe("Main", func() {

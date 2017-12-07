@@ -14,14 +14,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"golang.org/x/net/dns/dnsmessage"
-	"github.com/cloudfoundry/dropsonde"
-	"time"
-	"github.com/tedsuo/ifrit/grouper"
-	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/sigmon"
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
 	"code.cloudfoundry.org/lager"
+	"github.com/cloudfoundry/dropsonde"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
+	"github.com/tedsuo/ifrit/sigmon"
+	"golang.org/x/net/dns/dnsmessage"
+	"time"
 )
 
 func main() {
