@@ -2,9 +2,3 @@
 - type: replace
   path: /releases/name=capi?/version
   value: latest
-
-- type: remove
-  path: /releases/name=capi?
-
-- type: remove
-  path: /releases/name=capi?
