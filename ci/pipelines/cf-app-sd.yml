@@ -9,6 +9,7 @@ groups:
   - ushanka-deploy
   - beret-update-capi
   - beret-deploy
+  - beret-deploy-firehose-nozzle
   - ship-what
   - ship-it
 - name: ushanka
@@ -26,6 +27,7 @@ groups:
   - beret-bbl-destroy
   - beret-update-capi
   - beret-deploy
+  - beret-deploy-firehose-nozzle
 
 resource_types:
 - name: staticfile
@@ -96,6 +98,10 @@ resources:
       files:
       - filename: version
         data: cf-networking-fork-1.45.0
+  - name: datadog-firehose-nozzle-release
+    type: bosh-io-release
+    source:
+      repository: cloudfoundry-incubator/datadog-firehose-nozzle-release
 
   ####### Timers
   - name: every-fifteen-minutes
@@ -416,6 +422,37 @@ jobs:
           release-tarball: created-capi-release
         params:
           BBL_STATE_DIR: environments/beret/
+
+  - name: beret-deploy-firehose-nozzle
+    serial_groups: [beret-deploy-group]
+    plan:
+    - aggregate:
+      - get: cf-deployment-concourse-tasks
+      - get: cf-app-sd-ci
+      - get: cf-networking-deployments
+      - get: datadog-firehose-nozzle-release
+    - task: upload-datadog-firehose-nozzle-release
+      file: cf-app-sd-ci/ci/tasks/upload-release-tarball.yml
+      input_mapping:
+        deployments-repo: cf-networking-deployments
+        tarballs: datadog-firehose-nozzle-release
+      params:
+        ENVIRONMENT_NAME: beret
+    - task: deploy-datadog-firehose-nozzle
+      file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
+      input_mapping:
+        cf-deployment: cf-networking-deployments
+        vars-store: cf-networking-deployments
+        bbl-state: cf-networking-deployments
+        vars-files: cf-networking-deployments
+        ops-files: cf-networking-deployments
+      params:
+        BBL_STATE_DIR: environments/beret
+        MANIFEST_FILE: firehose-nozzles.yml
+        OPS_FILES: ""
+        SYSTEM_DOMAIN: beret.c2c.cf-app.com
+        VARS_STORE_FILE: environments/beret/vars-store.yml
+
 
   - name: beret-deploy
     serial_groups: [beret-deploy-group]
