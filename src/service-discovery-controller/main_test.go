@@ -622,8 +622,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(session, 5*time.Second).Should(gbytes.Say("Failed to launch log level endpoint"))
-			Expect(session).To(gexec.Exit(1))
+			Eventually(session).Should(gexec.Exit(2))
+			Eventually(session, 5*time.Second).Should(gbytes.Say("service-discovery-controller.log-level-server.Listen and serve exited with error:"))
 		})
 	})
 

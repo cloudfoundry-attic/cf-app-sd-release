@@ -30,6 +30,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
+	"service-discovery-controller/loglevel"
 )
 
 type host struct {
@@ -100,7 +101,6 @@ func main() {
 	}
 
 	launchHttpServer(config, addressTable, logger)
-	launchLogSettingHttpServer(config, sink, logger)
 
 	uptimeSource := metrics.NewUptimeSource()
 	metricsEmitter := metrics.NewMetricsEmitter(
@@ -110,6 +110,7 @@ func main() {
 	)
 	members := grouper.Members{
 		{"metrics-emitter", metricsEmitter},
+		{"log-level-server", loglevel.NewServer(config, sink, logger.Session("log-level-server"))},
 	}
 	group := grouper.NewOrdered(os.Interrupt, members)
 	monitor := ifrit.Invoke(sigmon.New(group))
@@ -130,50 +131,6 @@ func main() {
 		fmt.Println("Shutting service-discovery-controller down")
 		return
 	}
-}
-
-func launchLogSettingHttpServer(config *config.Config, sink *lager.ReconfigurableSink, logger lager.Logger) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/log-level", func(resp http.ResponseWriter, req *http.Request) {
-		bytes, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			panic("omg2")
-		}
-
-		body := string(bytes)
-
-		var returnStatus int
-
-		switch body {
-		case "info":
-			sink.SetMinLevel(lager.INFO)
-			returnStatus = http.StatusNoContent
-			logger.Info("Log level set to INFO")
-		case "debug":
-			sink.SetMinLevel(lager.DEBUG)
-			returnStatus = http.StatusNoContent
-			logger.Info("Log level set to DEBUG")
-		default:
-			returnStatus = http.StatusBadRequest
-			logger.Info(fmt.Sprintf("Invalid log level requested: `%s`. Skipping.", body))
-		}
-
-		resp.WriteHeader(returnStatus)
-	})
-
-	server := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", config.LogLevelAddress, config.LogLevelPort),
-		Handler: mux,
-	}
-	server.SetKeepAlivesEnabled(false)
-
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil {
-			logger.Error("Failed to launch log level endpoint", err)
-			os.Exit(1)
-		}
-	}()
 }
 
 func launchHttpServer(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) {
