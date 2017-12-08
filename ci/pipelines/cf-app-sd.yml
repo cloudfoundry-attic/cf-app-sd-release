@@ -21,6 +21,7 @@ groups:
   - ushanka-acceptance-tests
   - ushanka-smoke-tests
   - ushanka-perf-tests
+  - delete-ushanka-deployment
 - name: beret
   jobs:
   - beret-bbl-up
@@ -28,6 +29,7 @@ groups:
   - beret-update-capi
   - beret-deploy
   - beret-deploy-firehose-nozzle
+  - delete-beret-deployment
 
 resource_types:
 - name: staticfile
@@ -351,6 +353,19 @@ jobs:
         input_mapping:
           bbl-state: cf-networking-deployments
 
+  - name: delete-ushanka-deployment
+    serial_groups: [ushanka-deploy-group, ushanka-test-group]
+    plan:
+    - aggregate:
+      - get: cf-networking-deployments
+      - get: cf-deployment-concourse-tasks
+    - task: delete-deployment
+      file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
+      params:
+        BBL_STATE_DIR: environments/ushanka/
+      input_mapping:
+        bbl-state: cf-networking-deployments
+
   - name: beret-bbl-up
     serial_groups: [beret-deploy-group]
     plan:
@@ -541,6 +556,19 @@ jobs:
           CLEAN_ALL: false
         input_mapping:
           bbl-state: cf-networking-deployments
+
+  - name: delete-beret-deployment
+    serial_groups: [beret-deploy-group, beret-test-group]
+    plan:
+    - aggregate:
+      - get: cf-networking-deployments
+      - get: cf-deployment-concourse-tasks
+    - task: delete-deployment
+      file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
+      params:
+        BBL_STATE_DIR: environments/beret/
+      input_mapping:
+        bbl-state: cf-networking-deployments
 
   - name: ship-what
     serial_groups: [version]
