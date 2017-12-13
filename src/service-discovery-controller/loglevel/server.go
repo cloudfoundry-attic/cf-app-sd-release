@@ -27,15 +27,15 @@ func (s *Server) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/log-level", s.handleRequest)
 
-	server := &http.Server{
+	httpServer := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", s.config.LogLevelAddress, s.config.LogLevelPort),
 		Handler: mux,
 	}
-	server.SetKeepAlivesEnabled(false)
+	httpServer.SetKeepAlivesEnabled(false)
 
 	exited := make(chan error)
 	go func() {
-		err := server.ListenAndServe()
+		err := httpServer.ListenAndServe()
 		if err != nil {
 			s.logger.Error("Listen and serve exited with error:", err)
 			exited <- err
@@ -47,10 +47,10 @@ func (s *Server) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	for {
 		select {
 		case err := <-exited:
-			server.Close()
+			httpServer.Close()
 			return err
 		case <-signals:
-			server.Close()
+			httpServer.Close()
 			return nil
 		}
 	}

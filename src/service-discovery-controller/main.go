@@ -1,14 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"service-discovery-controller/addresstable"
 	"service-discovery-controller/config"
 	"service-discovery-controller/mbus"
@@ -18,45 +15,17 @@ import (
 	"service-discovery-controller/localip"
 	"strings"
 
-	"crypto/tls"
-	"crypto/x509"
-
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
 	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 	"service-discovery-controller/loglevel"
+	"service-discovery-controller/routes"
 )
-
-type host struct {
-	IPAddress       string                 `json:"ip_address"`
-	LastCheckIn     string                 `json:"last_check_in"`
-	Port            int32                  `json:"port"`
-	Revision        string                 `json:"revision"`
-	Service         string                 `json:"service"`
-	ServiceRepoName string                 `json:"service_repo_name"`
-	Tags            map[string]interface{} `json:"tags"`
-}
-
-type registration struct {
-	Hosts   []host `json:"hosts"`
-	Env     string `json:"env"`
-	Service string `json:"service"`
-}
-
-type routes struct {
-	Addresses []address `json:"addresses"`
-}
-
-type address struct {
-	Hostname string   `json:"hostname"`
-	Ips      []string `json:"ips"`
-}
 
 func main() {
 	signalChannel := make(chan os.Signal, 1)
@@ -100,17 +69,17 @@ func main() {
 		os.Exit(2)
 	}
 
-	launchHttpServer(config, addressTable, logger)
-
 	uptimeSource := metrics.NewUptimeSource()
 	metricsEmitter := metrics.NewMetricsEmitter(
 		logger,
 		time.Duration(config.MetricsEmitSeconds)*time.Second,
 		uptimeSource,
 	)
+
 	members := grouper.Members{
 		{"metrics-emitter", metricsEmitter},
 		{"log-level-server", loglevel.NewServer(config, sink, logger.Session("log-level-server"))},
+		{"routes-server", routes.NewServer(addressTable, config, logger.Session("routes-server"))},
 	}
 	group := grouper.NewOrdered(os.Interrupt, members)
 	monitor := ifrit.Invoke(sigmon.New(group))
@@ -131,99 +100,6 @@ func main() {
 		fmt.Println("Shutting service-discovery-controller down")
 		return
 	}
-}
-
-func launchHttpServer(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) {
-	http.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
-		serviceKey := path.Base(req.URL.Path)
-
-		ips := addressTable.Lookup(serviceKey)
-		hosts := []host{}
-		for _, ip := range ips {
-			hosts = append(hosts, host{
-				IPAddress: ip,
-				Tags:      make(map[string]interface{}),
-			})
-		}
-
-		var err error
-		json, err := json.Marshal(registration{Hosts: hosts})
-		if err != nil {
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		_, err = resp.Write(json)
-		if err != nil {
-			logger.Debug("Error writing to http response body")
-		}
-
-		logger.Debug("HTTPServer access", lager.Data(map[string]interface{}{
-			"serviceKey":   serviceKey,
-			"responseJson": string(json),
-		}))
-	})
-
-	http.HandleFunc("/routes", func(resp http.ResponseWriter, req *http.Request) {
-		availableAddresses := addressTable.GetAllAddresses()
-		addresses := []address{}
-		for i, availableAddress := range availableAddresses {
-			addresses = append(addresses, address{
-				Hostname: i,
-				Ips:      availableAddress,
-			})
-		}
-
-		var err error
-		json, err := json.Marshal(routes{Addresses: addresses})
-		if err != nil {
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		_, err = resp.Write(json)
-		if err != nil {
-			logger.Debug("Error writing to http response body")
-		}
-
-		logger.Debug("HTTPServer access", lager.Data(map[string]interface{}{
-			"responseJson": string(json),
-		}))
-	})
-
-	caCert, err := ioutil.ReadFile(config.CACert)
-	if err != nil {
-		fmt.Errorf("unable to read ca file: %s", err)
-		return
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	cert, err := tls.LoadX509KeyPair(config.ServerCert, config.ServerKey)
-	if err != nil {
-		fmt.Errorf("unable to load x509 key pair: %s", err)
-		return
-	}
-
-	tlsConfig := tlsconfig.Build(
-		tlsconfig.WithIdentity(cert),
-		tlsconfig.WithInternalServiceDefaults(),
-	)
-
-	serverConfig := tlsConfig.Server(tlsconfig.WithClientAuthentication(caCertPool))
-	serverConfig.BuildNameToCertificate()
-
-	server := &http.Server{
-		Addr:      fmt.Sprintf("%s:%s", config.Address, config.Port),
-		TLSConfig: serverConfig,
-	}
-	server.SetKeepAlivesEnabled(false)
-
-	go func() {
-		serveErr := server.ListenAndServeTLS("", "")
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("SDC Server ending with %v", serveErr))
-		os.Exit(1)
-	}()
 }
 
 func launchSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) (*mbus.Subscriber, error) {
