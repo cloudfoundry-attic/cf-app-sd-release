@@ -35,13 +35,13 @@ By default, apps cannot talk to each other over cf networking. In order for an a
 cf push consumer-app --no-start
 cf push server-app
 
-cf allow-access consumer-app server-app --port 808 --protocol tcp
+cf add-network-policy consumer-app --destination-app server-app --port 8080 --protocol tcp
 
 cf set-env consumer SERVER_HOSTNAME "$(cf app --guid server-app).apps.internal"
 cf start consumer-app
 ```
 
-You can run `cf allow-access` even after both apps are started, and you don't need to restart the apps for the policy to start working.
+You can run `cf add-network-policy` even after both apps are started, and you don't need to restart the apps for the policy to start working.
 
 From consumer-app, the following will work:
 ```
@@ -58,8 +58,6 @@ curl "$SERVER_HOSTNAME.apps.internal:8080"
 ### Experimental Ops File for cf-deployment
 
 See [opsfile](opsfiles/enable-service-discovery.yml) and our [pipeline](ci/pipelines/cf-app-sd.yml) that uses this opsfile.
-
-### Deploying to cf-release (Coming Soon)
 
 ### Deploying to BOSH-lite
 Run the [`scripts/deploy-to-bosh-lite`](scripts/deploy-to-bosh-lite) script. Note this requires [cf-networking-release](https://github.com/cloudfoundry/cf-networking-release), [bosh-deployment](https://github.com/cloudfoundry/bosh-deployment), and [cf-deployment](https://github.com/cloudfoundry/cf-deployment)
