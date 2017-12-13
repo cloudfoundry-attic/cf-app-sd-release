@@ -48,3 +48,4 @@ files:
   - service-discovery-controller/localip/*.go # gosub
   - service-discovery-controller/loglevel/*.go # gosub
   - service-discovery-controller/mbus/*.go # gosub
+  - service-discovery-controller/routes/*.go # gosub
