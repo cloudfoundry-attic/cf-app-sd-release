@@ -103,7 +103,7 @@ resources:
   - name: datadog-firehose-nozzle-release
     type: bosh-io-release
     source:
-      repository: cloudfoundry-incubator/datadog-firehose-nozzle-release
+      repository: DataDog/datadog-firehose-nozzle-release
 
   ####### Timers
   - name: every-fifteen-minutes
