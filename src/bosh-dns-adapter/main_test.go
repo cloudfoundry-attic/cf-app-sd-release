@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-networking-helpers/testsupport/metrics"
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -54,8 +55,8 @@ var _ = Describe("Main", func() {
 				}`),
 		)
 		dnsAdapterAddress = "127.0.0.1"
-		dnsAdapterPort = "8053"
 
+		dnsAdapterPort = fmt.Sprintf("%d", ports.PickAPort())
 	})
 
 	JustBeforeEach(func() {
@@ -114,7 +115,8 @@ var _ = Describe("Main", func() {
 		Eventually(session).Should(gbytes.Say("Server Started"))
 
 		var reader io.Reader
-		request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=1&name=app-id.internal.local.", reader)
+		url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
+		request, err := http.NewRequest("GET", url, reader)
 		Expect(err).To(Succeed())
 
 		resp, err := http.DefaultClient.Do(request)
@@ -196,7 +198,8 @@ var _ = Describe("Main", func() {
 
 		It("fails to start", func() {
 			Eventually(session2, 5*time.Second).Should(gexec.Exit(1))
-			Eventually(session2.Err).Should(gbytes.Say("Address \\(127.0.0.1:8053\\) not available"))
+			expectedErrStr := fmt.Sprintf("Address \\(127.0.0.1:%s\\) not available", dnsAdapterPort)
+			Eventually(session2.Err).Should(gbytes.Say(expectedErrStr))
 		})
 	})
 
@@ -205,7 +208,8 @@ var _ = Describe("Main", func() {
 			Eventually(session).Should(gbytes.Say("Server Started"))
 
 			var reader io.Reader
-			request, err := http.NewRequest("GET", "http://127.0.0.1:8053?name=app-id.internal.local.", reader)
+			url := fmt.Sprintf("http://127.0.0.1:%s?name=app-id.internal.local.", dnsAdapterPort)
+			request, err := http.NewRequest("GET", url, reader)
 			Expect(err).To(Succeed())
 
 			resp, err := http.DefaultClient.Do(request)
@@ -247,7 +251,8 @@ var _ = Describe("Main", func() {
 		It("returns a http 400 status", func() {
 			Eventually(session).Should(gbytes.Say("Server Started"))
 			var reader io.Reader
-			request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=1", reader)
+			url := fmt.Sprintf("http://127.0.0.1:%s?type=1", dnsAdapterPort)
+			request, err := http.NewRequest("GET", url, reader)
 			Expect(err).To(Succeed())
 
 			resp, err := http.DefaultClient.Do(request)
@@ -340,7 +345,8 @@ var _ = Describe("Main", func() {
 	Context("when requesting anything but an A record", func() {
 		It("should return a successful response with no answers", func() {
 			Eventually(session).Should(gbytes.Say("Server Started"))
-			request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=16&name=app-id.internal.local.", nil)
+			url := fmt.Sprintf("http://127.0.0.1:%s?type=16&name=app-id.internal.local.", dnsAdapterPort)
+			request, err := http.NewRequest("GET", url, nil)
 			Expect(err).ToNot(HaveOccurred())
 
 			resp, err := http.DefaultClient.Do(request)
@@ -384,7 +390,8 @@ var _ = Describe("Main", func() {
 			Eventually(session).Should(gbytes.Say("Server Started"))
 			var reader io.Reader
 
-			request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=1&name=app-id.internal.local.", reader)
+			url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
+			request, err := http.NewRequest("GET", url, reader)
 			Expect(err).To(Succeed())
 
 			resp, err := http.DefaultClient.Do(request)

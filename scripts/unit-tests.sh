@@ -21,4 +21,4 @@ for packageToFmt in bosh-dns-adapter service-discovery-controller acceptance smo
     fi
 done
 
-ginkgo -r -race -randomizeAllSpecs -randomizeSuites src/bosh-dns-adapter src/service-discovery-controller
+ginkgo -r -p -race -randomizeAllSpecs -randomizeSuites src/bosh-dns-adapter src/service-discovery-controller
