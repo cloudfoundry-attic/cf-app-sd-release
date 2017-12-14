@@ -15,6 +15,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
 	. "github.com/onsi/ginkgo"
@@ -23,7 +24,6 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/types"
 	"strings"
-	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 )
 
 var _ = Describe("Service Discovery Controller process", func() {

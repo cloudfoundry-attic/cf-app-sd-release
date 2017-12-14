@@ -9,6 +9,7 @@ import (
 
 	"service-discovery-controller/mbus/fakes"
 
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
@@ -16,7 +17,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	. "github.com/st3v/glager"
-	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 )
 
 var _ = Describe("Subscriber", func() {
@@ -32,7 +32,7 @@ var _ = Describe("Subscriber", func() {
 		startMsgChan     chan *nats.Msg
 		greetMsgChan     chan *nats.Msg
 		metricsSender    *fakes.MetricsSender
-		port 			 int
+		port             int
 	)
 
 	BeforeEach(func() {
