@@ -92,12 +92,12 @@ var _ = Describe("Server", func() {
 		It("shuts down", func() {
 			serverProc = ifrit.Invoke(server)
 
-			Eventually(testLogger.LogMessages, 5*time.Second).Should(ContainElement("test.server-started"))
+			Eventually(testLogger.LogMessages).Should(ContainElement("test.server-started"))
 
 			serverProc.Signal(os.Interrupt)
 			Eventually(serverProc.Wait()).Should(Receive())
 			Eventually(testLogger.LogMessages).Should(ContainElement("test.SDC http server exiting with signal: interrupt"))
-			Eventually(testLogger.LogMessages, 15*time.Second).Should(ContainElement("test.server-exited"))
+			Eventually(testLogger.LogMessages).Should(ContainElement("test.server-exited"))
 
 			client := NewClient(testhelpers.CertPool(caFile), clientCert)
 			_, err := client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))
@@ -156,7 +156,9 @@ func launchConflictingServer(port int) *http.Server {
 	client := &http.Client{}
 	Eventually(func() bool {
 		resp, err := client.Get(fmt.Sprintf("http://%s", address))
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			return false
+		}
 		return resp.StatusCode == 404
 	}).Should(BeTrue())
 	return conflictingServer

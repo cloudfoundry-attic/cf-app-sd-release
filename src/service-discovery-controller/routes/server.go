@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"service-discovery-controller/config"
+
 	"time"
 )
 
@@ -70,8 +71,9 @@ func (s *Server) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		return err
 	}
 
+	serverAddress := fmt.Sprintf("%s:%s", s.config.Address, s.config.Port)
 	httpServer := &http.Server{
-		Addr:      fmt.Sprintf("%s:%s", s.config.Address, s.config.Port),
+		Addr:      serverAddress,
 		Handler:   mux,
 		TLSConfig: tlsConfig,
 	}
@@ -86,7 +88,6 @@ func (s *Server) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	}()
 
 	time.Sleep(time.Microsecond)
-
 	close(ready)
 	s.logger.Info("server-started")
 
