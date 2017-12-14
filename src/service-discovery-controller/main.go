@@ -15,6 +15,7 @@ import (
 	"service-discovery-controller/localip"
 	"strings"
 
+	"code.cloudfoundry.org/cf-networking-helpers/lagerlevel"
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
 	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
 	"code.cloudfoundry.org/clock"
@@ -23,7 +24,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
-	"service-discovery-controller/loglevel"
 	"service-discovery-controller/routes"
 )
 
@@ -78,7 +78,7 @@ func main() {
 
 	members := grouper.Members{
 		{"metrics-emitter", metricsEmitter},
-		{"log-level-server", loglevel.NewServer(config, sink, logger.Session("log-level-server"))},
+		{"log-level-server", lagerlevel.NewServer(config.LogLevelAddress, config.LogLevelPort, sink, logger.Session("log-level-server"))},
 		{"routes-server", routes.NewServer(addressTable, config, logger.Session("routes-server"))},
 	}
 	group := grouper.NewOrdered(os.Interrupt, members)
