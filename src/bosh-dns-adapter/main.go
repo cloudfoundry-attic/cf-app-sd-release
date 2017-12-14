@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"code.cloudfoundry.org/cf-networking-helpers/lagerlevel"
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/dropsonde"
@@ -28,25 +29,31 @@ func main() {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGTERM, os.Interrupt)
 
+	logger := lager.NewLogger("bosh-dns-adapter")
+	writerSink := lager.NewWriterSink(os.Stdout, lager.DEBUG)
+	sink := lager.NewReconfigurableSink(writerSink, lager.INFO)
+	logger.RegisterSink(sink)
+	logger.RegisterSink(lager.NewWriterSink(os.Stderr, lager.ERROR))
+
 	configPath := flag.String("c", "", "path to config file")
 	flag.Parse()
 
 	bytes, err := ioutil.ReadFile(*configPath)
 	if err != nil {
-		fmt.Printf("Could not read config file at path '%s'", *configPath)
+		logger.Info("Could not read config file", lager.Data{"path": *configPath})
 		os.Exit(2)
 	}
 
 	config, err := config.NewConfig(bytes)
 	if err != nil {
-		fmt.Printf("Could not parse config file at path '%s'", *configPath)
+		logger.Info("Could not parse config file", lager.Data{"path": *configPath})
 		os.Exit(2)
 	}
 
 	address := fmt.Sprintf("%s:%s", config.Address, config.Port)
 	l, err := net.Listen("tcp", address)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Address (%s) not available", address))
+		logger.Error(fmt.Sprintf("Address (%s) not available", address), err)
 		os.Exit(1)
 	}
 
@@ -58,12 +65,13 @@ func main() {
 	metronAddress := fmt.Sprintf("127.0.0.1:%d", config.MetronPort)
 	err = dropsonde.Initialize(metronAddress, "bosh-dns-adapter")
 	if err != nil {
-		panic(err)
+		logger.Error("Unable to initialize dropsonde", err, lager.Data{"metron_address": metronAddress})
+		os.Exit(1)
 	}
 
 	sdcClient, err := sdcclient.NewServiceDiscoveryClient(sdcServerUrl, config.CACert, config.ClientCert, config.ClientKey)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Unable to create service discovery client: %s", err))
+		logger.Error("Unable to create service discovery client", err)
 		os.Exit(1)
 	}
 
@@ -73,23 +81,24 @@ func main() {
 			name := getQueryParam(req, "name", "")
 
 			if dnsType != "1" {
-				writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, nil)
+				writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, nil, logger)
 				return
 			}
 
 			if name == "" {
 				resp.WriteHeader(http.StatusBadRequest)
-				writeResponse(resp, dnsmessage.RCodeServerFailure, name, dnsType, nil)
+				writeResponse(resp, dnsmessage.RCodeServerFailure, name, dnsType, nil, logger)
 				return
 			}
 
 			ips, err := sdcClient.IPs(name)
 			if err != nil {
-				writeErrorResponse(resp, errors.New(fmt.Sprintf("Error querying Service Discover Controller: %s", err)))
+				wrappedErr := errors.New(fmt.Sprintf("Error querying Service Discover Controller: %s", err))
+				writeErrorResponse(resp, wrappedErr, logger)
 				return
 			}
 
-			writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, ips)
+			writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, ips, logger)
 		}))
 	}()
 
@@ -99,8 +108,10 @@ func main() {
 		time.Duration(config.MetricsEmitSeconds)*time.Second,
 		uptimeSource,
 	)
+
 	members := grouper.Members{
 		{"metrics-emitter", metricsEmitter},
+		{"log-level-server", lagerlevel.NewServer(config.LogLevelAddress, config.LogLevelPort, sink, logger.Session("log-level-server"))},
 	}
 	group := grouper.NewOrdered(os.Interrupt, members)
 	monitor := ifrit.Invoke(sigmon.New(group))
@@ -108,15 +119,15 @@ func main() {
 	go func() {
 		err = <-monitor.Wait()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("ifrit-failure: %s", err))
+			logger.Error("ifrit-failure", err)
 			os.Exit(1)
 		}
 	}()
 
-	fmt.Println("Server Started")
+	logger.Info("Server Started")
 	select {
 	case <-signalChannel:
-		fmt.Println("Shutting bosh-dns-adapter down")
+		logger.Info("Shutting bosh-dns-adapter down")
 		return
 	}
 }
@@ -129,29 +140,29 @@ func getQueryParam(req *http.Request, key, defaultValue string) string {
 	return queryValue
 }
 
-type ServiceDiscoveryClient interface {
-	IPs(infraName string) ([]string, error)
-}
-
-func writeErrorResponse(resp http.ResponseWriter, err error) {
+func writeErrorResponse(resp http.ResponseWriter, err error, logger lager.Logger) {
 	resp.WriteHeader(http.StatusInternalServerError)
 	_, err = resp.Write([]byte(err.Error()))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error writing to http response body") // not tested
+		logger.Error("Error writing to http response body", err)
 	}
+	logger.Debug("HTTPServer access")
+
 }
 
-func writeResponse(resp http.ResponseWriter, dnsResponseStatus dnsmessage.RCode, requestedInfraName string, dnsType string, ips []string) {
+func writeResponse(resp http.ResponseWriter, dnsResponseStatus dnsmessage.RCode, requestedInfraName string, dnsType string, ips []string, logger lager.Logger) {
 	responseBody, err := buildResponseBody(dnsResponseStatus, requestedInfraName, dnsType, ips)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error building response: %v", err) // not tested
+		logger.Error("Error building response", err)
 		return
 	}
 
 	_, err = resp.Write([]byte(responseBody))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error writing to http response body") // not tested
+		logger.Error("Error writing to http response body", err)
 	}
+
+	logger.Debug("HTTPServer access")
 }
 
 type Answer struct {

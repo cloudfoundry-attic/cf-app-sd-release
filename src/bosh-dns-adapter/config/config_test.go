@@ -22,7 +22,10 @@ var _ = Describe("Config", func() {
 				"client_key": "client.key",
 				"ca_cert": "ca.cert",
 				"metrics_emit_seconds": 6,
-				"metron_port": 8080
+				"metron_port": 8080,
+				"log_level_address": "log-level-address",
+				"log_level_port": 9090
+
 			}`)
 
 			parsedConfig, err := NewConfig(configJSON)
@@ -38,6 +41,8 @@ var _ = Describe("Config", func() {
 
 			Expect(parsedConfig.MetricsEmitSeconds).To(Equal(6))
 			Expect(parsedConfig.MetronPort).To(Equal(8080))
+			Expect(parsedConfig.LogLevelAddress).To(Equal("log-level-address"))
+			Expect(parsedConfig.LogLevelPort).To(Equal(9090))
 		})
 	})
 
@@ -61,6 +66,8 @@ var _ = Describe("Config", func() {
 			"ca_cert":                              "path_to_ca_cert",
 			"metron_port":                          8080,
 			"metrics_emit_seconds":                 678,
+			"log_level_address":                    "log_level_address",
+			"log_level_port":                       8081,
 		}
 	})
 
@@ -84,6 +91,8 @@ var _ = Describe("Config", func() {
 		Entry("invalid client_cert", "client_cert", "", "ClientCert: zero value"),
 		Entry("invalid client_key", "client_key", "", "ClientKey: zero value"),
 		Entry("invalid ca_cert", "ca_cert", "", "CACert: zero value"),
+		Entry("invalid log_level_address", "log_level_address", "", "LogLevelAddress: zero value"),
+		Entry("invalid log_level_port", "log_level_port", -2, "LogLevelPort: less than min"),
 	)
 })
 

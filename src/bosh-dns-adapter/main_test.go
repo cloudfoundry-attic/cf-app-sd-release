@@ -32,6 +32,7 @@ var _ = Describe("Main", func() {
 		dnsAdapterAddress                      string
 		dnsAdapterPort                         string
 		fakeMetron                             metrics.FakeMetron
+		logLevelPort                           int
 	)
 
 	BeforeEach(func() {
@@ -57,6 +58,7 @@ var _ = Describe("Main", func() {
 		dnsAdapterAddress = "127.0.0.1"
 
 		dnsAdapterPort = fmt.Sprintf("%d", ports.PickAPort())
+		logLevelPort = ports.PickAPort()
 	})
 
 	JustBeforeEach(func() {
@@ -86,12 +88,19 @@ var _ = Describe("Main", func() {
 			"client_key": "%s",
 			"ca_cert": "%s",
 			"metron_port": %d,
-			"metrics_emit_seconds": 2
-		}`, dnsAdapterAddress, dnsAdapterPort, strings.TrimPrefix(urlParts[1], "//"), urlParts[2],
+			"metrics_emit_seconds": 2,
+			"log_level_port": %d,
+			"log_level_address": "127.0.0.1"
+		}`, dnsAdapterAddress,
+			dnsAdapterPort,
+			strings.TrimPrefix(urlParts[1], "//"),
+			urlParts[2],
 			clientCertFileName,
 			clientKeyFileName,
 			caFileName,
-			fakeMetron.Port())
+			fakeMetron.Port(),
+			logLevelPort,
+		)
 
 		tempConfigFile, err = ioutil.TempFile(os.TempDir(), "sd")
 		Expect(err).ToNot(HaveOccurred())
@@ -309,7 +318,8 @@ var _ = Describe("Main", func() {
 
 		It("should fail to startup", func() {
 			Eventually(session2).Should(gexec.Exit(2))
-			Eventually(session2).Should(gbytes.Say("Could not read config file at path '/non-existent-path'"))
+			Eventually(session2).Should(gbytes.Say("Could not read config file"))
+			Eventually(session2).Should(gbytes.Say("/non-existent-path"))
 		})
 	})
 
@@ -320,7 +330,8 @@ var _ = Describe("Main", func() {
 
 		It("should fail to startup", func() {
 			Eventually(session).Should(gexec.Exit(2))
-			Eventually(session).Should(gbytes.Say("Could not parse config file at path '%s'", tempConfigFile.Name()))
+			Eventually(session).Should(gbytes.Say("Could not parse config file"))
+			Eventually(session).Should(gbytes.Say(tempConfigFile.Name()))
 		})
 	})
 
@@ -401,4 +412,65 @@ var _ = Describe("Main", func() {
 		})
 
 	})
+
+	Context("Attempting to adjust log level", func() {
+		JustBeforeEach(func() {
+			Eventually(session).Should(gbytes.Say("Server Started"))
+		})
+
+		It("it accepts the debug request", func() {
+			response := requestLogChange("debug", logLevelPort)
+			Expect(response.StatusCode).To(Equal(http.StatusNoContent))
+			Eventually(session).Should(gbytes.Say("Log level set to DEBUG"))
+		})
+
+		It("it accepts the info request", func() {
+			response := requestLogChange("info", logLevelPort)
+			Expect(response.StatusCode).To(Equal(http.StatusNoContent))
+			Eventually(session).Should(gbytes.Say("Log level set to INFO"))
+		})
+
+		It("it refuses the error request", func() {
+			response := requestLogChange("error", logLevelPort)
+			Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
+			Eventually(session).Should(gbytes.Say("Invalid log level requested: `error`. Skipping."))
+		})
+
+		It("it refuses the critical request", func() {
+			response := requestLogChange("fatal", logLevelPort)
+			Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
+			Eventually(session).Should(gbytes.Say("Invalid log level requested: `fatal`. Skipping."))
+		})
+
+		It("logs at info level by default", func() {
+			url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
+			request, err := http.NewRequest("GET", url, nil)
+			resp, err := http.DefaultClient.Do(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(200))
+
+			Expect(session).ToNot(gbytes.Say("HTTPServer access"))
+		})
+
+		It("logs at debug level when configured", func() {
+			requestLogChange("debug", logLevelPort)
+
+			url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
+			request, err := http.NewRequest("GET", url, nil)
+			resp, err := http.DefaultClient.Do(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(200))
+
+			Eventually(session).Should(gbytes.Say("HTTPServer access"))
+		})
+	})
 })
+
+func requestLogChange(logLevel string, port int) *http.Response {
+	client := &http.Client{}
+	postBody := strings.NewReader(logLevel)
+	url := fmt.Sprintf("http://localhost:%d/log-level", port)
+	response, err := client.Post(url, "text/plain", postBody)
+	Expect(err).ToNot(HaveOccurred())
+	return response
+}
