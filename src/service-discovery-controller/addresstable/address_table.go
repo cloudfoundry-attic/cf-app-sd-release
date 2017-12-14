@@ -73,10 +73,11 @@ func (at *AddressTable) Lookup(hostname string) []string {
 	at.mutex.RLock()
 
 	found := at.entriesForHostname(fqdn(hostname))
+	ips := entriesToIPs(found)
 
 	at.mutex.RUnlock()
 
-	return entriesToIPs(found)
+	return ips
 }
 
 func (at *AddressTable) GetAllAddresses() map[string][]string {
