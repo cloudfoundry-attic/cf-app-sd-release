@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "service-discovery-controller/mbus"
 	"time"
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 )
 
 var _ = Describe("NatsConnProvider", func() {
@@ -14,10 +15,12 @@ var _ = Describe("NatsConnProvider", func() {
 		provider    NatsConnProvider
 		gnatsServer *server.Server
 		natsCon     *nats.Conn
+		port 		int
 	)
 
 	BeforeEach(func() {
-		gnatsServer = RunServerOnPort(8080)
+		port = ports.PickAPort()
+		gnatsServer = RunServerOnPort(port)
 		gnatsServer.Start()
 
 		natsUrl := "nats://username:password@" + gnatsServer.Addr().String()

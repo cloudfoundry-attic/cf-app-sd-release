@@ -23,12 +23,15 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/types"
 	"strings"
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 )
 
 var _ = Describe("Service Discovery Controller process", func() {
 	var (
 		session                   *gexec.Session
 		configPath                string
+		port                      int
+		natsServerPort            int
 		natsServer                *server.Server
 		routeEmitter              *nats.Conn
 		clientCert                tls.Certificate
@@ -46,21 +49,22 @@ var _ = Describe("Service Discovery Controller process", func() {
 		caFile, serverCert, serverKey, clientCert = testhelpers.GenerateCaAndMutualTlsCerts()
 		stalenessThresholdSeconds = 1
 		pruningIntervalSeconds = 1
-		logLevelEndpointPort = 8056
+		logLevelEndpointPort = ports.PickAPort()
 		logLevelEndpointAddress = "localhost"
 		fakeMetron = metrics.NewFakeMetron()
-
-		natsServer = RunNatsServerOnPort(8080)
+		natsServerPort = ports.PickAPort()
+		natsServer = RunNatsServerOnPort(natsServerPort)
+		port = ports.PickAPort()
 		configPath = writeConfigFile(fmt.Sprintf(`{
 			"address":"127.0.0.1",
-			"port":"8055",
+			"port":"%d",
 			"ca_cert": "%s",
 			"server_cert": "%s",
 			"server_key": "%s",
 			"nats":[
 				{
 					"host":"localhost",
-					"port":8080,
+					"port":%d,
 					"user":"",
 					"pass":""
 				}
@@ -71,7 +75,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 			"log_level_port": %d,
 			"metron_port": %d,
 			"metrics_emit_seconds": 2
-		}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
+		}`,
+			port, caFile, serverCert, serverKey, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
 	})
 
 	AfterEach(func() {
@@ -123,13 +128,14 @@ var _ = Describe("Service Discovery Controller process", func() {
 		})
 
 		It("should not return ips for unregistered domains", func() {
-			requestLogChange("debug")
+			requestLogChange("debug", logLevelEndpointPort)
 
 			unregister(routeEmitter, "192.168.0.1", "app-id.internal.local.")
 			Expect(routeEmitter.Flush()).ToNot(HaveOccurred())
 
 			Eventually(func() string {
-				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 				Expect(err).ToNot(HaveOccurred())
 				respBody, err := ioutil.ReadAll(resp.Body)
 				Expect(err).ToNot(HaveOccurred())
@@ -154,7 +160,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 		})
 
 		It("should return a http app json", func() {
-			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+			url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 			Expect(err).ToNot(HaveOccurred())
 			respBody, err := ioutil.ReadAll(resp.Body)
 			Expect(err).ToNot(HaveOccurred())
@@ -185,7 +192,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 		})
 
 		It("should return a http large json", func() {
-			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/large-id.internal.local.")
+			url := fmt.Sprintf("https://localhost:%d/v1/registration/large-id.internal.local.", port)
+			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 			Expect(err).ToNot(HaveOccurred())
 			respBody, err := ioutil.ReadAll(resp.Body)
 			Expect(err).ToNot(HaveOccurred())
@@ -320,7 +328,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 			waitDuration := time.Duration(stalenessThresholdSeconds+pruningIntervalSeconds+1) * time.Second
 
 			Eventually(func() []byte {
-				resp, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+				resp, err := client.Get(url)
 				Expect(err).ToNot(HaveOccurred())
 
 				respBody, err := ioutil.ReadAll(resp.Body)
@@ -332,7 +341,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 
 		Context("when we hit the /routes endpoint", func() {
 			It("should return a map of all hostnames to ips", func() {
-				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/routes")
+				url := fmt.Sprintf("https://localhost:%d/routes", port)
+				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 				Expect(err).ToNot(HaveOccurred())
 				respBody, err := ioutil.ReadAll(resp.Body)
 				Expect(err).ToNot(HaveOccurred())
@@ -399,22 +409,23 @@ var _ = Describe("Service Discovery Controller process", func() {
 		Context("when one of the nats urls is invalid", func() {
 			BeforeEach(func() {
 				os.Remove(configPath)
+				garbagePort := ports.PickAPort()
 				configPath = writeConfigFile(fmt.Sprintf(`{
 					"address":"127.0.0.1",
-					"port":"8055",
+					"port":"%d",
 					"ca_cert": "%s",
 					"server_cert": "%s",
 					"server_key": "%s",
 					"nats":[
 						{
 							"host":"garbage",
-							"port":8081,
+							"port":%d,
 							"user":"who",
 							"pass":"what"
 						},
 						{
 							"host":"localhost",
-							"port":8080,
+							"port":%d,
 							"user":"",
 							"pass":""
 						}
@@ -423,12 +434,13 @@ var _ = Describe("Service Discovery Controller process", func() {
 					"pruning_interval_seconds": %d,
 					"metrics_emit_seconds": 2,
 					"metron_port": %d
-				}`, caFile, serverCert, serverKey, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port()))
+				}`, port, caFile, serverCert, serverKey, garbagePort, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port()))
 			})
 
 			It("connects to NATs successfully", func() {
 				Eventually(func() string {
-					resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+					url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+					resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 					Expect(err).ToNot(HaveOccurred())
 					respBody, err := ioutil.ReadAll(resp.Body)
 					Expect(err).ToNot(HaveOccurred())
@@ -489,11 +501,13 @@ var _ = Describe("Service Discovery Controller process", func() {
 				client = NewClient(testhelpers.CertPool(caFile), clientCert)
 				waitDuration = time.Duration(stalenessThresholdSeconds+pruningIntervalSeconds+1) * time.Second
 			})
+
 			It("does not prune stale entries", func() {
 				By("stopping the nats server and still returning routes past staleness threshold", func() {
 					natsServer.Shutdown()
 					Consistently(func() []byte {
-						resp, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+						url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+						resp, err := client.Get(url)
 						Expect(err).ToNot(HaveOccurred())
 
 						respBody, err := ioutil.ReadAll(resp.Body)
@@ -526,9 +540,10 @@ var _ = Describe("Service Discovery Controller process", func() {
 				})
 
 				By("resuming pruning when nats server is back up", func() {
-					natsServer = RunNatsServerOnPort(8080)
+					natsServer = RunNatsServerOnPort(natsServerPort)
 					Eventually(func() []byte {
-						resp, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+						url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+						resp, err := client.Get(url)
 						Expect(err).ToNot(HaveOccurred())
 
 						respBody, err := ioutil.ReadAll(resp.Body)
@@ -547,52 +562,55 @@ var _ = Describe("Service Discovery Controller process", func() {
 
 		Context("Attempting to adjust log level", func() {
 			It("it accepts the debug request", func() {
-				response := requestLogChange("debug")
+				response := requestLogChange("debug", logLevelEndpointPort)
 				Expect(response.StatusCode).To(Equal(http.StatusNoContent))
 				Eventually(session).Should(gbytes.Say("Log level set to DEBUG"))
 			})
 
 			It("it accepts the info request", func() {
-				response := requestLogChange("info")
+				response := requestLogChange("info", logLevelEndpointPort)
 				Expect(response.StatusCode).To(Equal(http.StatusNoContent))
 				Eventually(session).Should(gbytes.Say("Log level set to INFO"))
 			})
 
 			It("it refuses the error request", func() {
-				response := requestLogChange("error")
+				response := requestLogChange("error", logLevelEndpointPort)
 				Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
 				Eventually(session).Should(gbytes.Say("Invalid log level requested: `error`. Skipping."))
 			})
 
 			It("it refuses the critical request", func() {
-				response := requestLogChange("fatal")
+				response := requestLogChange("fatal", logLevelEndpointPort)
 				Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
 				Eventually(session).Should(gbytes.Say("Invalid log level requested: `fatal`. Skipping."))
 			})
 
 			It("logs at info level by default", func() {
 				client := NewClient(testhelpers.CertPool(caFile), clientCert)
-				_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+				_, err := client.Get(url)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(session).ToNot(gbytes.Say("HTTPServer access"))
 			})
 
 			It("logs at debug level when configured", func() {
-				requestLogChange("debug")
+				requestLogChange("debug", logLevelEndpointPort)
 				client := NewClient(testhelpers.CertPool(caFile), clientCert)
-				_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+				_, err := client.Get(url)
 				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(session).Should(gbytes.Say("HTTPServer access"))
 			})
 
 			It("logs at info level when switched back to info", func() {
-				requestLogChange("debug")
-				requestLogChange("info")
+				requestLogChange("debug", logLevelEndpointPort)
+				requestLogChange("info", logLevelEndpointPort)
 
 				client := NewClient(testhelpers.CertPool(caFile), clientCert)
-				_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
+				url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+				_, err := client.Get(url)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(session).ToNot(gbytes.Say("HTTPServer access"))
@@ -630,18 +648,19 @@ var _ = Describe("Service Discovery Controller process", func() {
 	Context("when none of the nats urls are valid", func() {
 		BeforeEach(func() {
 			os.Remove(configPath)
-			configPath = writeConfigFile(`{
+			garbagePort := ports.PickAPort()
+			configPath = writeConfigFile(fmt.Sprintf(`{
 				"address":"127.0.0.1",
-				"port":"8055",
+				"port":"%d",
 				"nats":[
 					{
 						"host":"garbage",
-						"port":8081,
+						"port":%d,
 						"user":"who",
 						"pass":"what"
 					}
 				]
-			}`)
+			}`, port, garbagePort))
 		})
 
 		It("fails to start successfully", func() {
@@ -654,10 +673,11 @@ var _ = Describe("Service Discovery Controller process", func() {
 	})
 })
 
-func requestLogChange(logLevel string) *http.Response {
+func requestLogChange(logLevel string, port int) *http.Response {
 	client := &http.Client{}
 	postBody := strings.NewReader(logLevel)
-	response, err := client.Post("http://localhost:8056/log-level", "text/plain", postBody)
+	url := fmt.Sprintf("http://localhost:%d/log-level", port)
+	response, err := client.Post(url, "text/plain", postBody)
 	Expect(err).ToNot(HaveOccurred())
 	return response
 }

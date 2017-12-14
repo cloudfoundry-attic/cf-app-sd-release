@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	. "github.com/st3v/glager"
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 )
 
 var _ = Describe("Subscriber", func() {
@@ -31,10 +32,12 @@ var _ = Describe("Subscriber", func() {
 		startMsgChan     chan *nats.Msg
 		greetMsgChan     chan *nats.Msg
 		metricsSender    *fakes.MetricsSender
+		port 			 int
 	)
 
 	BeforeEach(func() {
-		gnatsServer = RunServerOnPort(8080)
+		port = ports.PickAPort()
+		gnatsServer = RunServerOnPort(port)
 		gnatsServer.Start()
 
 		natsUrl = "nats://username:password@" + gnatsServer.Addr().String()
@@ -181,7 +184,7 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			By("gnatsd starts back up", func() {
-				gnatsServer = RunServerOnPort(8080)
+				gnatsServer = RunServerOnPort(port)
 				gnatsServer.Start()
 			})
 
