@@ -22,6 +22,7 @@ import (
 	"github.com/tedsuo/ifrit/sigmon"
 	"golang.org/x/net/dns/dnsmessage"
 	"time"
+	"code.cloudfoundry.org/cf-networking-helpers/lagerlevel"
 )
 
 func main() {
@@ -99,8 +100,14 @@ func main() {
 		time.Duration(config.MetricsEmitSeconds)*time.Second,
 		uptimeSource,
 	)
+
+	logger := lager.NewLogger("bosh-dns-adapter")
+	writerSink := lager.NewWriterSink(os.Stdout, lager.DEBUG)
+	sink := lager.NewReconfigurableSink(writerSink, lager.INFO)
+
 	members := grouper.Members{
 		{"metrics-emitter", metricsEmitter},
+		{"log-level-server", lagerlevel.NewServer(config.LogLevelAddress, config.LogLevelPort, sink, logger.Session("log-level-server"))},
 	}
 	group := grouper.NewOrdered(os.Interrupt, members)
 	monitor := ifrit.Invoke(sigmon.New(group))

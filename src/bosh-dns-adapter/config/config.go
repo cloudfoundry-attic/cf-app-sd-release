@@ -16,6 +16,8 @@ type Config struct {
 	CACert                            string `json:"ca_cert" validate:"nonzero"`
 	MetronPort                        int    `json:"metron_port" validate:"min=1"`
 	MetricsEmitSeconds                int    `json:"metrics_emit_seconds" validate:"min=1"`
+	LogLevelAddress                   string `json:"log_level_address" validate:"nonzero"`
+	LogLevelPort                      int    `json:"log_level_port" validate:"min=1"`
 }
 
 func NewConfig(configJSON []byte) (*Config, error) {
