@@ -88,7 +88,10 @@ var _ = Describe("Main", func() {
 			"metrics_emit_seconds": 2,
 			"log_level_port": 8056,
 			"log_level_address": "127.0.0.1"
-		}`, dnsAdapterAddress, dnsAdapterPort, strings.TrimPrefix(urlParts[1], "//"), urlParts[2],
+		}`, dnsAdapterAddress,
+			dnsAdapterPort,
+			strings.TrimPrefix(urlParts[1], "//"),
+			urlParts[2],
 			clientCertFileName,
 			clientKeyFileName,
 			caFileName,
@@ -198,7 +201,7 @@ var _ = Describe("Main", func() {
 
 		It("fails to start", func() {
 			Eventually(session2, 5*time.Second).Should(gexec.Exit(1))
-			Eventually(session2.Err).Should(gbytes.Say("Address \\(127.0.0.1:8053\\) not available"))
+			Eventually(session2.Err).Should(gbytes.Say(`Address \(127.0.0.1:8053\) not available`))
 		})
 	})
 
@@ -306,7 +309,8 @@ var _ = Describe("Main", func() {
 
 		It("should fail to startup", func() {
 			Eventually(session2).Should(gexec.Exit(2))
-			Eventually(session2).Should(gbytes.Say("Could not read config file at path '/non-existent-path'"))
+			Eventually(session2).Should(gbytes.Say("Could not read config file"))
+			Eventually(session2).Should(gbytes.Say("/non-existent-path"))
 		})
 	})
 
@@ -317,7 +321,8 @@ var _ = Describe("Main", func() {
 
 		It("should fail to startup", func() {
 			Eventually(session).Should(gexec.Exit(2))
-			Eventually(session).Should(gbytes.Say("Could not parse config file at path '%s'", tempConfigFile.Name()))
+			Eventually(session).Should(gbytes.Say("Could not parse config file"))
+			Eventually(session).Should(gbytes.Say(tempConfigFile.Name()))
 		})
 	})
 
@@ -398,67 +403,60 @@ var _ = Describe("Main", func() {
 	})
 
 	Context("Attempting to adjust log level", func() {
-		FIt("it accepts the debug request", func() {
-			//response := requestLogChange("debug")
-			//Expect(response.StatusCode).To(Equal(http.StatusNoContent))
-			Eventually(func() *gexec.Session {
-				requestLogChange("debug")
-				return session
-			}, 5).Should(gbytes.Say("Log level set to DEBUG"))
+		JustBeforeEach(func() {
+			Eventually(session).Should(gbytes.Say("Server Started"))
 		})
 
-		//It("it accepts the info request", func() {
-		//	response := requestLogChange("info")
-		//	Expect(response.StatusCode).To(Equal(http.StatusNoContent))
-		//	Eventually(session).Should(gbytes.Say("Log level set to INFO"))
-		//})
-		//
-		//It("it refuses the error request", func() {
-		//	response := requestLogChange("error")
-		//	Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
-		//	Eventually(session).Should(gbytes.Say("Invalid log level requested: `error`. Skipping."))
-		//})
-		//
-		//It("it refuses the critical request", func() {
-		//	response := requestLogChange("fatal")
-		//	Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
-		//	Eventually(session).Should(gbytes.Say("Invalid log level requested: `fatal`. Skipping."))
-		//})
-		//
-		//It("logs at info level by default", func() {
-		//	client := NewClient(testhelpers.CertPool(caFile), clientCert)
-		//	_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
-		//	Expect(err).ToNot(HaveOccurred())
-		//
-		//	Expect(session).ToNot(gbytes.Say("HTTPServer access"))
-		//})
-		//
-		//It("logs at debug level when configured", func() {
-		//	requestLogChange("debug")
-		//	client := NewClient(testhelpers.CertPool(caFile), clientCert)
-		//	_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
-		//	Expect(err).ToNot(HaveOccurred())
-		//
-		//	Eventually(session).Should(gbytes.Say("HTTPServer access"))
-		//})
-		//
-		//It("logs at info level when switched back to info", func() {
-		//	requestLogChange("debug")
-		//	requestLogChange("info")
-		//
-		//	client := NewClient(testhelpers.CertPool(caFile), clientCert)
-		//	_, err := client.Get("https://localhost:8055/v1/registration/app-id.internal.local.")
-		//	Expect(err).ToNot(HaveOccurred())
-		//
-		//	Expect(session).ToNot(gbytes.Say("HTTPServer access"))
-		//})
+		It("it accepts the debug request", func() {
+			response := requestLogChange("debug")
+			Expect(response.StatusCode).To(Equal(http.StatusNoContent))
+			Eventually(session).Should(gbytes.Say("Log level set to DEBUG"))
+		})
+
+		It("it accepts the info request", func() {
+			response := requestLogChange("info")
+			Expect(response.StatusCode).To(Equal(http.StatusNoContent))
+			Eventually(session).Should(gbytes.Say("Log level set to INFO"))
+		})
+
+		It("it refuses the error request", func() {
+			response := requestLogChange("error")
+			Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
+			Eventually(session).Should(gbytes.Say("Invalid log level requested: `error`. Skipping."))
+		})
+
+		It("it refuses the critical request", func() {
+			response := requestLogChange("fatal")
+			Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
+			Eventually(session).Should(gbytes.Say("Invalid log level requested: `fatal`. Skipping."))
+		})
+
+		It("logs at info level by default", func() {
+			request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=1&name=app-id.internal.local.", nil)
+			resp, err := http.DefaultClient.Do(request)
+			Expect(resp.StatusCode).To(Equal(200))
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(session).ToNot(gbytes.Say("HTTPServer access"))
+		})
+
+		It("logs at debug level when configured", func() {
+			requestLogChange("debug")
+
+			request, err := http.NewRequest("GET", "http://127.0.0.1:8053?type=1&name=app-id.internal.local.", nil)
+			resp, err := http.DefaultClient.Do(request)
+			Expect(resp.StatusCode).To(Equal(200))
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(session).Should(gbytes.Say("HTTPServer access"))
+		})
 	})
 })
 
 func requestLogChange(logLevel string) *http.Response {
 	client := &http.Client{}
 	postBody := strings.NewReader(logLevel)
-	response, _ := client.Post("http://localhost:8056/log-level", "text/plain", postBody)
-	//Expect(err).ToNot(HaveOccurred())
+	response, err := client.Post("http://localhost:8056/log-level", "text/plain", postBody)
+	Expect(err).ToNot(HaveOccurred())
 	return response
 }

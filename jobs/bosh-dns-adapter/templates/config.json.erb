@@ -9,7 +9,9 @@ config = {
     "client_key" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/client.key",
     "ca_cert" => "/var/vcap/jobs/bosh-dns-adapter/config/certs/server_ca.crt",
     "metron_port" => p("metron_port"),
-    "metrics_emit_seconds" => 10
+    "metrics_emit_seconds" => 10,
+    "log_level_address" => p("log_level_address"),
+    "log_level_port" => p("log_level_port")
 }
 
 JSON.dump(config)

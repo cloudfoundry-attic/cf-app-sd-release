@@ -66,8 +66,8 @@ var _ = Describe("Config", func() {
 			"ca_cert":                              "path_to_ca_cert",
 			"metron_port":                          8080,
 			"metrics_emit_seconds":                 678,
-			"log_level_address": 					"log_level_address",
-			"log_level_port": 						8081,
+			"log_level_address":                    "log_level_address",
+			"log_level_port":                       8081,
 		}
 	})
 

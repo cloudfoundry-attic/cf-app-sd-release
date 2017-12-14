@@ -6,6 +6,7 @@ dependencies:
 
 
 files:
+  - code.cloudfoundry.org/cf-networking-helpers/lagerlevel/*.go # gosub
   - code.cloudfoundry.org/cf-networking-helpers/metrics/*.go # gosub
   - code.cloudfoundry.org/cf-networking-helpers/middleware/adapter/*.go # gosub
   - code.cloudfoundry.org/clock/*.go # gosub
@@ -46,6 +47,5 @@ files:
   - service-discovery-controller/addresstable/*.go # gosub
   - service-discovery-controller/config/*.go # gosub
   - service-discovery-controller/localip/*.go # gosub
-  - service-discovery-controller/loglevel/*.go # gosub
   - service-discovery-controller/mbus/*.go # gosub
   - service-discovery-controller/routes/*.go # gosub

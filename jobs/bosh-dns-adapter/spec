@@ -38,3 +38,11 @@ properties:
   metron_port:
     description: "Forward metrics to this metron agent, listening on this port on localhost"
     default: 3457
+
+  log_level_port:
+    description: "Port which log level endpoint listens on"
+    default: 8066
+
+  log_level_address:
+    description: "Address which log level endpoint listens on"
+    default: 127.0.0.1
