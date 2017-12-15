@@ -88,7 +88,7 @@ resources:
     type: git
     source:
       uri: https://github.com/cf-container-networking/capi-release
-      branch: apps-internal-cherrypicked
+      branch: apps-internal-cherrypicked_2
   - name: capi-ci
     type: git
     source:
@@ -99,7 +99,7 @@ resources:
     source:
       files:
       - filename: version
-        data: cf-networking-fork-1.45.0
+        data: cf-networking-fork-1.46.1
   - name: datadog-firehose-nozzle-release
     type: bosh-io-release
     source:
