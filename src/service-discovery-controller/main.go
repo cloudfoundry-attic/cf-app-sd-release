@@ -94,9 +94,10 @@ func main() {
 	logger.Info("server-started")
 
 	select {
-	case <-signalChannel:
+	case signal := <-signalChannel:
 		subscriber.Close()
 		addressTable.Shutdown()
+		monitor.Signal(signal)
 		fmt.Println("Shutting service-discovery-controller down")
 		return
 	}

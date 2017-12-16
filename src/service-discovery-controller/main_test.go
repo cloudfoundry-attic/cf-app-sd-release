@@ -92,7 +92,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(session, 5*time.Second).Should(gbytes.Say("server-started"))
+			Eventually(session, 6*time.Second).Should(gbytes.Say("server-started"))
 
 			routeEmitter = newFakeRouteEmitter("nats://" + natsServer.Addr().String())
 			register(routeEmitter, "192.168.0.1", "app-id.internal.local.")
@@ -133,10 +133,13 @@ var _ = Describe("Service Discovery Controller process", func() {
 			unregister(routeEmitter, "192.168.0.1", "app-id.internal.local.")
 			Expect(routeEmitter.Flush()).ToNot(HaveOccurred())
 
+			client := NewClient(testhelpers.CertPool(caFile), clientCert)
 			Eventually(func() string {
 				url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
-				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
-				Expect(err).ToNot(HaveOccurred())
+				resp, err := client.Get(url)
+				if err != nil {
+					return "server is not listening yet"
+				}
 				respBody, err := ioutil.ReadAll(resp.Body)
 				Expect(err).ToNot(HaveOccurred())
 				return string(respBody)
@@ -433,8 +436,10 @@ var _ = Describe("Service Discovery Controller process", func() {
 					"staleness_threshold_seconds": %d,
 					"pruning_interval_seconds": %d,
 					"metrics_emit_seconds": 2,
-					"metron_port": %d
-				}`, port, caFile, serverCert, serverKey, garbagePort, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port()))
+					"metron_port": %d,
+					"log_level_address": "%s",
+				    "log_level_port": %d
+				}`, port, caFile, serverCert, serverKey, garbagePort, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port(), logLevelEndpointAddress, logLevelEndpointPort))
 			})
 
 			It("connects to NATs successfully", func() {
@@ -650,8 +655,11 @@ var _ = Describe("Service Discovery Controller process", func() {
 			os.Remove(configPath)
 			garbagePort := ports.PickAPort()
 			configPath = writeConfigFile(fmt.Sprintf(`{
-				"address":"127.0.0.1",
 				"port":"%d",
+				"address":"127.0.0.1",
+				"ca_cert": "%s",
+				"server_cert": "%s",
+				"server_key": "%s",
 				"nats":[
 					{
 						"host":"garbage",
@@ -659,8 +667,15 @@ var _ = Describe("Service Discovery Controller process", func() {
 						"user":"who",
 						"pass":"what"
 					}
-				]
-			}`, port, garbagePort))
+				],
+				"staleness_threshold_seconds": %d,
+				"pruning_interval_seconds": %d,
+				"log_level_address": "%s",
+				"log_level_port": %d,
+				"metron_port": %d,
+				"metrics_emit_seconds": 2
+
+			}`, port, caFile, serverCert, serverKey, garbagePort, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
 		})
 
 		It("fails to start successfully", func() {
@@ -669,6 +684,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session, 5*time.Second).Should(gexec.Exit(2))
+			Expect(string(session.Out.Contents())).To(ContainSubstring("unable to create nats connection: nats: no servers available for connection"))
 		})
 	})
 })
