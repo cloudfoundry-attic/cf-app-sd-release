@@ -408,7 +408,7 @@ var _ = Describe("Subscriber", func() {
 				Eventually(func() int {
 					fakeRouteEmitter.PublishMsg(&natsUnRegisterMsg)
 					return addressTable.RemoveCallCount()
-				}).Should(Equal(1))
+				}).Should(BeNumerically(">", 0))
 
 				Expect(addressTable.RemoveArgsForCall(0)).To(Equal([]string{"foo.com", "0.foo.com"}))
 			})
