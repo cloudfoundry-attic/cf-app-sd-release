@@ -13,4 +13,4 @@ pushd "deployments-repo/environments/${ENVIRONMENT_NAME}"
   export BOSH_CLIENT_SECRET
 popd
 
-bosh upload-release --rebase tarballs/*.tgz
+bosh upload-release tarballs/*.tgz
