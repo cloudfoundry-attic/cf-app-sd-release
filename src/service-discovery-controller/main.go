@@ -15,6 +15,8 @@ import (
 	"service-discovery-controller/localip"
 	"strings"
 
+	"service-discovery-controller/routes"
+
 	"code.cloudfoundry.org/cf-networking-helpers/lagerlevel"
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
 	"code.cloudfoundry.org/cf-networking-helpers/middleware/adapter"
@@ -24,7 +26,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
-	"service-discovery-controller/routes"
 )
 
 func main() {
@@ -69,17 +70,26 @@ func main() {
 		os.Exit(2)
 	}
 
+	dnsRequestRecorder := &routes.MetricsRecorder{}
+
+	dnsRequestSource := metrics.MetricSource{
+		Name:   "dnsRequest",
+		Unit:   "request",
+		Getter: dnsRequestRecorder.Getter,
+	}
+
 	uptimeSource := metrics.NewUptimeSource()
 	metricsEmitter := metrics.NewMetricsEmitter(
 		logger,
 		time.Duration(config.MetricsEmitSeconds)*time.Second,
 		uptimeSource,
+		dnsRequestSource,
 	)
 
 	members := grouper.Members{
 		{"metrics-emitter", metricsEmitter},
 		{"log-level-server", lagerlevel.NewServer(config.LogLevelAddress, config.LogLevelPort, sink, logger.Session("log-level-server"))},
-		{"routes-server", routes.NewServer(addressTable, config, logger.Session("routes-server"))},
+		{"routes-server", routes.NewServer(addressTable, config, dnsRequestRecorder, logger.Session("routes-server"))},
 	}
 	group := grouper.NewOrdered(os.Interrupt, members)
 	monitor := ifrit.Invoke(sigmon.New(group))

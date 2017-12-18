@@ -1,25 +1,27 @@
 package routes
 
 import (
-	"code.cloudfoundry.org/lager"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
 	"service-discovery-controller/config"
 
+	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
+
 	"time"
 )
 
 type Server struct {
-	config       *config.Config
-	logger       lager.Logger
-	addressTable AddressTable
+	config             *config.Config
+	logger             lager.Logger
+	addressTable       AddressTable
+	dnsRequestRecorder DNSRequestRecorder
 }
 
 type host struct {
@@ -53,11 +55,17 @@ type AddressTable interface {
 	GetAllAddresses() map[string][]string
 }
 
-func NewServer(addressTable AddressTable, config *config.Config, logger lager.Logger) *Server {
+//go:generate counterfeiter -o fakes/dns_request_recorder.go --fake-name DNSRequestRecorder . DNSRequestRecorder
+type DNSRequestRecorder interface {
+	RecordRequest()
+}
+
+func NewServer(addressTable AddressTable, config *config.Config, dnsRequestRecorder DNSRequestRecorder, logger lager.Logger) *Server {
 	return &Server{
-		addressTable: addressTable,
-		config:       config,
-		logger:       logger,
+		addressTable:       addressTable,
+		config:             config,
+		dnsRequestRecorder: dnsRequestRecorder,
+		logger:             logger,
 	}
 }
 
@@ -153,6 +161,8 @@ func (s *Server) handleRegistrationRequest(resp http.ResponseWriter, req *http.R
 	if err != nil {
 		s.logger.Debug("Error writing to http response body")
 	}
+
+	s.dnsRequestRecorder.RecordRequest()
 
 	s.logger.Debug("HTTPServer access", lager.Data(map[string]interface{}{
 		"serviceKey":   serviceKey,

@@ -15,6 +15,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 
+	"strings"
+
 	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
@@ -23,7 +25,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/types"
-	"strings"
 )
 
 var _ = Describe("Service Discovery Controller process", func() {
@@ -493,6 +494,22 @@ var _ = Describe("Service Discovery Controller process", func() {
 					withName("uptime"),
 					withOrigin("service-discovery-controller"),
 				)))
+			})
+
+			Context("when a request is made to SDC", func() {
+				JustBeforeEach(func() {
+					url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+					_, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				It("emits a dns request metric", func() {
+					Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+						withName("dnsRequest"),
+						withOrigin("service-discovery-controller"),
+					)))
+				})
+
 			})
 		})
 

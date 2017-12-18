@@ -1,17 +1,11 @@
 package routes_test
 
 import (
-	//"github.com/tedsuo/ifrit"
 	"bosh-dns-adapter/testhelpers"
-	"code.cloudfoundry.org/lager/lagertest"
-	//"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
+
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/tedsuo/ifrit"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -20,19 +14,27 @@ import (
 	"service-discovery-controller/routes/fakes"
 	"strconv"
 	"time"
+
+	"code.cloudfoundry.org/lager/lagertest"
+
+	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/tedsuo/ifrit"
 )
 
 var _ = Describe("Server", func() {
 	var (
-		addressTable *fakes.AddressTable
-		clientCert   tls.Certificate
-		caFile       string
-		serverCert   string
-		serverKey    string
-		serverProc   ifrit.Process
-		testLogger   *lagertest.TestLogger
-		server       *Server
-		port         int
+		addressTable       *fakes.AddressTable
+		dnsRequestRecorder *fakes.DNSRequestRecorder
+		clientCert         tls.Certificate
+		caFile             string
+		serverCert         string
+		serverKey          string
+		serverProc         ifrit.Process
+		testLogger         *lagertest.TestLogger
+		server             *Server
+		port               int
 	)
 
 	BeforeEach(func() {
@@ -49,13 +51,23 @@ var _ = Describe("Server", func() {
 			ServerKey:  serverKey,
 		}
 		addressTable = &fakes.AddressTable{}
-		server = NewServer(addressTable, config, testLogger)
+		dnsRequestRecorder = &fakes.DNSRequestRecorder{}
+		server = NewServer(addressTable, config, dnsRequestRecorder, testLogger)
 	})
 
 	Context("when the lookup succeeds", func() {
+		var respBody string
+
 		BeforeEach(func() {
 			serverProc = ifrit.Invoke(server)
 			addressTable.LookupReturns([]string{"192.168.0.2"})
+
+			client := NewClient(testhelpers.CertPool(caFile), clientCert)
+			resp, err := client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))
+			Expect(err).ToNot(HaveOccurred())
+			respBodyBytes, err := ioutil.ReadAll(resp.Body)
+			Expect(err).ToNot(HaveOccurred())
+			respBody = string(respBodyBytes)
 		})
 
 		AfterEach(func() {
@@ -64,11 +76,6 @@ var _ = Describe("Server", func() {
 		})
 
 		It("should return addresses for a give hostname", func() {
-			client := NewClient(testhelpers.CertPool(caFile), clientCert)
-			resp, err := client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))
-			Expect(err).ToNot(HaveOccurred())
-			respBody, err := ioutil.ReadAll(resp.Body)
-			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respBody)).To(MatchJSON(`{
 				"env": "",
 				"hosts": [
@@ -83,8 +90,14 @@ var _ = Describe("Server", func() {
 				}],
 				"service": ""
 			}`))
+		})
 
+		It("looks up the given host name in the address table", func() {
 			Expect(addressTable.LookupArgsForCall(0)).To(Equal("app-id.internal.local."))
+		})
+
+		It("invokes the dns request recorder", func() {
+			Expect(dnsRequestRecorder.RecordRequestCallCount()).To(Equal(1))
 		})
 	})
 
