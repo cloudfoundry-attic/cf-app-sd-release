@@ -33,6 +33,7 @@ files:
   - github.com/mailru/easyjson/jlexer/*.go # gosub
   - github.com/mailru/easyjson/jwriter/*.go # gosub
   - github.com/nu7hatch/gouuid/*.go # gosub
+  - github.com/pkg/errors/*.go # gosub
   - github.com/tedsuo/ifrit/*.go # gosub
   - github.com/tedsuo/ifrit/grouper/*.go # gosub
   - github.com/tedsuo/ifrit/sigmon/*.go # gosub
