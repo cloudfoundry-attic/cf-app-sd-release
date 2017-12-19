@@ -120,7 +120,6 @@ var _ = Describe("Main", func() {
 	})
 
 	It("should return a http 200 status", func() {
-
 		Eventually(session).Should(gbytes.Say("Server Started"))
 
 		var reader io.Reader
@@ -413,6 +412,59 @@ var _ = Describe("Main", func() {
 
 	})
 
+	Context("logging", func() {
+		JustBeforeEach(func() {
+			Eventually(session).Should(gbytes.Say("Server Started"))
+			response := requestLogChange("debug", logLevelPort)
+			Expect(response.StatusCode).To(Equal(http.StatusNoContent))
+		})
+
+		Context("When making a request for a hostname with an associated ip", func() {
+			JustBeforeEach(func() {
+				url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
+				makeDNSRequest(url, 200)
+			})
+
+			It("logs the request with app domain and ips", func() {
+				Eventually(session).Should(gbytes.Say("bosh-dns-adapter.serve-request.*192.168.0.1.*app-id.internal.local"))
+			})
+		})
+
+		Context("When making a request for a non A record", func() {
+			JustBeforeEach(func() {
+				url := fmt.Sprintf("http://127.0.0.1:%s?type=2&name=app-id.internal.local.", dnsAdapterPort)
+				makeDNSRequest(url, 200)
+			})
+
+			It("logs the request with app domain and notifies of the un-supported record type", func() {
+				Eventually(session).Should(gbytes.Say("bosh-dns-adapter.serve-request.*unsupported record type.*app-id.internal.local"))
+			})
+		})
+
+		Context("When making a request without a domain name", func() {
+			JustBeforeEach(func() {
+				url := fmt.Sprintf("http://127.0.0.1:%s?type=1", dnsAdapterPort)
+				makeDNSRequest(url, 400)
+			})
+
+			It("logs the request and notifies of the missing name", func() {
+				Eventually(session).Should(gbytes.Say("bosh-dns-adapter.serve-request.*name parameter empty"))
+			})
+		})
+
+		Context("When making a request to the sdc fails", func() {
+			JustBeforeEach(func() {
+				fakeServiceDiscoveryControllerServer.Close()
+				url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
+				makeDNSRequest(url, 500)
+			})
+
+			It("logs the error", func() {
+				Eventually(session).Should(gbytes.Say("bosh-dns-adapter.serve-request.*could not connect to service discovery controller"))
+			})
+		})
+	})
+
 	Context("Attempting to adjust log level", func() {
 		JustBeforeEach(func() {
 			Eventually(session).Should(gbytes.Say("Server Started"))
@@ -449,7 +501,7 @@ var _ = Describe("Main", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(200))
 
-			Expect(session).ToNot(gbytes.Say("HTTPServer access"))
+			Expect(session).ToNot(gbytes.Say("bosh-dns-adapter.serve-request"))
 		})
 
 		It("logs at debug level when configured", func() {
@@ -461,7 +513,7 @@ var _ = Describe("Main", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(200))
 
-			Eventually(session).Should(gbytes.Say("HTTPServer access"))
+			Eventually(session).Should(gbytes.Say("bosh-dns-adapter.serve-request"))
 		})
 	})
 })
@@ -473,4 +525,11 @@ func requestLogChange(logLevel string, port int) *http.Response {
 	response, err := client.Post(url, "text/plain", postBody)
 	Expect(err).ToNot(HaveOccurred())
 	return response
+}
+
+func makeDNSRequest(url string, expectedResponseCode int) {
+	request, err := http.NewRequest("GET", url, nil)
+	resp, err := http.DefaultClient.Do(request)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(expectedResponseCode))
 }

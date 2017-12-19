@@ -12,7 +12,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+
+	"time"
 
 	"code.cloudfoundry.org/cf-networking-helpers/lagerlevel"
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
@@ -22,7 +25,6 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
 	"golang.org/x/net/dns/dnsmessage"
-	"time"
 )
 
 func main() {
@@ -75,6 +77,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	requestLogger := logger.Session("serve-request")
+
 	go func() {
 		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 			dnsType := getQueryParam(req, "type", "1")
@@ -82,12 +86,20 @@ func main() {
 
 			if dnsType != "1" {
 				writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, nil, logger)
+				requestLogger.Debug("unsupported record type", lager.Data{
+					"ips":          "",
+					"service-name": name,
+				})
 				return
 			}
 
 			if name == "" {
 				resp.WriteHeader(http.StatusBadRequest)
 				writeResponse(resp, dnsmessage.RCodeServerFailure, name, dnsType, nil, logger)
+				requestLogger.Debug("name parameter empty", lager.Data{
+					"ips":          "",
+					"service-name": "",
+				})
 				return
 			}
 
@@ -95,10 +107,20 @@ func main() {
 			if err != nil {
 				wrappedErr := errors.New(fmt.Sprintf("Error querying Service Discover Controller: %s", err))
 				writeErrorResponse(resp, wrappedErr, logger)
+				requestLogger.Error("could not connect to service discovery controller",
+					wrappedErr,
+					lager.Data{
+						"ips":          "",
+						"service-name": name,
+					})
 				return
 			}
 
 			writeResponse(resp, dnsmessage.RCodeSuccess, name, dnsType, ips, logger)
+			requestLogger.Debug("success", lager.Data{
+				"ips":          strings.Join(ips, ","),
+				"service-name": name,
+			})
 		}))
 	}()
 
@@ -146,8 +168,6 @@ func writeErrorResponse(resp http.ResponseWriter, err error, logger lager.Logger
 	if err != nil {
 		logger.Error("Error writing to http response body", err)
 	}
-	logger.Debug("HTTPServer access")
-
 }
 
 func writeResponse(resp http.ResponseWriter, dnsResponseStatus dnsmessage.RCode, requestedInfraName string, dnsType string, ips []string, logger lager.Logger) {
