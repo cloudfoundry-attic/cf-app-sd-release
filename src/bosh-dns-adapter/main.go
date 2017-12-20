@@ -146,10 +146,12 @@ func main() {
 		}
 	}()
 
-	logger.Info("Server Started")
+	logger.Info("server-started")
 	select {
-	case <-signalChannel:
-		logger.Info("Shutting bosh-dns-adapter down")
+	case sig := <-signalChannel:
+		monitor.Signal(sig)
+		l.Close()
+		logger.Info("server-stopped")
 		return
 	}
 }

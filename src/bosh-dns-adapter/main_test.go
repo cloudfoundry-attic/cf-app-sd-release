@@ -120,7 +120,7 @@ var _ = Describe("Main", func() {
 	})
 
 	It("should return a http 200 status", func() {
-		Eventually(session).Should(gbytes.Say("Server Started"))
+		Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 
 		var reader io.Reader
 		url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
@@ -164,11 +164,11 @@ var _ = Describe("Main", func() {
 	})
 
 	It("accepts interrupt signals and shuts down", func() {
-		Eventually(session).Should(gbytes.Say("Server Started"))
+		Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 		session.Signal(os.Interrupt)
 
 		Eventually(session).Should(gexec.Exit())
-		Eventually(session).Should(gbytes.Say("Shutting bosh-dns-adapter down"))
+		Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-stopped"))
 	})
 
 	Describe("emitting metrics", func() {
@@ -213,7 +213,7 @@ var _ = Describe("Main", func() {
 
 	Context("when 'type' url param is not provided", func() {
 		It("should default to type A record", func() {
-			Eventually(session).Should(gbytes.Say("Server Started"))
+			Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 
 			var reader io.Reader
 			url := fmt.Sprintf("http://127.0.0.1:%s?name=app-id.internal.local.", dnsAdapterPort)
@@ -257,7 +257,7 @@ var _ = Describe("Main", func() {
 
 	Context("when 'name' url param is not provided", func() {
 		It("returns a http 400 status", func() {
-			Eventually(session).Should(gbytes.Say("Server Started"))
+			Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 			var reader io.Reader
 			url := fmt.Sprintf("http://127.0.0.1:%s?type=1", dnsAdapterPort)
 			request, err := http.NewRequest("GET", url, reader)
@@ -354,7 +354,7 @@ var _ = Describe("Main", func() {
 
 	Context("when requesting anything but an A record", func() {
 		It("should return a successful response with no answers", func() {
-			Eventually(session).Should(gbytes.Say("Server Started"))
+			Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 			url := fmt.Sprintf("http://127.0.0.1:%s?type=16&name=app-id.internal.local.", dnsAdapterPort)
 			request, err := http.NewRequest("GET", url, nil)
 			Expect(err).ToNot(HaveOccurred())
@@ -397,7 +397,7 @@ var _ = Describe("Main", func() {
 		})
 
 		It("returns a 500 and an error", func() {
-			Eventually(session).Should(gbytes.Say("Server Started"))
+			Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 			var reader io.Reader
 
 			url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
@@ -414,7 +414,7 @@ var _ = Describe("Main", func() {
 
 	Context("logging", func() {
 		JustBeforeEach(func() {
-			Eventually(session).Should(gbytes.Say("Server Started"))
+			Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 			response := requestLogChange("debug", logLevelPort)
 			Expect(response.StatusCode).To(Equal(http.StatusNoContent))
 		})
@@ -467,7 +467,7 @@ var _ = Describe("Main", func() {
 
 	Context("Attempting to adjust log level", func() {
 		JustBeforeEach(func() {
-			Eventually(session).Should(gbytes.Say("Server Started"))
+			Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 		})
 
 		It("it accepts the debug request", func() {
