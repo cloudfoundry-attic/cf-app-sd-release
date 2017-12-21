@@ -64,9 +64,9 @@ func main() {
 		panic(err)
 	}
 
-	subscriber, err := launchSubscriber(config, addressTable, logger)
+	subscriber, err := buildSubscriber(config, addressTable, logger)
 	if err != nil {
-		logger.Error("Failed to launch subscriber", err)
+		logger.Error("Failed to build subscriber", err)
 		os.Exit(2)
 	}
 
@@ -86,11 +86,27 @@ func main() {
 		dnsRequestSource,
 	)
 
+	logLevelServer := lagerlevel.NewServer(
+		config.LogLevelAddress,
+		config.LogLevelPort,
+		sink,
+		logger.Session("log-level-server"),
+	)
+
+	routesServer := routes.NewServer(
+		addressTable,
+		config,
+		dnsRequestRecorder,
+		logger.Session("routes-server"),
+	)
+
 	members := grouper.Members{
+		{"subscriber", subscriber},
 		{"metrics-emitter", metricsEmitter},
-		{"log-level-server", lagerlevel.NewServer(config.LogLevelAddress, config.LogLevelPort, sink, logger.Session("log-level-server"))},
-		{"routes-server", routes.NewServer(addressTable, config, dnsRequestRecorder, logger.Session("routes-server"))},
+		{"log-level-server", logLevelServer},
+		{"routes-server", routesServer},
 	}
+
 	group := grouper.NewOrdered(os.Interrupt, members)
 	monitor := ifrit.Invoke(sigmon.New(group))
 
@@ -113,7 +129,7 @@ func main() {
 	}
 }
 
-func launchSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) (*mbus.Subscriber, error) {
+func buildSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) (*mbus.Subscriber, error) {
 	uuidGenerator := adapter.UUIDAdapter{}
 
 	uuid, err := uuidGenerator.GenerateUUID()
@@ -143,11 +159,5 @@ func launchSubscriber(config *config.Config, addressTable *addresstable.AddressT
 	}
 
 	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger.Session("mbus"), metricsSender)
-
-	err = subscriber.Run()
-	if err != nil {
-		return subscriber, err
-	}
-
 	return subscriber, nil
 }

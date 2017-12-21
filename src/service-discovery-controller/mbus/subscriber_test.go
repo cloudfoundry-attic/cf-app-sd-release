@@ -70,7 +70,7 @@ var _ = Describe("Subscriber", func() {
 		metricsSender = &fakes.MetricsSender{}
 
 		subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
-		Expect(subscriber.Run()).ToNot(HaveOccurred())
+		Expect(subscriber.RunOnce()).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -458,7 +458,7 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			It("run returns an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("unable to create nats connection: CANT"))
 			})
@@ -471,13 +471,13 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			It("returns an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("unable to publish a start message: NO START"))
 			})
 
 			It("self closes", func() {
-				subscriber.Run()
+				subscriber.RunOnce()
 				Expect(natsConn.CloseCallCount()).To(Equal(1))
 			})
 		})
@@ -491,18 +491,18 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			It("self closes", func() {
-				subscriber.Run()
+				subscriber.RunOnce()
 				Expect(natsConn.CloseCallCount()).To(Equal(1))
 			})
 
 			It("returns an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("NO GREET"))
 			})
 
 			It("logs an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 
 				Expect(subcriberLogger).To(HaveLogged(
@@ -522,18 +522,18 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			It("returns an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("NO SUBSCRIBE"))
 			})
 
 			It("self closes", func() {
-				subscriber.Run()
+				subscriber.RunOnce()
 				Expect(natsConn.CloseCallCount()).To(Equal(1))
 			})
 
 			It("logs an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 
 				Expect(subcriberLogger).To(HaveLogged(
@@ -553,18 +553,18 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			It("returns an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("NO SUBSCRIBE when unregister"))
 			})
 
 			It("self closes", func() {
-				subscriber.Run()
+				subscriber.RunOnce()
 				Expect(natsConn.CloseCallCount()).To(Equal(1))
 			})
 
 			It("logs an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 
 				Expect(subcriberLogger).To(HaveLogged(
@@ -585,13 +585,13 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			It("should return an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("failed to flush"))
 			})
 
 			It("logs an error", func() {
-				err := subscriber.Run()
+				err := subscriber.RunOnce()
 				Expect(err).To(HaveOccurred())
 				Expect(subcriberLogger).To(HaveLogged(
 					Error(
@@ -611,8 +611,8 @@ var _ = Describe("Subscriber", func() {
 			})
 
 			It("should not have any side effects", func() {
-				Expect(subscriber.Run()).To(Succeed())
-				Expect(subscriber.Run()).To(Succeed())
+				Expect(subscriber.RunOnce()).To(Succeed())
+				Expect(subscriber.RunOnce()).To(Succeed())
 
 				Expect(provider.ConnectionCallCount()).To(Equal(1))
 			})

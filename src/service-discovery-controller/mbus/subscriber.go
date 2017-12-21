@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
+	"os"
 )
 
 const (
@@ -95,7 +96,24 @@ func NewSubscriber(
 	}
 }
 
-func (s *Subscriber) Run() error {
+func (s *Subscriber) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+	err := s.RunOnce()
+	if err != nil {
+		return err
+	}
+
+	close(ready)
+
+	for {
+		select {
+		case <-signals:
+			s.Close()
+			return nil
+		}
+	}
+}
+
+func (s *Subscriber) RunOnce() error {
 	var err error
 	s.once.Do(func() {
 		var natsClient NatsConn
