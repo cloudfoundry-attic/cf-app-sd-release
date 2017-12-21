@@ -701,7 +701,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session, 5*time.Second).Should(gexec.Exit(2))
-			Expect(string(session.Out.Contents())).To(ContainSubstring("unable to create nats connection: nats: no servers available for connection"))
+			Expect(session).To(gbytes.Say("service-discovery-controller.*unable to create nats connection: nats: no servers available for connection"))
 		})
 	})
 })
