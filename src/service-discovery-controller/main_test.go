@@ -93,7 +93,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			session, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(session, 6*time.Second).Should(gbytes.Say("server-started"))
+			Eventually(session, 6*time.Second).Should(gbytes.Say("service-discovery-controller.server-started"))
 
 			routeEmitter = newFakeRouteEmitter("nats://" + natsServer.Addr().String())
 			register(routeEmitter, "192.168.0.1", "app-id.internal.local.")
@@ -125,7 +125,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			session.Signal(os.Interrupt)
 
 			Eventually(session).Should(gexec.Exit())
-			Eventually(session).Should(gbytes.Say("Shutting service-discovery-controller down"))
+			Eventually(session).Should(gbytes.Say("service-discovery-controller.server-stopped"))
 		})
 
 		It("should not return ips for unregistered domains", func() {

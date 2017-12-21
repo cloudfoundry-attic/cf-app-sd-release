@@ -108,7 +108,7 @@ func main() {
 		subscriber.Close()
 		addressTable.Shutdown()
 		monitor.Signal(signal)
-		fmt.Println("Shutting service-discovery-controller down")
+		logger.Info("server-stopped")
 		return
 	}
 }
