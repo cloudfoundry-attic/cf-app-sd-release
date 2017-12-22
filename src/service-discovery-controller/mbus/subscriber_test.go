@@ -464,6 +464,21 @@ var _ = Describe("Subscriber", func() {
 			})
 		})
 
+		Context("when the nats server goes down for an extended amount of time", func() {
+			BeforeEach(func() {
+				subscriber.Close()
+				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+			})
+
+			FIt("should never stop retrying to reconnect", func() {
+				subscriber.RunOnce()
+				call := provider.ConnectionArgsForCall(0)
+				options := &nats.Options{}
+				call[3](options)
+				Expect(options.MaxReconnect).To(Equal(-1))
+			})
+		})
+
 		Context("when calling run and sending start message fails", func() {
 			BeforeEach(func() {
 				natsConn.PublishMsgReturns(errors.New("NO START"))

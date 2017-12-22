@@ -147,6 +147,7 @@ func (s *Subscriber) RunOnce() error {
 					lager.Data{"last_error": conn.LastError()},
 				)
 			})),
+			nats.MaxReconnects(-1),
 		)
 
 		if err != nil {
