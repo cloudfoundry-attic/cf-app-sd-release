@@ -8,7 +8,7 @@ image_resource:
 platform: linux
 
 inputs:
-  - name: bbl-state
+  - name: env-repo
   - name: cf-app-sd-release
   - name: cf-deployment-concourse-tasks
   - name: local-release
