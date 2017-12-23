@@ -470,7 +470,7 @@ var _ = Describe("Subscriber", func() {
 				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
 			})
 
-			FIt("should never stop retrying to reconnect", func() {
+			It("should never stop retrying to reconnect", func() {
 				subscriber.RunOnce()
 				call := provider.ConnectionArgsForCall(0)
 				options := &nats.Options{}
