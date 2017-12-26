@@ -79,7 +79,7 @@ var _ = Describe("Subscriber", func() {
 		gnatsServer.Shutdown()
 	})
 
-	It("sends a start message", func() {
+	It("sends a start message and logs", func() {
 		var msg *nats.Msg
 		var serviceDiscoveryData ServiceDiscoveryStartMessage
 
@@ -94,9 +94,14 @@ var _ = Describe("Subscriber", func() {
 		Expect(serviceDiscoveryData.MinimumRegisterIntervalInSeconds).To(Equal(subOpts.MinimumRegisterIntervalInSeconds))
 		Expect(serviceDiscoveryData.PruneThresholdInSeconds).To(Equal(subOpts.PruneThresholdInSeconds))
 		Expect(serviceDiscoveryData.Host).ToNot(BeEmpty())
+
+		Eventually(subcriberLogger).Should(HaveLogged(
+			Info(
+				Message("test.service-discovery.start-message-published"),
+			)))
 	})
 
-	It("when a greeting message is received it responds", func() {
+	It("when a greeting message is received it responds and logs", func() {
 		Expect(fakeRouteEmitter.PublishRequest("service-discovery.greet", "service-discovery.greet.test.response", []byte{})).To(Succeed())
 		Expect(fakeRouteEmitter.Flush()).To(Succeed())
 
@@ -112,6 +117,11 @@ var _ = Describe("Subscriber", func() {
 		Expect(serviceDiscoveryData.MinimumRegisterIntervalInSeconds).To(Equal(subOpts.MinimumRegisterIntervalInSeconds))
 		Expect(serviceDiscoveryData.PruneThresholdInSeconds).To(Equal(subOpts.PruneThresholdInSeconds))
 		Expect(serviceDiscoveryData.Host).ToNot(BeEmpty())
+
+		Eventually(subcriberLogger).Should(HaveLogged(
+			Info(
+				Message("test.service-discovery.greet-response-published"),
+			)))
 	})
 
 	Context("when a greeting message for a non-default subject is sent", func() {

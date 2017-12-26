@@ -10,10 +10,11 @@ import (
 
 	"fmt"
 
+	"os"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
-	"os"
 )
 
 const (
@@ -201,6 +202,10 @@ func (s *Subscriber) sendStartMessage() error {
 		return errors.Wrap(err, "unable to publish a start message")
 	}
 
+	s.logger.Info("service-discovery.start-message-published", lager.Data(map[string]interface{}{
+		"subscription_options": string(s.subscriptionOptionsJSON()),
+	}))
+
 	return nil
 }
 
@@ -218,9 +223,12 @@ func (s *Subscriber) setupGreetMsgHandler() error {
 			Subject: greetMsg.Reply,
 			Data:    discoveryMessageJson,
 		})
+
 		if err != nil {
 			s.logger.Error("GreetMsgHandler unable to publish response to greet messages", err)
 		}
+
+		s.logger.Info("service-discovery.greet-response-published")
 	}))
 
 	if err != nil {
