@@ -79,6 +79,11 @@ func main() {
 
 	requestLogger := logger.Session("serve-request")
 
+
+	metricSender := metrics.MetricsSender{
+		Logger: logger.Session("bosh-dns-adapter"),
+	}
+
 	go func() {
 		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 			dnsType := getQueryParam(req, "type", "1")
@@ -113,6 +118,8 @@ func main() {
 						"ips":          "",
 						"service-name": name,
 					})
+
+				metricSender.IncrementCounter("DNSRequestFailures")
 				return
 			}
 

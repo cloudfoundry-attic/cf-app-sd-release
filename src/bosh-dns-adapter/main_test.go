@@ -172,21 +172,10 @@ var _ = Describe("Main", func() {
 	})
 
 	Describe("emitting metrics", func() {
-		withName := func(name string) types.GomegaMatcher {
-			return WithTransform(func(ev metrics.Event) string {
-				return ev.Name
-			}, Equal(name))
-		}
-		withOrigin := func(origin string) types.GomegaMatcher {
-			return WithTransform(func(ev metrics.Event) string {
-				return ev.Origin
-			}, Equal(origin))
-		}
-
 		It("emits an uptime metric", func() {
 			Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
-				withName("uptime"),
-				withOrigin("bosh-dns-adapter"),
+				metricWithName("uptime"),
+				metricWithOrigin("bosh-dns-adapter"),
 			)))
 		})
 	})
@@ -408,8 +397,12 @@ var _ = Describe("Main", func() {
 			Expect(err).To(Succeed())
 
 			Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
-		})
 
+			Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+				metricWithName("DNSRequestFailures"),
+				metricWithOrigin("bosh-dns-adapter"),
+			)))
+		})
 	})
 
 	Context("logging", func() {
@@ -532,4 +525,17 @@ func makeDNSRequest(url string, expectedResponseCode int) {
 	resp, err := http.DefaultClient.Do(request)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(expectedResponseCode))
+}
+
+
+func metricWithName(name string) types.GomegaMatcher {
+	return WithTransform(func(ev metrics.Event) string {
+		return ev.Name
+	}, Equal(name))
+}
+
+func metricWithOrigin (origin string) types.GomegaMatcher {
+	return WithTransform(func(ev metrics.Event) string {
+		return ev.Origin
+	}, Equal(origin))
 }
