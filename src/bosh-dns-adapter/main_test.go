@@ -527,14 +527,13 @@ func makeDNSRequest(url string, expectedResponseCode int) {
 	Expect(resp.StatusCode).To(Equal(expectedResponseCode))
 }
 
-
 func metricWithName(name string) types.GomegaMatcher {
 	return WithTransform(func(ev metrics.Event) string {
 		return ev.Name
 	}, Equal(name))
 }
 
-func metricWithOrigin (origin string) types.GomegaMatcher {
+func metricWithOrigin(origin string) types.GomegaMatcher {
 	return WithTransform(func(ev metrics.Event) string {
 		return ev.Origin
 	}, Equal(origin))

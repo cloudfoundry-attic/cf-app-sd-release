@@ -79,7 +79,6 @@ func main() {
 
 	requestLogger := logger.Session("serve-request")
 
-
 	metricSender := metrics.MetricsSender{
 		Logger: logger.Session("bosh-dns-adapter"),
 	}
