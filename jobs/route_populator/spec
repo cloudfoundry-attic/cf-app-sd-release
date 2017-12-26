@@ -26,13 +26,13 @@ properties:
     example: |
       - 192.168.50.123
       - 192.168.52.123
-  route_populator.app_domain:
+  app_domain:
     description: The domain name for the routes to register.
     example: apps.com
-  route_populator.app_name:
+  app_name:
     description: The name of the app for the route to register.
     example: sample
-  route_populator.num_routes:
+  num_routes:
     description: |
       Number of routes to populate the routing table with.
       The routes will be popuated as follows:
