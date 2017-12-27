@@ -1,5 +1,8 @@
+pinned-versions: &cf-deployment-concourse-task-version
+  ref: 4156e1fbdf62ae6636146b671334ef10e76e0b0e
+
 groups:
-- name: cf-app-sd 
+- name: cf-app-sd
   jobs:
   - unit-tests
   - ushanka-acceptance-tests
@@ -216,11 +219,12 @@ jobs:
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: *cf-deployment-concourse-task-version
           - get: cf-networking-deployments
       - task: bbl-up
         file: cf-deployment-concourse-tasks/bbl-up/task.yml
         params:
-          BBL_GCP_SERVICE_ACCOUNT_KEY: ../gcp/service-account.key.json
+          BBL_GCP_SERVICE_ACCOUNT_KEY: environments/gcp/service-account.key.json
           BBL_GCP_REGION: us-east1
           BBL_STATE_DIR: environments/ushanka/
           BBL_IAAS: gcp
@@ -235,7 +239,7 @@ jobs:
         ensure:
           put: cf-networking-deployments
           params:
-            repository: updated-bbl-state
+            repository: updated-env-repo
             rebase: true
 
   - name: ushanka-bbl-destroy
@@ -243,18 +247,19 @@ jobs:
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: *cf-deployment-concourse-task-version
           - get: cf-networking-deployments
       - task: bbl-destroy
         file: cf-deployment-concourse-tasks/bbl-destroy/task.yml
         params:
           BBL_STATE_DIR: environments/ushanka/
-          BBL_GCP_SERVICE_ACCOUNT_KEY: ../gcp/service-account.key.json
+          BBL_GCP_SERVICE_ACCOUNT_KEY: environments/gcp/service-account.key.json
         input_mapping:
           env-repo: cf-networking-deployments
         ensure:
           put: cf-networking-deployments
           params:
-            repository: updated-bbl-state
+            repository: updated-env-repo
             rebase: true
 
   - name: ushanka-update-capi
@@ -277,7 +282,7 @@ jobs:
       - task: upload-capi-release
         file: capi-ci/ci/bosh/upload-release.yml
         input_mapping:
-          bbl-state: cf-networking-deployments
+          env-repo: cf-networking-deployments
           release-tarball: created-capi-release
         params:
           BBL_STATE_DIR: environments/ushanka/
@@ -287,6 +292,7 @@ jobs:
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: *cf-deployment-concourse-task-version
           - get: cf-networking-deployments
           - get: cf-deployment
             trigger: true
@@ -347,6 +353,7 @@ jobs:
     - aggregate:
       - get: cf-networking-deployments
       - get: cf-deployment-concourse-tasks
+        version: *cf-deployment-concourse-task-version
     - task: delete-deployment
       file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
       params:
@@ -359,11 +366,12 @@ jobs:
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: *cf-deployment-concourse-task-version
           - get: cf-networking-deployments
       - task: bbl-up
         file: cf-deployment-concourse-tasks/bbl-up/task.yml
         params:
-          BBL_GCP_SERVICE_ACCOUNT_KEY: ../gcp/service-account.key.json
+          BBL_GCP_SERVICE_ACCOUNT_KEY: environments/gcp/service-account.key.json
           BBL_GCP_REGION: us-east1
           BBL_STATE_DIR: environments/beret/
           BBL_IAAS: gcp
@@ -378,7 +386,7 @@ jobs:
         ensure:
           put: cf-networking-deployments
           params:
-            repository: updated-bbl-state
+            repository: updated-env-repo
             rebase: true
 
   - name: beret-bbl-destroy
@@ -386,18 +394,19 @@ jobs:
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: *cf-deployment-concourse-task-version
           - get: cf-networking-deployments
       - task: bbl-destroy
         file: cf-deployment-concourse-tasks/bbl-destroy/task.yml
         params:
           BBL_STATE_DIR: environments/beret/
-          BBL_GCP_SERVICE_ACCOUNT_KEY: ../gcp/service-account.key.json
+          BBL_GCP_SERVICE_ACCOUNT_KEY: environments/gcp/service-account.key.json
         input_mapping:
           env-repo: cf-networking-deployments
         ensure:
           put: cf-networking-deployments
           params:
-            repository: updated-bbl-state
+            repository: updated-env-repo
             rebase: true
 
   - name: beret-update-capi
@@ -420,7 +429,7 @@ jobs:
       - task: upload-capi-release
         file: capi-ci/ci/bosh/upload-release.yml
         input_mapping:
-          bbl-state: cf-networking-deployments
+          env-repo: cf-networking-deployments
           release-tarball: created-capi-release
         params:
           BBL_STATE_DIR: environments/beret/
@@ -430,6 +439,7 @@ jobs:
     plan:
     - aggregate:
       - get: cf-deployment-concourse-tasks
+        version: *cf-deployment-concourse-task-version
       - get: cf-app-sd-ci
       - get: cf-networking-deployments
       - get: datadog-firehose-nozzle-release
@@ -461,6 +471,7 @@ jobs:
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: *cf-deployment-concourse-task-version
           - get: cf-networking-deployments
           - get: cf-deployment
             trigger: true
@@ -539,6 +550,7 @@ jobs:
     - aggregate:
       - get: cf-networking-deployments
       - get: cf-deployment-concourse-tasks
+        version: *cf-deployment-concourse-task-version
     - task: delete-deployment
       file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
       params:
