@@ -220,6 +220,7 @@ jobs:
       - aggregate:
           - get: cf-deployment-concourse-tasks
             version: *cf-deployment-concourse-task-version
+            trigger: true
           - get: cf-networking-deployments
       - task: bbl-up
         file: cf-deployment-concourse-tasks/bbl-up/task.yml
@@ -367,6 +368,7 @@ jobs:
       - aggregate:
           - get: cf-deployment-concourse-tasks
             version: *cf-deployment-concourse-task-version
+            trigger: true
           - get: cf-networking-deployments
       - task: bbl-up
         file: cf-deployment-concourse-tasks/bbl-up/task.yml
