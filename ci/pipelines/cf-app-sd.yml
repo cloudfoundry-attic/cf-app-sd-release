@@ -10,6 +10,7 @@ groups:
   - ushanka-perf-tests
   - ushanka-update-capi
   - ushanka-deploy
+  - ushanka-deploy-firehose-nozzle
   - beret-update-capi
   - beret-deploy
   - beret-deploy-firehose-nozzle
@@ -21,6 +22,7 @@ groups:
   - ushanka-bbl-destroy
   - ushanka-update-capi
   - ushanka-deploy
+  - ushanka-deploy-firehose-nozzle
   - ushanka-acceptance-tests
   - ushanka-smoke-tests
   - ushanka-perf-tests
@@ -291,6 +293,37 @@ jobs:
           release-tarball: created-capi-release
         params:
           BBL_STATE_DIR: environments/ushanka/
+
+  - name: ushanka-deploy-firehose-nozzle
+    serial_groups: [ushanka-deploy-group]
+    plan:
+    - aggregate:
+      - get: cf-deployment-concourse-tasks
+        version: *cf-deployment-concourse-task-version
+      - get: cf-app-sd-ci
+      - get: cf-networking-deployments
+      - get: datadog-firehose-nozzle-release
+    - task: upload-datadog-firehose-nozzle-release
+      file: cf-app-sd-ci/ci/tasks/upload-release-tarball.yml
+      input_mapping:
+        deployments-repo: cf-networking-deployments
+        tarballs: datadog-firehose-nozzle-release
+      params:
+        ENVIRONMENT_NAME: ushanka
+    - task: deploy-datadog-firehose-nozzle
+      file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
+      input_mapping:
+        cf-deployment: cf-networking-deployments
+        vars-store: cf-networking-deployments
+        env-repo: cf-networking-deployments
+        vars-files: cf-networking-deployments
+        ops-files: cf-networking-deployments
+      params:
+        BBL_STATE_DIR: environments/ushanka
+        MANIFEST_FILE: firehose-nozzles.yml
+        OPS_FILES: ""
+        SYSTEM_DOMAIN: ushanka.c2c.cf-app.com
+        VARS_STORE_FILE: environments/ushanka/vars-store.yml
 
   - name: ushanka-deploy
     serial_groups: [ushanka-deploy-group]
