@@ -4,15 +4,7 @@ set -euo pipefail
 
 # Targetting director
 pushd "deployments-repo/environments/$ENVIRONMENT_NAME"
-  BOSH_ENVIRONMENT="$(bbl director-address)"
-  export BOSH_ENVIRONMENT
-  BOSH_CLIENT_SECRET="$(bbl director-password)"
-  export BOSH_CLIENT_SECRET
-  BOSH_CLIENT="$(bbl director-username)"
-  export BOSH_CLIENT
-  bbl director-ca-cert > /tmp/ca.crt
-  export BOSH_CA_CERT=/tmp/ca.crt
-  export BOSH_DEPLOYMENT=concourse
+  eval "$(bbl print-env)"
 popd
 
 
