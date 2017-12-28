@@ -2,11 +2,16 @@
 
 set -euo pipefail
 
+function cleanup() {
+  pkill ssh || true
+}
+
+trap 'cleanup' EXIT
+
 # Targetting director
 pushd "deployments-repo/environments/$ENVIRONMENT_NAME"
   eval "$(bbl print-env)"
 popd
-
 
 export GOPATH=$PWD/cf-app-sd-release
 export PATH="${GOPATH}/bin":$PATH
