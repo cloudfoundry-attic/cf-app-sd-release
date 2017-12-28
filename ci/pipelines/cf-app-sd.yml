@@ -213,7 +213,7 @@ jobs:
           - get: cf-app-sd-ci
       - task: ushanka-perf-tests
         privileged: true
-        file: cf-app-sd-ci/tasks/test-nats-performance.yml
+        file: cf-app-sd-ci/ci/tasks/test-nats-performance.yml
         input_mapping:
           test-config: cf-networking-deployments
           deployments-repo: cf-networking-deployments
