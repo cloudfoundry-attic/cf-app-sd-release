@@ -147,8 +147,9 @@ jobs:
       - aggregate:
           - get: cf-app-sd-release
             trigger: true
+          - get: cf-app-sd-ci
       - task: unit-tests
-        file: cf-app-sd-release/ci/tasks/test-unit.yml
+        file: cf-app-sd-ci/ci/tasks/test-unit.yml
 
   - name: ushanka-acceptance-tests
     serial_groups: [ushanka-deploy-group, ushanka-test-group]
@@ -160,9 +161,10 @@ jobs:
           - get: cf-app-sd-release
             passed: [ushanka-deploy]
             trigger: true
+          - get: cf-app-sd-ci
       - task: ushanka-acceptance-tests
         privileged: true
-        file: cf-app-sd-release/ci/tasks/test-acceptance.yml
+        file: cf-app-sd-ci/ci/tasks/test-acceptance.yml
         input_mapping:
           test-config: cf-networking-deployments
           vars-store: cf-networking-deployments
@@ -181,9 +183,10 @@ jobs:
           - get: cf-app-sd-release
             passed: [ushanka-deploy]
             trigger: true
+          - get: cf-app-sd-ci
       - task: ushanka-smoke-tests
         privileged: true
-        file: cf-app-sd-release/ci/tasks/smoke-tests.yml
+        file: cf-app-sd-ci/ci/tasks/smoke-tests.yml
         input_mapping:
           test-config: cf-networking-deployments
         params:
@@ -205,9 +208,10 @@ jobs:
             - ushanka-smoke-tests
             - ushanka-acceptance-tests
             trigger: true
+          - get: cf-app-sd-ci
       - task: ushanka-perf-tests
         privileged: true
-        file: cf-app-sd-release/ci/tasks/test-nats-performance.yml
+        file: cf-app-sd-ci/tasks/test-nats-performance.yml
         input_mapping:
           test-config: cf-networking-deployments
           deployments-repo: cf-networking-deployments
@@ -302,6 +306,7 @@ jobs:
             trigger: true
             passed: [unit-tests]
           - get: bosh-dns-cf-networking
+          - get: cf-app-sd-ci
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -309,14 +314,14 @@ jobs:
         input_mapping:
           env-repo: cf-networking-deployments
       - task: collect-ops-files
-        file: cf-app-sd-release/ci/tasks/collect-ops-files.yml
+        file: cf-app-sd-ci/ci/tasks/collect-ops-files.yml
         params:
           ENVIRONMENT_NAME: ushanka
         input_mapping:
           cf-networking-release: cf-networking-master
           deployments-repo: cf-networking-deployments
       - task: upload-local-cf-app-sd-releases
-        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
+        file: cf-app-sd-ci/ci/tasks/upload-local-release.yml
         input_mapping:
           env-repo: cf-networking-deployments
           local-release: cf-app-sd-release
@@ -498,14 +503,14 @@ jobs:
         input_mapping:
           env-repo: cf-networking-deployments
       - task: collect-ops-files
-        file: cf-app-sd-release/ci/tasks/collect-ops-files.yml
+        file: cf-app-sd-ci/ci/tasks/collect-ops-files.yml
         params:
           ENVIRONMENT_NAME: beret
         input_mapping:
           cf-networking-release: cf-networking-master
           deployments-repo: cf-networking-deployments
       - task: upload-local-cf-app-sd-releases
-        file: cf-app-sd-release/ci/tasks/upload-local-release.yml
+        file: cf-app-sd-ci/ci/tasks/upload-local-release.yml
         input_mapping:
           env-repo: cf-networking-deployments
           local-release: cf-app-sd-release
