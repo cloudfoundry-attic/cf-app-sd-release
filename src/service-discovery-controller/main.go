@@ -55,6 +55,7 @@ func main() {
 	addressTable := addresstable.NewAddressTable(
 		time.Duration(config.StalenessThresholdSeconds)*time.Second,
 		time.Duration(config.PruningIntervalSeconds)*time.Second,
+		time.Duration(config.ResumePruningDelaySeconds)*time.Second,
 		clock.NewClock(),
 		logger.Session("address-table"))
 

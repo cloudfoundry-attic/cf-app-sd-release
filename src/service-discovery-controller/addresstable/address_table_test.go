@@ -19,14 +19,16 @@ var _ = Describe("AddressTable", func() {
 		fakeClock          *fakeclock.FakeClock
 		stalenessThreshold time.Duration
 		pruningInterval    time.Duration
+		resumePruningDelay time.Duration
 		logger             *lagertest.TestLogger
 	)
 	BeforeEach(func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		stalenessThreshold = 5 * time.Second
 		pruningInterval = 1 * time.Second
+		resumePruningDelay = 30 * time.Second
 		logger = lagertest.NewTestLogger("test")
-		table = addresstable.NewAddressTable(stalenessThreshold, pruningInterval, fakeClock, logger)
+		table = addresstable.NewAddressTable(stalenessThreshold, pruningInterval, resumePruningDelay, fakeClock, logger)
 	})
 	AfterEach(func() {
 		table.Shutdown()
@@ -171,7 +173,10 @@ var _ = Describe("AddressTable", func() {
 			})
 			It("starts pruning again", func() {
 				table.ResumePruning()
-				fakeClock.Increment(stalenessThreshold + 1*time.Second)
+				Consistently(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{"192.0.0.1"}))
+				fakeClock.Increment(resumePruningDelay - 1*time.Second)
+				Consistently(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{"192.0.0.1"}))
+				fakeClock.Increment(2 * time.Second)
 				Eventually(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{}))
 			})
 		})

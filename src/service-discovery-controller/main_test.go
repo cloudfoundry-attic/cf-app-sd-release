@@ -75,7 +75,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 			"log_level_address": "%s",
 			"log_level_port": %d,
 			"metron_port": %d,
-			"metrics_emit_seconds": 2
+			"metrics_emit_seconds": 2,
+			"resume_pruning_delay_seconds": 0
 		}`,
 			port, caFile, serverCert, serverKey, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
 	})
@@ -439,7 +440,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 					"metrics_emit_seconds": 2,
 					"metron_port": %d,
 					"log_level_address": "%s",
-				    "log_level_port": %d
+				    "log_level_port": %d,
+					"resume_pruning_delay_seconds": 0
 				}`, port, caFile, serverCert, serverKey, garbagePort, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port(), logLevelEndpointAddress, logLevelEndpointPort))
 			})
 
@@ -690,8 +692,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 				"log_level_address": "%s",
 				"log_level_port": %d,
 				"metron_port": %d,
-				"metrics_emit_seconds": 2
-
+				"metrics_emit_seconds": 2,
+				"resume_pruning_delay_seconds": 0
 			}`, port, caFile, serverCert, serverKey, garbagePort, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
 		})
 

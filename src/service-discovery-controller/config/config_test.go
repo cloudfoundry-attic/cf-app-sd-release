@@ -39,7 +39,8 @@ var _ = Describe("Config", func() {
 				"staleness_threshold_seconds": 5,
 				"pruning_interval_seconds": 3,
 				"metrics_emit_seconds": 6,
-				"metron_port": 8080
+				"metron_port": 8080,
+				"resume_pruning_delay_seconds": 2
 			}`)
 
 			parsedConfig, err := NewConfig(configJSON)
@@ -59,6 +60,7 @@ var _ = Describe("Config", func() {
 			Expect(parsedConfig.StalenessThresholdSeconds).To(Equal(5))
 			Expect(parsedConfig.PruningIntervalSeconds).To(Equal(3))
 			Expect(parsedConfig.MetricsEmitSeconds).To(Equal(6))
+			Expect(parsedConfig.ResumePruningDelaySeconds).To(Equal(2))
 		})
 	})
 
@@ -73,15 +75,16 @@ var _ = Describe("Config", func() {
 	var requiredFields map[string]interface{}
 	BeforeEach(func() {
 		requiredFields = map[string]interface{}{
-			"address":                     "example.com",
-			"port":                        "80053",
-			"server_cert":                 "path_to_cert",
-			"server_key":                  "path_to_key",
-			"ca_cert":                     "path_to_ca_cert",
-			"metron_port":                 8080,
-			"staleness_threshold_seconds": 5,
-			"pruning_interval_seconds":    3,
-			"metrics_emit_seconds":        678,
+			"address":                      "example.com",
+			"port":                         "80053",
+			"server_cert":                  "path_to_cert",
+			"server_key":                   "path_to_key",
+			"ca_cert":                      "path_to_ca_cert",
+			"metron_port":                  8080,
+			"staleness_threshold_seconds":  5,
+			"pruning_interval_seconds":     3,
+			"metrics_emit_seconds":         678,
+			"resume_pruning_delay_seconds": 2,
 		}
 	})
 
@@ -105,6 +108,7 @@ var _ = Describe("Config", func() {
 		Entry("invalid server_cert", "server_cert", "", "ServerCert: zero value"),
 		Entry("invalid server_key", "server_key", "", "ServerKey: zero value"),
 		Entry("invalid ca_cert", "ca_cert", "", "CACert: zero value"),
+		Entry("invalid resume_pruning_delay_seconds", "resume_pruning_delay_seconds", -1, "ResumePruningDelaySeconds: less than min"),
 	)
 })
 

@@ -22,6 +22,7 @@ type Config struct {
 	StalenessThresholdSeconds int          `json:"staleness_threshold_seconds" validate:"min=1"`
 	PruningIntervalSeconds    int          `json:"pruning_interval_seconds" validate:"min=1"`
 	MetricsEmitSeconds        int          `json:"metrics_emit_seconds" validate:"min=1"`
+	ResumePruningDelaySeconds int          `json:"resume_pruning_delay_seconds" validate:"min=0"`
 }
 
 type NatsConfig struct {

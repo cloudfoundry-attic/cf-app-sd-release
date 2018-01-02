@@ -16,6 +16,8 @@ type AddressTable struct {
 	ticker             clock.Ticker
 	pausedPruning      bool
 	logger             lager.Logger
+	lastResume         time.Time
+	resumePruningDelay time.Duration
 }
 
 type entry struct {
@@ -23,7 +25,7 @@ type entry struct {
 	updateTime time.Time
 }
 
-func NewAddressTable(stalenessThreshold, pruningInterval time.Duration, clock clock.Clock, logger lager.Logger) *AddressTable {
+func NewAddressTable(stalenessThreshold, pruningInterval, resumePruningDelay time.Duration, clock clock.Clock, logger lager.Logger) *AddressTable {
 	table := &AddressTable{
 		addresses:          map[string][]entry{},
 		clock:              clock,
@@ -31,6 +33,7 @@ func NewAddressTable(stalenessThreshold, pruningInterval time.Duration, clock cl
 		ticker:             clock.NewTicker(pruningInterval),
 		pausedPruning:      false,
 		logger:             logger,
+		resumePruningDelay: resumePruningDelay,
 	}
 
 	table.pruneStaleEntriesOnInterval(pruningInterval)
@@ -107,6 +110,7 @@ func (at *AddressTable) PausePruning() {
 func (at *AddressTable) ResumePruning() {
 	at.logger.Info("pruning-resume")
 	at.mutex.Lock()
+	at.lastResume = at.clock.Now()
 	at.pausedPruning = false
 	at.mutex.Unlock()
 }
@@ -133,7 +137,7 @@ func (at *AddressTable) pruneStaleEntriesOnInterval(pruningInterval time.Duratio
 		defer at.ticker.Stop()
 		for _ = range at.ticker.C() {
 			at.mutex.RLock()
-			if at.pausedPruning {
+			if at.pausedPruning || (at.clock.Since(at.lastResume) < at.resumePruningDelay) {
 				at.mutex.RUnlock()
 				continue
 			}
