@@ -7,14 +7,14 @@ platform: linux
 
 inputs:
   - name: version
-  - name: service-discovery-ci
+  - name: cf-app-sd-ci
   - name: cf-networking-deployments
-  - name: service-discovery-tarball
-  - name: service-discovery
+  - name: cf-app-sd-tarball
+  - name: cf-app-sd
 
 outputs:
   - name: final-release
   - name: release
 
 run:
-  path: service-discovery-ci/ci/tasks/ship-it
+  path: cf-app-sd-ci/ci/tasks/ship-it
