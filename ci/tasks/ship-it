@@ -8,7 +8,7 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-cp cf-networking-deployments/config/private.yml cf-networking/config/private.yml
+cp cf-networking-deployments/cf-app-sd/config/private.yml cf-app-sd/config/private.yml
 
 CANDIDATE_DIR=$PWD/cf-app-sd-tarball
 cd cf-app-sd
