@@ -25,6 +25,9 @@ type AddressTable struct {
 	ResumePruningStub        func()
 	resumePruningMutex       sync.RWMutex
 	resumePruningArgsForCall []struct{}
+	SetWarmStub              func()
+	setWarmMutex             sync.RWMutex
+	setWarmArgsForCall       []struct{}
 	invocations              map[string][][]interface{}
 	invocationsMutex         sync.RWMutex
 }
@@ -121,6 +124,22 @@ func (fake *AddressTable) ResumePruningCallCount() int {
 	return len(fake.resumePruningArgsForCall)
 }
 
+func (fake *AddressTable) SetWarm() {
+	fake.setWarmMutex.Lock()
+	fake.setWarmArgsForCall = append(fake.setWarmArgsForCall, struct{}{})
+	fake.recordInvocation("SetWarm", []interface{}{})
+	fake.setWarmMutex.Unlock()
+	if fake.SetWarmStub != nil {
+		fake.SetWarmStub()
+	}
+}
+
+func (fake *AddressTable) SetWarmCallCount() int {
+	fake.setWarmMutex.RLock()
+	defer fake.setWarmMutex.RUnlock()
+	return len(fake.setWarmArgsForCall)
+}
+
 func (fake *AddressTable) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -132,6 +151,8 @@ func (fake *AddressTable) Invocations() map[string][][]interface{} {
 	defer fake.pausePruningMutex.RUnlock()
 	fake.resumePruningMutex.RLock()
 	defer fake.resumePruningMutex.RUnlock()
+	fake.setWarmMutex.RLock()
+	defer fake.setWarmMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -53,6 +53,7 @@ type address struct {
 type AddressTable interface {
 	Lookup(hostname string) []string
 	GetAllAddresses() map[string][]string
+	IsWarm() bool
 }
 
 //go:generate counterfeiter -o fakes/dns_request_recorder.go --fake-name DNSRequestRecorder . DNSRequestRecorder
@@ -140,6 +141,16 @@ func (s *Server) buildTLSServerConfig() (*tls.Config, error) {
 
 func (s *Server) handleRegistrationRequest(resp http.ResponseWriter, req *http.Request) {
 	serviceKey := path.Base(req.URL.Path)
+
+	isWarm := s.addressTable.IsWarm()
+	if !isWarm {
+		http.Error(resp, "address table is not warm", http.StatusInternalServerError)
+		s.logger.Debug("failed-request", lager.Data{
+			"serviceKey": serviceKey,
+			"reason":     "address-table-not-warm",
+		})
+		return
+	}
 
 	ips := s.addressTable.Lookup(serviceKey)
 	hosts := []host{}

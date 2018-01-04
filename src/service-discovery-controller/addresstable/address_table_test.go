@@ -33,6 +33,19 @@ var _ = Describe("AddressTable", func() {
 	AfterEach(func() {
 		table.Shutdown()
 	})
+
+	Describe("Warmth", func() {
+		It("returns false initially", func() {
+			Expect(table.IsWarm()).To(BeFalse())
+		})
+		Context("when SetWarm is called", func() {
+			It("returns true", func() {
+				table.SetWarm()
+				Expect(table.IsWarm()).To(BeTrue())
+			})
+		})
+	})
+
 	Describe("Add", func() {
 		It("adds an endpoint", func() {
 			table.Add([]string{"foo.com"}, "192.0.0.1")
@@ -259,6 +272,26 @@ var _ = Describe("AddressTable", func() {
 				}(r)
 			}
 			wg.Wait()
+		})
+	})
+
+	Describe("Warm Concurrency", func() {
+		It("does not deadlock in the face of multiple concurrent operations", func() {
+			var wg sync.WaitGroup
+			const nRoutines = 10
+			wg.Add(nRoutines)
+			for r := 0; r < nRoutines; r++ {
+				go func(i int) {
+					if i%2 == 0 {
+						table.SetWarm()
+					} else {
+						table.IsWarm()
+					}
+					wg.Done()
+				}(r)
+			}
+			wg.Wait()
+			Expect(table.IsWarm()).To(BeTrue())
 		})
 	})
 })

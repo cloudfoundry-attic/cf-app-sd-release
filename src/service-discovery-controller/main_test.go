@@ -76,7 +76,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 			"log_level_port": %d,
 			"metron_port": %d,
 			"metrics_emit_seconds": 2,
-			"resume_pruning_delay_seconds": 0
+			"resume_pruning_delay_seconds": 0,
+			"warm_duration_seconds": 0
 		}`,
 			port, caFile, serverCert, serverKey, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
 	})
@@ -441,7 +442,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 					"metron_port": %d,
 					"log_level_address": "%s",
 				    "log_level_port": %d,
-					"resume_pruning_delay_seconds": 0
+					"resume_pruning_delay_seconds": 0,
+					"warm_duration_seconds": 0
 				}`, port, caFile, serverCert, serverKey, garbagePort, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, fakeMetron.Port(), logLevelEndpointAddress, logLevelEndpointPort))
 			})
 
@@ -640,6 +642,50 @@ var _ = Describe("Service Discovery Controller process", func() {
 				Expect(session).ToNot(gbytes.Say("HTTPServer access"))
 			})
 		})
+
+		Context("when making requests before the warm duration is over", func() {
+			BeforeEach(func() {
+				os.Remove(configPath)
+				configPath = writeConfigFile(fmt.Sprintf(`{
+					"address":"127.0.0.1",
+					"port":"%d",
+					"ca_cert": "%s",
+					"server_cert": "%s",
+					"server_key": "%s",
+					"nats":[
+						{
+							"host":"localhost",
+							"port":%d,
+							"user":"",
+							"pass":""
+						}
+					],
+					"staleness_threshold_seconds": %d,
+					"pruning_interval_seconds": %d,
+					"log_level_address": "%s",
+					"log_level_port": %d,
+					"metron_port": %d,
+					"metrics_emit_seconds": 2,
+					"resume_pruning_delay_seconds": 0,
+					"warm_duration_seconds": 1
+				}`,
+					port, caFile, serverCert, serverKey, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
+			})
+
+			It("returns 500 for requests before the warm duration is over", func() {
+				url := fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port)
+				client := NewClient(testhelpers.CertPool(caFile), clientCert)
+				resp, err := client.Get(url)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
+
+				Eventually(func() int {
+					resp, err := client.Get(url)
+					Expect(err).ToNot(HaveOccurred())
+					return resp.StatusCode
+				}).Should(Equal(http.StatusOK))
+			})
+		})
 	})
 
 	Context("when the log level endpoint fails to start successfully", func() {
@@ -693,7 +739,8 @@ var _ = Describe("Service Discovery Controller process", func() {
 				"log_level_port": %d,
 				"metron_port": %d,
 				"metrics_emit_seconds": 2,
-				"resume_pruning_delay_seconds": 0
+				"resume_pruning_delay_seconds": 0,
+				"warm_duration_seconds": 0
 			}`, port, caFile, serverCert, serverKey, garbagePort, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
 		})
 

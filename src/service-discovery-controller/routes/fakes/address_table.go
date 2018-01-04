@@ -27,6 +27,15 @@ type AddressTable struct {
 	getAllAddressesReturnsOnCall map[int]struct {
 		result1 map[string][]string
 	}
+	IsWarmStub        func() bool
+	isWarmMutex       sync.RWMutex
+	isWarmArgsForCall []struct{}
+	isWarmReturns     struct {
+		result1 bool
+	}
+	isWarmReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -119,6 +128,46 @@ func (fake *AddressTable) GetAllAddressesReturnsOnCall(i int, result1 map[string
 	}{result1}
 }
 
+func (fake *AddressTable) IsWarm() bool {
+	fake.isWarmMutex.Lock()
+	ret, specificReturn := fake.isWarmReturnsOnCall[len(fake.isWarmArgsForCall)]
+	fake.isWarmArgsForCall = append(fake.isWarmArgsForCall, struct{}{})
+	fake.recordInvocation("IsWarm", []interface{}{})
+	fake.isWarmMutex.Unlock()
+	if fake.IsWarmStub != nil {
+		return fake.IsWarmStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.isWarmReturns.result1
+}
+
+func (fake *AddressTable) IsWarmCallCount() int {
+	fake.isWarmMutex.RLock()
+	defer fake.isWarmMutex.RUnlock()
+	return len(fake.isWarmArgsForCall)
+}
+
+func (fake *AddressTable) IsWarmReturns(result1 bool) {
+	fake.IsWarmStub = nil
+	fake.isWarmReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *AddressTable) IsWarmReturnsOnCall(i int, result1 bool) {
+	fake.IsWarmStub = nil
+	if fake.isWarmReturnsOnCall == nil {
+		fake.isWarmReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.isWarmReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *AddressTable) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -126,6 +175,8 @@ func (fake *AddressTable) Invocations() map[string][][]interface{} {
 	defer fake.lookupMutex.RUnlock()
 	fake.getAllAddressesMutex.RLock()
 	defer fake.getAllAddressesMutex.RUnlock()
+	fake.isWarmMutex.RLock()
+	defer fake.isWarmMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

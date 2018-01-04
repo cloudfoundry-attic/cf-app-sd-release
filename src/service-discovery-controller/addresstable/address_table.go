@@ -18,6 +18,8 @@ type AddressTable struct {
 	logger             lager.Logger
 	lastResume         time.Time
 	resumePruningDelay time.Duration
+	warm               bool
+	warmMutex          sync.RWMutex
 }
 
 type entry struct {
@@ -94,6 +96,20 @@ func (at *AddressTable) GetAllAddresses() map[string][]string {
 	at.mutex.RUnlock()
 
 	return addresses
+}
+
+func (at *AddressTable) SetWarm() {
+	at.warmMutex.Lock()
+	at.warm = true
+	at.warmMutex.Unlock()
+}
+
+func (at *AddressTable) IsWarm() bool {
+	at.warmMutex.RLock()
+	warm := at.warm
+	at.warmMutex.RUnlock()
+
+	return warm
 }
 
 func (at *AddressTable) Shutdown() {

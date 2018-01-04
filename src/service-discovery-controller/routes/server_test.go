@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 
 	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
@@ -61,6 +62,7 @@ var _ = Describe("Server", func() {
 		BeforeEach(func() {
 			serverProc = ifrit.Invoke(server)
 			addressTable.LookupReturns([]string{"192.168.0.2"})
+			addressTable.IsWarmReturns(true)
 
 			client := NewClient(testhelpers.CertPool(caFile), clientCert)
 			resp, err := client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))
@@ -93,11 +95,48 @@ var _ = Describe("Server", func() {
 		})
 
 		It("looks up the given host name in the address table", func() {
+			Expect(addressTable.LookupCallCount()).To(Equal(1))
 			Expect(addressTable.LookupArgsForCall(0)).To(Equal("app-id.internal.local."))
 		})
 
 		It("invokes the dns request recorder", func() {
 			Expect(dnsRequestRecorder.RecordRequestCallCount()).To(Equal(1))
+		})
+	})
+
+	Context("when the address table is not warm", func() {
+		var (
+			resp *http.Response
+		)
+		BeforeEach(func() {
+			serverProc = ifrit.Invoke(server)
+			addressTable.IsWarmReturns(false)
+
+			client := NewClient(testhelpers.CertPool(caFile), clientCert)
+			var err error
+			resp, err = client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns an internal server error", func() {
+			Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
+
+			respBodyBytes, err := ioutil.ReadAll(resp.Body)
+			Expect(err).ToNot(HaveOccurred())
+			respBody := string(respBodyBytes)
+			Expect(respBody).To(ContainSubstring("address table is not warm"))
+		})
+
+		It("logs the error at debug level", func() {
+			Expect(testLogger.Logs()).To(HaveLen(2))
+			Expect(testLogger.Logs()[1]).To(SatisfyAll(
+				LogsWith(lager.DEBUG, "test.failed-request"),
+				HaveLogData(SatisfyAll(
+					HaveLen(2),
+					HaveKeyWithValue("serviceKey", Equal("app-id.internal.local.")),
+					HaveKeyWithValue("reason", Equal("address-table-not-warm")),
+				)),
+			))
 		})
 	})
 
@@ -110,7 +149,6 @@ var _ = Describe("Server", func() {
 			serverProc.Signal(os.Interrupt)
 			Eventually(serverProc.Wait()).Should(Receive())
 			Eventually(testLogger.LogMessages).Should(ContainElement("test.SDC http server exiting with signal: interrupt"))
-			Eventually(testLogger.LogMessages).Should(ContainElement("test.server-exited"))
 
 			client := NewClient(testhelpers.CertPool(caFile), clientCert)
 			_, err := client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))

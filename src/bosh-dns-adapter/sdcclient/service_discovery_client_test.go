@@ -53,7 +53,6 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 			It("returns an error", func() {
 				_, err := NewServiceDiscoveryClient("app-id.apps.internal.", caFileName, clientCertFileName, clientKeyFileName)
 				Expect(err).To(MatchError("load CA file into cert pool"))
-
 			})
 		})
 
@@ -148,12 +147,70 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 			})
 		})
 
-		Context("when the server responds a non-200 response", func() {
+		Context("when the server responds several non-200 responses, but eventually returns a 200 response", func() {
 			BeforeEach(func() {
-				fakeServerResponse = ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
-					ghttp.RespondWith(http.StatusBadRequest, `{}`))
-				fakeServer.AppendHandlers(fakeServerResponse)
+				fakeServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
+						ghttp.RespondWith(http.StatusBadRequest, `{}`)),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
+						ghttp.RespondWith(http.StatusBadRequest, `{}`)),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
+						ghttp.RespondWith(http.StatusBadRequest, `{}`)),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
+						ghttp.RespondWith(http.StatusOK, `{
+							"env": "",
+							"Hosts": [
+							{
+								"ip_address": "192.168.0.1",
+								"last_check_in": "",
+								"port": 0,
+								"revision": "",
+								"service": "",
+								"service_repo_name": "",
+								"tags": {}
+							},
+							{
+								"ip_address": "192.168.0.2",
+								"last_check_in": "",
+								"port": 0,
+								"revision": "",
+								"service": "",
+								"service_repo_name": "",
+								"tags": {}
+							}],
+							"service": ""
+						}`)),
+				)
+			})
+
+			It("retries and returns the successful response", func() {
+				actualIPs, err := client.IPs("app-id.apps.internal.")
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(actualIPs).To(Equal([]string{"192.168.0.1", "192.168.0.2"}))
+			})
+		})
+
+		Context("when the server responds several non-200 responses", func() {
+			BeforeEach(func() {
+				fakeServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
+						ghttp.RespondWith(http.StatusBadRequest, `{}`)),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
+						ghttp.RespondWith(http.StatusBadRequest, `{}`)),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
+						ghttp.RespondWith(http.StatusBadRequest, `{}`)),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/v1/registration/app-id.apps.internal.", ""),
+						ghttp.RespondWith(http.StatusBadRequest, `{}`)),
+				)
 			})
 
 			It("returns an error", func() {

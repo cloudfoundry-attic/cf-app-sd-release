@@ -23,6 +23,7 @@ type Config struct {
 	PruningIntervalSeconds    int          `json:"pruning_interval_seconds" validate:"min=1"`
 	MetricsEmitSeconds        int          `json:"metrics_emit_seconds" validate:"min=1"`
 	ResumePruningDelaySeconds int          `json:"resume_pruning_delay_seconds" validate:"min=0"`
+	WarmDurationSeconds       int          `json:"warm_duration_seconds" validate:"min=0"`
 }
 
 type NatsConfig struct {

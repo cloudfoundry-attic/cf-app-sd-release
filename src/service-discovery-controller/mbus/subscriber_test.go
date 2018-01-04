@@ -10,6 +10,7 @@ import (
 	"service-discovery-controller/mbus/fakes"
 
 	"code.cloudfoundry.org/cf-networking-helpers/testsupport/ports"
+	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/gnatsd/server"
 	"github.com/nats-io/nats"
@@ -33,12 +34,16 @@ var _ = Describe("Subscriber", func() {
 		greetMsgChan     chan *nats.Msg
 		metricsSender    *fakes.MetricsSender
 		port             int
+		fakeClock        *fakeclock.FakeClock
+		warmingDuration  time.Duration
 	)
 
 	BeforeEach(func() {
 		port = ports.PickAPort()
 		gnatsServer = RunServerOnPort(port)
 		gnatsServer.Start()
+
+		fakeClock = fakeclock.NewFakeClock(time.Now())
 
 		natsUrl = "nats://username:password@" + gnatsServer.Addr().String()
 		fakeRouteEmitter = newFakeRouteEmitter(natsUrl)
@@ -68,8 +73,8 @@ var _ = Describe("Subscriber", func() {
 		localIP = "192.168.0.1"
 
 		metricsSender = &fakes.MetricsSender{}
-
-		subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+		warmingDuration = time.Duration(60) * time.Second
+		subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 		Expect(subscriber.RunOnce()).ToNot(HaveOccurred())
 	})
 
@@ -77,6 +82,14 @@ var _ = Describe("Subscriber", func() {
 		subscriber.Close()
 		fakeRouteEmitter.Close()
 		gnatsServer.Shutdown()
+	})
+
+	It("notifies the address table it is warm after the MinimumRegisterIntervalInSeconds has elapsed", func() {
+		Consistently(addressTable.SetWarmCallCount).Should(Equal(0))
+		fakeClock.Increment(time.Duration(subOpts.MinimumRegisterIntervalInSeconds-1) * time.Second)
+		Consistently(addressTable.SetWarmCallCount).Should(Equal(0))
+		fakeClock.Increment(2 * time.Second)
+		Eventually(addressTable.SetWarmCallCount).Should(Equal(1))
 	})
 
 	It("sends a start message and logs", func() {
@@ -464,7 +477,7 @@ var _ = Describe("Subscriber", func() {
 				provider.ConnectionReturns(natsConn, errors.New("CANT"))
 
 				subscriber.Close()
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+				subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 			})
 
 			It("run returns an error", func() {
@@ -477,7 +490,7 @@ var _ = Describe("Subscriber", func() {
 		Context("when the nats server goes down for an extended amount of time", func() {
 			BeforeEach(func() {
 				subscriber.Close()
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+				subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 			})
 
 			It("should never stop retrying to reconnect", func() {
@@ -492,7 +505,7 @@ var _ = Describe("Subscriber", func() {
 		Context("when calling run and sending start message fails", func() {
 			BeforeEach(func() {
 				natsConn.PublishMsgReturns(errors.New("NO START"))
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+				subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 			})
 
 			It("returns an error", func() {
@@ -512,7 +525,7 @@ var _ = Describe("Subscriber", func() {
 				natsConn.PublishMsgReturnsOnCall(0, nil)
 				natsConn.SubscribeReturns(nil, errors.New("NO GREET"))
 
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+				subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 			})
 
 			It("self closes", func() {
@@ -543,7 +556,7 @@ var _ = Describe("Subscriber", func() {
 				natsConn.PublishMsgReturnsOnCall(0, nil)
 				natsConn.SubscribeReturnsOnCall(1, nil, errors.New("NO SUBSCRIBE"))
 
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+				subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 			})
 
 			It("returns an error", func() {
@@ -574,7 +587,7 @@ var _ = Describe("Subscriber", func() {
 				natsConn.PublishMsgReturnsOnCall(0, nil)
 				natsConn.SubscribeReturnsOnCall(2, nil, errors.New("NO SUBSCRIBE when unregister"))
 
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+				subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 			})
 
 			It("returns an error", func() {
@@ -605,7 +618,7 @@ var _ = Describe("Subscriber", func() {
 				provider.ConnectionReturns(natsConn, nil)
 
 				subscriber.Close()
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+				subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 				natsConn.FlushReturns(errors.New("failed to flush"))
 			})
 
@@ -632,7 +645,7 @@ var _ = Describe("Subscriber", func() {
 				provider.ConnectionReturns(natsConn, nil)
 
 				subscriber.Close()
-				subscriber = NewSubscriber(provider, subOpts, addressTable, localIP, subcriberLogger, metricsSender)
+				subscriber = NewSubscriber(provider, subOpts, warmingDuration, addressTable, localIP, subcriberLogger, metricsSender, fakeClock)
 			})
 
 			It("should not have any side effects", func() {

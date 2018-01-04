@@ -1,4 +1,6 @@
 <%=
+
+router_emitter_interval = 60
 config = {
     "address" => p('address'),
     "port" => "#{p('port')}",
@@ -9,10 +11,11 @@ config = {
     "server_key" => "/var/vcap/jobs/service-discovery-controller/config/certs/server.key",
     "ca_cert" => "/var/vcap/jobs/service-discovery-controller/config/certs/client_ca.crt",
     "metron_port" => p("metron_port"),
-    "staleness_threshold_seconds" => 60,
+    "staleness_threshold_seconds" => router_emitter_interval * 2,
     "pruning_interval_seconds" => 10,
     "metrics_emit_seconds" => 10,
-    "resume_pruning_delay_seconds" => 30
+    "resume_pruning_delay_seconds" => router_emitter_interval,
+    "warm_duration_seconds" => router_emitter_interval
 }
 
 nats_machines = nil

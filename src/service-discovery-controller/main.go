@@ -159,6 +159,10 @@ func buildSubscriber(config *config.Config, addressTable *addresstable.AddressTa
 		Logger: logger.Session("metrics"),
 	}
 
-	subscriber := mbus.NewSubscriber(provider, subOpts, addressTable, localIP, logger.Session("mbus"), metricsSender)
+	clock := clock.NewClock()
+	warmDuration := time.Duration(config.WarmDurationSeconds) * time.Second
+
+	subscriber := mbus.NewSubscriber(provider, subOpts, warmDuration, addressTable,
+		localIP, logger.Session("mbus"), metricsSender, clock)
 	return subscriber, nil
 }

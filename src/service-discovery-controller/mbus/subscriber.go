@@ -12,6 +12,7 @@ import (
 
 	"os"
 
+	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
 	"github.com/nats-io/nats"
 	"github.com/pkg/errors"
@@ -46,17 +47,20 @@ type AddressTable interface {
 	Remove(infraNames []string, ip string)
 	PausePruning()
 	ResumePruning()
+	SetWarm()
 }
 
 type Subscriber struct {
 	natsConnProvider NatsConnProvider
 	subOpts          SubscriberOpts
+	warmingDuration  time.Duration
 	table            AddressTable
 	logger           lager.Logger
 	localIP          string
 	natsClient       NatsConn
 	once             sync.Once
 	metricsSender    metricsSender
+	clock            clock.Clock
 }
 
 //go:generate counterfeiter -o fakes/nats_conn.go --fake-name NatsConn . NatsConn
@@ -82,18 +86,22 @@ type metricsSender interface {
 func NewSubscriber(
 	natsConnProvider NatsConnProvider,
 	subOpts SubscriberOpts,
+	warmingDuration time.Duration,
 	table AddressTable,
 	localIP string,
 	logger lager.Logger,
 	metricsSender metricsSender,
+	clock clock.Clock,
 ) *Subscriber {
 	return &Subscriber{
 		natsConnProvider: natsConnProvider,
 		subOpts:          subOpts,
+		warmingDuration:  warmingDuration,
 		table:            table,
 		logger:           logger,
 		localIP:          localIP,
 		metricsSender:    metricsSender,
+		clock:            clock,
 	}
 }
 
@@ -182,6 +190,11 @@ func (s *Subscriber) RunOnce() error {
 		if err != nil {
 			return
 		}
+
+		go func() {
+			<-s.clock.After(s.warmingDuration)
+			s.table.SetWarm()
+		}()
 	})
 
 	if err != nil {

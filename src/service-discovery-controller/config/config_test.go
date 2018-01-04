@@ -40,7 +40,8 @@ var _ = Describe("Config", func() {
 				"pruning_interval_seconds": 3,
 				"metrics_emit_seconds": 6,
 				"metron_port": 8080,
-				"resume_pruning_delay_seconds": 2
+				"resume_pruning_delay_seconds": 2,
+				"warm_duration_seconds": 5
 			}`)
 
 			parsedConfig, err := NewConfig(configJSON)
@@ -61,6 +62,7 @@ var _ = Describe("Config", func() {
 			Expect(parsedConfig.PruningIntervalSeconds).To(Equal(3))
 			Expect(parsedConfig.MetricsEmitSeconds).To(Equal(6))
 			Expect(parsedConfig.ResumePruningDelaySeconds).To(Equal(2))
+			Expect(parsedConfig.WarmDurationSeconds).To(Equal(5))
 		})
 	})
 
@@ -85,6 +87,7 @@ var _ = Describe("Config", func() {
 			"pruning_interval_seconds":     3,
 			"metrics_emit_seconds":         678,
 			"resume_pruning_delay_seconds": 2,
+			"warm_duration_seconds":        5,
 		}
 	})
 
@@ -109,6 +112,7 @@ var _ = Describe("Config", func() {
 		Entry("invalid server_key", "server_key", "", "ServerKey: zero value"),
 		Entry("invalid ca_cert", "ca_cert", "", "CACert: zero value"),
 		Entry("invalid resume_pruning_delay_seconds", "resume_pruning_delay_seconds", -1, "ResumePruningDelaySeconds: less than min"),
+		Entry("invalid warm_duration_seconds", "warm_duration_seconds", -1, "WarmDurationSeconds: less than min"),
 	)
 })
 

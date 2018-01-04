@@ -28,7 +28,7 @@ var _ = Describe("Main", func() {
 		tempConfigFile                         *os.File
 		configFileContents                     string
 		fakeServiceDiscoveryControllerServer   *ghttp.Server
-		fakeServiceDiscoveryControllerResponse http.HandlerFunc
+		fakeServiceDiscoveryControllerResponse []http.HandlerFunc
 		dnsAdapterAddress                      string
 		dnsAdapterPort                         string
 		fakeMetron                             metrics.FakeMetron
@@ -38,7 +38,7 @@ var _ = Describe("Main", func() {
 	BeforeEach(func() {
 		fakeMetron = metrics.NewFakeMetron()
 
-		fakeServiceDiscoveryControllerResponse = ghttp.CombineHandlers(
+		fakeServiceDiscoveryControllerResponse = []http.HandlerFunc{ghttp.CombineHandlers(
 			ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
 			ghttp.RespondWith(200, `{
 					"env": "",
@@ -54,7 +54,7 @@ var _ = Describe("Main", func() {
 					}],
 					"service": ""
 				}`),
-		)
+		)}
 		dnsAdapterAddress = "127.0.0.1"
 
 		dnsAdapterPort = fmt.Sprintf("%d", ports.PickAPort())
@@ -74,7 +74,7 @@ var _ = Describe("Main", func() {
 		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS.PreferServerCipherSuites = true
 		fakeServiceDiscoveryControllerServer.HTTPTestServer.TLS.Certificates = []tls.Certificate{serverCert}
 
-		fakeServiceDiscoveryControllerServer.AppendHandlers(fakeServiceDiscoveryControllerResponse)
+		fakeServiceDiscoveryControllerServer.AppendHandlers(fakeServiceDiscoveryControllerResponse...)
 		fakeServiceDiscoveryControllerServer.HTTPTestServer.StartTLS()
 
 		urlParts := strings.Split(fakeServiceDiscoveryControllerServer.URL(), ":")
@@ -379,10 +379,24 @@ var _ = Describe("Main", func() {
 
 	Context("when the service discovery controller returns non-successful", func() {
 		BeforeEach(func() {
-			fakeServiceDiscoveryControllerResponse = ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
-				ghttp.RespondWith(404, `{ }`),
-			)
+			fakeServiceDiscoveryControllerResponse = []http.HandlerFunc{
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
+					ghttp.RespondWith(404, `{ }`),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
+					ghttp.RespondWith(404, `{ }`),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
+					ghttp.RespondWith(404, `{ }`),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/registration/app-id.internal.local."),
+					ghttp.RespondWith(404, `{ }`),
+				),
+			}
 		})
 
 		It("returns a 500 and an error", func() {

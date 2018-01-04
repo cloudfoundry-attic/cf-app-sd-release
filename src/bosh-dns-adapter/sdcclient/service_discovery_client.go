@@ -62,9 +62,20 @@ func NewServiceDiscoveryClient(serverURL, caPath, clientCertPath, clientKeyPath 
 func (s *ServiceDiscoveryClient) IPs(infrastructureName string) ([]string, error) {
 	requestUrl := fmt.Sprintf("%s/v1/registration/%s", s.serverURL, infrastructureName)
 
-	httpResp, err := s.client.Get(requestUrl)
-	if err != nil {
-		return []string{}, err
+	var (
+		err      error
+		httpResp *http.Response
+	)
+
+	for i := 0; i < 4; i++ {
+		httpResp, err = s.client.Get(requestUrl)
+		if err != nil {
+			return []string{}, err
+		}
+
+		if httpResp.StatusCode == http.StatusOK {
+			break
+		}
 	}
 
 	if httpResp.StatusCode != http.StatusOK {
