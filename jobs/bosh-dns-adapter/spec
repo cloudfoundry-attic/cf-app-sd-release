@@ -2,6 +2,7 @@
 name: bosh-dns-adapter
 
 templates:
+  aliases.json.erb:             dns/aliases.json
   bosh-dns-adapter_as_vcap.erb: bin/bosh-dns-adapter_as_vcap
   bosh-dns-adapter_ctl.erb:     bin/bosh-dns-adapter_ctl
   client.crt.erb:               config/certs/client.crt

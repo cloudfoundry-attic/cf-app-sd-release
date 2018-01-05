@@ -46,7 +46,6 @@ func NewServiceDiscoveryClient(serverURL, caPath, clientCertPath, clientKeyPath 
 	}
 
 	tlsConfig.BuildNameToCertificate()
-	tlsConfig.ServerName = "service-discovery-controller.internal"
 
 	tr := &http.Transport{
 		TLSClientConfig: tlsConfig,

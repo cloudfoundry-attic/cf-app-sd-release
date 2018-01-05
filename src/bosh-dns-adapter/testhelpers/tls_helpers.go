@@ -14,6 +14,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"net"
 )
 
 func GenerateCaAndMutualTlsCerts() (caFileName string, serverCertFileName string, serverPrivateKeyFileName string, clientCert tls.Certificate) {
@@ -130,8 +131,8 @@ func buildCertPem(privKey *rsa.PrivateKey, caFilePath string) (cert []byte, key 
 		Subject: pkix.Name{
 			Country:      []string{"USA"},
 			Organization: []string{"Cloud Foundry"},
-			CommonName:   "service-discovery-controller.internal",
 		},
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
 		NotBefore:             now,
 		NotAfter:              notAfter,
 		BasicConstraintsValid: true,
