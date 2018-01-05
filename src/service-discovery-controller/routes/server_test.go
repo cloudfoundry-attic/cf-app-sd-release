@@ -65,7 +65,7 @@ var _ = Describe("Server", func() {
 			addressTable.IsWarmReturns(true)
 
 			client := NewClient(testhelpers.CertPool(caFile), clientCert)
-			resp, err := client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))
+			resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
 			Expect(err).ToNot(HaveOccurred())
 			respBodyBytes, err := ioutil.ReadAll(resp.Body)
 			Expect(err).ToNot(HaveOccurred())
@@ -114,7 +114,7 @@ var _ = Describe("Server", func() {
 
 			client := NewClient(testhelpers.CertPool(caFile), clientCert)
 			var err error
-			resp, err = client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))
+			resp, err = client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -151,7 +151,7 @@ var _ = Describe("Server", func() {
 			Eventually(testLogger.LogMessages).Should(ContainElement("test.SDC http server exiting with signal: interrupt"))
 
 			client := NewClient(testhelpers.CertPool(caFile), clientCert)
-			_, err := client.Get(fmt.Sprintf("https://localhost:%d/v1/registration/app-id.internal.local.", port))
+			_, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("connection refused"))
 		})
@@ -190,7 +190,6 @@ func NewClient(caCertPool *x509.CertPool, cert tls.Certificate) *http.Client {
 	}
 
 	tlsConfig.BuildNameToCertificate()
-	tlsConfig.ServerName = "service-discovery-controller.internal"
 
 	tr := &http.Transport{
 		TLSClientConfig: tlsConfig,
