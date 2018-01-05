@@ -58,7 +58,8 @@ resources:
   - name: cf-app-sd-shipped-master
     type: git
     source:
-      uri: https://github.com/cloudfoundry/cf-app-sd-release
+      uri: "git@github.com:cloudfoundry/cf-app-sd-release.git"
+      private_key: {{cf-app-sd-deployments-push-key}}
       branch: master
   - name: cf-deployment-concourse-tasks
     type: git
