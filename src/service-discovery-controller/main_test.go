@@ -11,9 +11,8 @@ import (
 	"fmt"
 	"time"
 
-	"bosh-dns-adapter/testhelpers"
 	"crypto/tls"
-	"crypto/x509"
+	"test-helpers"
 
 	"strings"
 
@@ -136,7 +135,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			unregister(routeEmitter, "192.168.0.1", "app-id.internal.local.")
 			Expect(routeEmitter.Flush()).ToNot(HaveOccurred())
 
-			client := NewClient(testhelpers.CertPool(caFile), clientCert)
+			client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 			Eventually(func() string {
 				url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port)
 				resp, err := client.Get(url)
@@ -167,7 +166,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 
 		It("should return a http app json", func() {
 			url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port)
-			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
+			resp, err := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 			Expect(err).ToNot(HaveOccurred())
 			respBody, err := ioutil.ReadAll(resp.Body)
 			Expect(err).ToNot(HaveOccurred())
@@ -199,7 +198,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 
 		It("should return a http large json", func() {
 			url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/large-id.internal.local.", port)
-			resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
+			resp, err := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 			Expect(err).ToNot(HaveOccurred())
 			respBody, err := ioutil.ReadAll(resp.Body)
 			Expect(err).ToNot(HaveOccurred())
@@ -330,7 +329,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 		})
 
 		It("eventually removes stale routes", func() {
-			client := NewClient(testhelpers.CertPool(caFile), clientCert)
+			client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 			waitDuration := time.Duration(stalenessThresholdSeconds+pruningIntervalSeconds+1) * time.Second
 
 			Eventually(func() []byte {
@@ -348,7 +347,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 		Context("when we hit the /routes endpoint", func() {
 			It("should return a map of all hostnames to ips", func() {
 				url := fmt.Sprintf("https://127.0.0.1:%d/routes", port)
-				resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
+				resp, err := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 				Expect(err).ToNot(HaveOccurred())
 				respBody, err := ioutil.ReadAll(resp.Body)
 				Expect(err).ToNot(HaveOccurred())
@@ -450,7 +449,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			It("connects to NATs successfully", func() {
 				Eventually(func() string {
 					url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port)
-					resp, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
+					resp, err := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 					Expect(err).ToNot(HaveOccurred())
 					respBody, err := ioutil.ReadAll(resp.Body)
 					Expect(err).ToNot(HaveOccurred())
@@ -503,7 +502,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			Context("when a request is made to SDC", func() {
 				JustBeforeEach(func() {
 					url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port)
-					_, err := NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
+					_, err := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 					Expect(err).ToNot(HaveOccurred())
 				})
 
@@ -524,7 +523,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			)
 
 			BeforeEach(func() {
-				client = NewClient(testhelpers.CertPool(caFile), clientCert)
+				client = testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 				waitDuration = time.Duration(stalenessThresholdSeconds+pruningIntervalSeconds+1) * time.Second
 			})
 
@@ -612,7 +611,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			})
 
 			It("logs at info level by default", func() {
-				client := NewClient(testhelpers.CertPool(caFile), clientCert)
+				client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 				url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port)
 				_, err := client.Get(url)
 				Expect(err).ToNot(HaveOccurred())
@@ -622,7 +621,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 
 			It("logs at debug level when configured", func() {
 				requestLogChange("debug", logLevelEndpointPort)
-				client := NewClient(testhelpers.CertPool(caFile), clientCert)
+				client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 				url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port)
 				_, err := client.Get(url)
 				Expect(err).ToNot(HaveOccurred())
@@ -634,7 +633,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 				requestLogChange("debug", logLevelEndpointPort)
 				requestLogChange("info", logLevelEndpointPort)
 
-				client := NewClient(testhelpers.CertPool(caFile), clientCert)
+				client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 				url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port)
 				_, err := client.Get(url)
 				Expect(err).ToNot(HaveOccurred())
@@ -674,7 +673,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 
 			It("returns 500 for requests before the warm duration is over", func() {
 				url := fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port)
-				client := NewClient(testhelpers.CertPool(caFile), clientCert)
+				client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 				resp, err := client.Get(url)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
@@ -692,12 +691,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 		var conflictingServer *http.Server
 
 		BeforeEach(func() {
-			conflictingServer = &http.Server{
-				Addr: fmt.Sprintf("%s:%d", logLevelEndpointAddress, logLevelEndpointPort),
-			}
-			go func() {
-				conflictingServer.ListenAndServe()
-			}()
+			conflictingServer = testhelpers.LaunchConflictingServer(logLevelEndpointPort)
 		})
 
 		AfterEach(func() {
@@ -798,21 +792,4 @@ func writeConfigFile(configJson string) string {
 	Expect(err).ToNot(HaveOccurred())
 
 	return configPath
-}
-
-func NewClient(caCertPool *x509.CertPool, cert tls.Certificate) *http.Client {
-	tlsConfig := &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		ClientCAs:    caCertPool,
-		RootCAs:      caCertPool,
-		Certificates: []tls.Certificate{cert},
-	}
-
-	tlsConfig.BuildNameToCertificate()
-
-	tr := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	return &http.Client{Transport: tr}
 }

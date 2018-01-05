@@ -14,29 +14,24 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"net"
 )
 
-func GenerateCaAndMutualTlsCerts() (caFileName string, clientCertFileName string, clientPrivateKeyFileName string, serverCert tls.Certificate) {
+func GenerateCaAndMutualTlsCerts() (caFileName string, certFileName string, privateKeyFileName string, cert tls.Certificate) {
 	var (
 		err     error
 		privKey *rsa.PrivateKey
 	)
 
-	// CA
 	caFileName, privKey, err = buildCaFile()
 	Expect(err).NotTo(HaveOccurred())
 
-	// Client
-	clientCertPem, clientKeyPem, err := buildCertPem(privKey, caFileName)
+	certPem, keyPem, err := buildCertPem(privKey, caFileName)
 	Expect(err).NotTo(HaveOccurred())
-	clientCertFileName = writeClientCredFile(clientCertPem)
-	clientPrivateKeyFileName = writeClientCredFile(clientKeyPem)
+	certFileName = writeClientCredFile(certPem)
+	privateKeyFileName = writeClientCredFile(keyPem)
 
-	// Server
-	serverCertPem, serverKeyPem, err := buildCertPem(privKey, caFileName)
-	Expect(err).NotTo(HaveOccurred())
-
-	serverCert, err = tls.X509KeyPair(serverCertPem, serverKeyPem)
+	cert, err = tls.X509KeyPair(certPem, keyPem)
 	Expect(err).NotTo(HaveOccurred())
 
 	return
@@ -130,8 +125,8 @@ func buildCertPem(privKey *rsa.PrivateKey, caFilePath string) (cert []byte, key 
 		Subject: pkix.Name{
 			Country:      []string{"USA"},
 			Organization: []string{"Cloud Foundry"},
-			CommonName:   "service-discovery-controller.internal",
 		},
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
 		NotBefore:             now,
 		NotAfter:              notAfter,
 		BasicConstraintsValid: true,

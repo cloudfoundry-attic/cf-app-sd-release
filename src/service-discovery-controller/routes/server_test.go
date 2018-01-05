@@ -1,10 +1,9 @@
 package routes_test
 
 import (
-	"bosh-dns-adapter/testhelpers"
+	"test-helpers"
 
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -64,7 +63,7 @@ var _ = Describe("Server", func() {
 			addressTable.LookupReturns([]string{"192.168.0.2"})
 			addressTable.IsWarmReturns(true)
 
-			client := NewClient(testhelpers.CertPool(caFile), clientCert)
+			client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 			resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
 			Expect(err).ToNot(HaveOccurred())
 			respBodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -112,7 +111,7 @@ var _ = Describe("Server", func() {
 			serverProc = ifrit.Invoke(server)
 			addressTable.IsWarmReturns(false)
 
-			client := NewClient(testhelpers.CertPool(caFile), clientCert)
+			client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 			var err error
 			resp, err = client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
 			Expect(err).ToNot(HaveOccurred())
@@ -150,7 +149,7 @@ var _ = Describe("Server", func() {
 			Eventually(serverProc.Wait()).Should(Receive())
 			Eventually(testLogger.LogMessages).Should(ContainElement("test.SDC http server exiting with signal: interrupt"))
 
-			client := NewClient(testhelpers.CertPool(caFile), clientCert)
+			client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 			_, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("connection refused"))
@@ -161,7 +160,7 @@ var _ = Describe("Server", func() {
 		var conflictingServer *http.Server
 
 		BeforeEach(func() {
-			conflictingServer = launchConflictingServer(port)
+			conflictingServer = testhelpers.LaunchConflictingServer(port)
 		})
 
 		AfterEach(func() {
@@ -179,37 +178,3 @@ var _ = Describe("Server", func() {
 		})
 	})
 })
-
-//TODO share this with main test
-func NewClient(caCertPool *x509.CertPool, cert tls.Certificate) *http.Client {
-	tlsConfig := &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		ClientCAs:    caCertPool,
-		RootCAs:      caCertPool,
-		Certificates: []tls.Certificate{cert},
-	}
-
-	tlsConfig.BuildNameToCertificate()
-
-	tr := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	return &http.Client{Transport: tr}
-}
-
-//TODO share with routes/loglevel_test.go
-func launchConflictingServer(port int) *http.Server {
-	address := fmt.Sprintf("127.0.0.1:%d", port)
-	conflictingServer := &http.Server{Addr: address}
-	go func() { conflictingServer.ListenAndServe() }()
-	client := &http.Client{}
-	Eventually(func() bool {
-		resp, err := client.Get(fmt.Sprintf("http://%s", address))
-		if err != nil {
-			return false
-		}
-		return resp.StatusCode == 404
-	}).Should(BeTrue())
-	return conflictingServer
-}

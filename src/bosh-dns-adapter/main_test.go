@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"bosh-dns-adapter/testhelpers"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -10,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"test-helpers"
 	"time"
 
 	"code.cloudfoundry.org/cf-networking-helpers/testsupport/metrics"

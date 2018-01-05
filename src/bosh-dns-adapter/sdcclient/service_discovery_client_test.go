@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	. "bosh-dns-adapter/sdcclient"
-	"bosh-dns-adapter/testhelpers"
+	"test-helpers"
 
 	"crypto/tls"
 	"io/ioutil"
