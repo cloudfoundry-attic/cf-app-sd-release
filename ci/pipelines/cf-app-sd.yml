@@ -631,7 +631,6 @@ jobs:
           passed: [ship-what]
         - get: cf-app-sd-ci
         - get: cf-app-sd-release
-          passed: [ship-what]
         - get: cf-networking-deployments
       - task: ship-it
         file: cf-app-sd-ci/ci/tasks/ship-it.yml

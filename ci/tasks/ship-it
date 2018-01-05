@@ -20,7 +20,7 @@ RELEASE_YML=$PWD/releases/cf-app-sd/cf-app-sd-${VERSION}.yml
 
 if [ -e ${RELEASE_YML} ]; then
   echo "release already created; making tarball..."
-  bosh -n create-release --tarball=${CANDIDATE_DIR}/cf-app-sd-$(date +%s).tgz ${RELEASE_YML}
+  bosh -n create-release --tarball=../final-release/cf-app-sd-${VERSION}.tgz ${RELEASE_YML}
 else
   echo "finalizing release"
   bosh -n finalize-release --version="$VERSION" ${CANDIDATE_DIR}/cf-app-sd-*.tgz
