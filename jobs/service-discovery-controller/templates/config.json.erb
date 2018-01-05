@@ -3,6 +3,10 @@
 raise 'pruning_interval_seconds value must be greater than 0' if p('pruning_interval_seconds') <= 0
 
 route_emitter_interval_seconds = p('route_emitter_interval_seconds')
+staleness_threshold = p("staleness_threshold_seconds")
+if staleness_threshold <= route_emitter_interval_seconds
+  raise "'staleness_threshold_seconds' must be a value greater than 'route_emitter_interval_seconds' which is set to " + route_emitter_interval_seconds.to_s
+end
 
 config = {
     'address' => p('address'),
@@ -14,7 +18,7 @@ config = {
     'server_key' => '/var/vcap/jobs/service-discovery-controller/config/certs/server.key',
     'ca_cert' => '/var/vcap/jobs/service-discovery-controller/config/certs/client_ca.crt',
     'metron_port' => p('metron_port'),
-    'staleness_threshold_seconds' => route_emitter_interval_seconds * 2,
+    'staleness_threshold_seconds' => staleness_threshold,
     'pruning_interval_seconds' => p('pruning_interval_seconds'),
     'metrics_emit_seconds' => 10,
     'resume_pruning_delay_seconds' => route_emitter_interval_seconds,

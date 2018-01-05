@@ -39,9 +39,20 @@ properties:
     description: "Port which service-discovery-controller will listen on."
     default: 8054
 
+  staleness_threshold_seconds:
+    description: "Staleness threshold in seconds for routes. If the service-discovery-controller does not receive a message about a route within this threshold, the route will be pruned from the table. This value should be greater than the route_emitter_interval_seconds"
+    default: 120
+
+  route_emitter_interval_seconds:
+    description: "Interval in seconds for which the route emitter is told to emit all routes. This value should be less than the staleness_threshold_seconds"
+    default: 60
+
+  pruning_interval_seconds:
+    description: "Interval in seconds for which the process evicts stale routes"
+    default: 20
+
   dnshttps.server.tls:
     description: "Server-side mutual TLS configuration for dns over http"
-
   dnshttps.client.ca:
     description: "client-side mutual TLS configuration for dns over http"
 
@@ -51,13 +62,6 @@ properties:
   log_level_address:
     description: "Address which log level endpoint listens on"
     default: 127.0.0.1
-
-  route_emitter_interval_seconds:
-    description: "Interval in seconds for which the route emitter is told to emit all routes"
-    default: 60
-  pruning_interval_seconds:
-    description: "Interval in seconds for which the process evicts stale routes"
-    default: 20
 
   nats.user:
     description: User name for NATS authentication
