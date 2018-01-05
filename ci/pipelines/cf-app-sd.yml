@@ -642,7 +642,7 @@ jobs:
       - put: cf-app-sd-shipped-master
         params:
           repository: release/master
-      - put: cf-app-sd-release
+      - put: cf-app-sd-shipped-master
         params:
           repository: cf-app-sd-release
           tag: version/number
