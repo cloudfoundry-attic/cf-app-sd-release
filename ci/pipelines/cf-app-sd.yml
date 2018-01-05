@@ -139,7 +139,7 @@ resources:
   - name: cf-app-sd-github-release
     type: github-release
     source:
-      user: cloudfoundry-incubator
+      user: cloudfoundry
       repository: cf-app-sd-release
       access_token: {{github-access-token}}
 
