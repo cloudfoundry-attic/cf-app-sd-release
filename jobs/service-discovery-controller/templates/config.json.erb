@@ -1,6 +1,8 @@
 <%=
 
-route_emitter_interval = p('route_emitter_interval')
+raise 'pruning_interval_seconds value must be greater than 0' if p('pruning_interval_seconds') <= 0
+
+route_emitter_interval_seconds = p('route_emitter_interval_seconds')
 
 config = {
     'address' => p('address'),
@@ -12,11 +14,11 @@ config = {
     'server_key' => '/var/vcap/jobs/service-discovery-controller/config/certs/server.key',
     'ca_cert' => '/var/vcap/jobs/service-discovery-controller/config/certs/client_ca.crt',
     'metron_port' => p('metron_port'),
-    'staleness_threshold_seconds' => route_emitter_interval * 2,
-    'pruning_interval_seconds' => 10,
+    'staleness_threshold_seconds' => route_emitter_interval_seconds * 2,
+    'pruning_interval_seconds' => p('pruning_interval_seconds'),
     'metrics_emit_seconds' => 10,
-    'resume_pruning_delay_seconds' => route_emitter_interval,
-    'warm_duration_seconds' => route_emitter_interval
+    'resume_pruning_delay_seconds' => route_emitter_interval_seconds,
+    'warm_duration_seconds' => route_emitter_interval_seconds
 }
 
 nats_machines = nil

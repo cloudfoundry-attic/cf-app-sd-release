@@ -52,9 +52,12 @@ properties:
     description: "Address which log level endpoint listens on"
     default: 127.0.0.1
 
-  route_emitter_interval:
-    description: Interval for which the route emitter is told to emit all routes
+  route_emitter_interval_seconds:
+    description: "Interval in seconds for which the route emitter is told to emit all routes"
     default: 60
+  pruning_interval_seconds:
+    description: "Interval in seconds for which the process evicts stale routes"
+    default: 20
 
   nats.user:
     description: User name for NATS authentication
