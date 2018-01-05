@@ -10,7 +10,7 @@ inputs:
   - name: cf-app-sd-ci
   - name: cf-networking-deployments
   - name: cf-app-sd-tarball
-  - name: cf-app-sd
+  - name: cf-app-sd-shipped-master
 
 outputs:
   - name: final-release

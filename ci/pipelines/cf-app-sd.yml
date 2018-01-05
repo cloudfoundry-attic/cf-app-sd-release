@@ -16,6 +16,7 @@ groups:
   - beret-deploy-firehose-nozzle
   - ship-what
   - ship-it
+  - bump-minor-version
 - name: ushanka
   jobs:
   - ushanka-bbl-up
@@ -631,18 +632,22 @@ jobs:
           passed: [ship-what]
         - get: cf-app-sd-ci
         - get: cf-app-sd-release
+          passed: [ship-what]
+        - get: cf-app-sd-shipped-master
         - get: cf-networking-deployments
       - task: ship-it
         file: cf-app-sd-ci/ci/tasks/ship-it.yml
-        input_mapping:
-          cf-app-sd: cf-app-sd-release
       - put: version
         params: {file: version/number}
       - put: cf-app-sd-shipped-master
         params:
           repository: release/master
+      - put: cf-app-sd-release
+        params:
+          repository: cf-app-sd-release
           tag: version/number
           tag_prefix: v
+          only_tag: true
       - put: cf-app-sd-tarball
         params:
           file: final-release/cf-app-sd-*.tgz
@@ -653,3 +658,14 @@ jobs:
           tag_prefix: v
           globs:
           - final-release/cf-app-sd-*.tgz
+
+  # bump minor version (i.e. 0.1.0 -> 0.2.0)
+  - name: bump-minor-version
+    serial_groups: [version]
+    plan:
+    - get: version
+      trigger: true
+      passed: [ship-it]
+      params: {bump: minor, pre: rc}
+    - put: version
+      params: {file: version/number}
