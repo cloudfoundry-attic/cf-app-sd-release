@@ -183,6 +183,7 @@ var _ = Describe("Main", func() {
 	Context("when a process is already listening on the port", func() {
 		var session2 *gexec.Session
 		JustBeforeEach(func() {
+			Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
 			startCmd := exec.Command(pathToServer, "-c", tempConfigFile.Name())
 			var err error
 			session2, err = gexec.Start(startCmd, GinkgoWriter, GinkgoWriter)
