@@ -14,7 +14,6 @@ error() {
 
 create_bosh_env() {
   ssh-keygen -R 192.168.50.6
-  rm -f ~/workspace/cf-networking-deployments/environments/local/state.json
   bosh create-env ~/workspace/bosh-deployment/bosh.yml \
     --state ~/workspace/cf-networking-deployments/environments/local/state.json \
     -o ~/workspace/bosh-deployment/virtualbox/cpi.yml \
