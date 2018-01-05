@@ -57,7 +57,6 @@ deploy_cf() {
   -o ~/workspace/cf-deployment/operations/bosh-lite.yml \
   -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns-for-containers.yml \
   -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns.yml \
-  -o ~/workspace/cf-app-sd-release/opsfiles/use-latest-bosh-dns.yml \
   -o ~/workspace/cf-app-sd-release/opsfiles/use-latest-capi.yml \
   -o ~/workspace/cf-app-sd-release/opsfiles/enable-service-discovery.yml \
   -o ~/workspace/cf-app-sd-release/opsfiles/use-latest.yml \
@@ -68,13 +67,6 @@ deploy_cf() {
 upload_local_release() {
     bosh create-release --force
     bosh upload-release
-}
-
-upload_local_bosh_dns_release() {
-  pushd ~/workspace/bosh-dns-release
-    bosh create-release --force
-    bosh upload-release
-  popd
 }
 
 main() {
@@ -93,8 +85,6 @@ main() {
     fi
 
     upload_cloud_config
-
-    upload_local_bosh_dns_release
 
     upload_local_release
 
