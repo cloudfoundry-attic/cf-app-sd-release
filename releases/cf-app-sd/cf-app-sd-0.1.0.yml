@@ -1,0 +1,65 @@
+name: cf-app-sd
+version: 0.1.0
+commit_hash: 0794b0f
+uncommitted_changes: false
+jobs:
+- name: bosh-dns-adapter
+  version: 6320e9b0c2a65f92553ddcd16ed7facc9012f6ad
+  fingerprint: 6320e9b0c2a65f92553ddcd16ed7facc9012f6ad
+  sha1: ab69fff5b693a9a7967a778f4928e1f5a9331c4c
+- name: performance-tests
+  version: b223f0118fc894492776cc59e0e7602f1807088d
+  fingerprint: b223f0118fc894492776cc59e0e7602f1807088d
+  sha1: 5c43bf863f5134bcba4c5ca544ca715663fe3a53
+- name: route_populator
+  version: ee978c58120b58c4b99c2d8543e4d769a257d7a4
+  fingerprint: ee978c58120b58c4b99c2d8543e4d769a257d7a4
+  sha1: 36ad2731c921bcc6b078bc76c486cbb5bd30dc4c
+- name: service-discovery-controller
+  version: 5aee7972a91fb15893089bfb1146a2f7f80567f1
+  fingerprint: 5aee7972a91fb15893089bfb1146a2f7f80567f1
+  sha1: ee43616a109f6fb439ded4c400ffc16a3cff01fa
+packages:
+- name: bosh-dns-adapter
+  version: 3323a0cbc6feccb24051ecfc0e9266ffa86a0621
+  fingerprint: 3323a0cbc6feccb24051ecfc0e9266ffa86a0621
+  sha1: bba63e109b413528e1a5e2468a59bdbf206e2343
+  dependencies:
+  - golang
+- name: golang
+  version: ce5f22b4cb196a652901f8eea1c919656193aea5
+  fingerprint: ce5f22b4cb196a652901f8eea1c919656193aea5
+  sha1: 6a738f7d5719c72f433122d78add3a043cbe80ca
+  dependencies: []
+- name: golang-1.9-linux
+  version: 200a29b129a9078cb156be44c4a792ae24f42900
+  fingerprint: 200a29b129a9078cb156be44c4a792ae24f42900
+  sha1: bacfa6a162fa7085f95df7d43e911404a3644b01
+  dependencies: []
+- name: performance-tests
+  version: 94e368cd0262d8e7a52bd01d28e8d3f26a2a0a04
+  fingerprint: 94e368cd0262d8e7a52bd01d28e8d3f26a2a0a04
+  sha1: 3bf88a659143a98130395355cc5b0eea8fd64855
+  dependencies:
+  - golang
+- name: route_populator
+  version: 858338420869efc238ff9d7bb67e3290d045788f
+  fingerprint: 858338420869efc238ff9d7bb67e3290d045788f
+  sha1: 7c4ef33d211009a5d816010de45511322e21ea05
+  dependencies:
+  - golang
+- name: sd-ctl-utils
+  version: b80e568e3292c40bb8a75997ce69c43cfa78cf76
+  fingerprint: b80e568e3292c40bb8a75997ce69c43cfa78cf76
+  sha1: 26c704abab337441b83ddb7455a098c153b58cc2
+  dependencies: []
+- name: service-discovery-controller
+  version: b96c16c8f096f390d1247c08b34385c7587f70e3
+  fingerprint: b96c16c8f096f390d1247c08b34385c7587f70e3
+  sha1: 7acc137114d70ee4777d5ff4614defcb6b584d91
+  dependencies:
+  - golang-1.9-linux
+license:
+  version: e4a51be8a0562047e07fe410b5118c3cde60c458
+  fingerprint: e4a51be8a0562047e07fe410b5118c3cde60c458
+  sha1: 2cc7f10d89178d97ef751c98a7a714ca64bd03dd
