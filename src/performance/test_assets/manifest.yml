@@ -121,18 +121,18 @@ variables:
   type: certificate
   options:
     is_ca: true
-    common_name: service-discovery-controller.internal
+    common_name: service-discovery-controller.service.cf.internal
 - name: service_discovery_server_tls
   type: certificate
   options:
     ca: service_discovery_ca
-    common_name: service-discovery-controller.internal
+    common_name: service-discovery-controller.service.cf.internal
     extended_key_usage:
     - server_auth
 - name: service_discovery_client_tls
   type: certificate
   options:
     ca: service_discovery_ca
-    common_name: service-discovery-controller.internal
+    common_name: service-discovery-controller.service.cf.internal
     extended_key_usage:
     - client_auth
