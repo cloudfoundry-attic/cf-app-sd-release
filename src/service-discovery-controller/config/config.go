@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	validator "gopkg.in/validator.v2"
+	"gopkg.in/validator.v2"
 )
 
 type Config struct {

@@ -86,8 +86,8 @@ var _ = Describe("AddressTable", func() {
 
 		It("returns all addresses", func() {
 			Expect(table.GetAllAddresses()).To(Equal(map[string][]string{
-				"foo.com.": []string{"192.0.0.1", "192.0.0.2"},
-				"bar.com.": []string{"192.0.0.4"},
+				"foo.com.": {"192.0.0.1", "192.0.0.2"},
+				"bar.com.": {"192.0.0.4"},
 			}))
 		})
 	})
