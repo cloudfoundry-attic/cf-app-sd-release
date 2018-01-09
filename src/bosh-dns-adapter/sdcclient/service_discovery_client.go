@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"time"
 )
 
 type ServiceDiscoveryClient struct {
@@ -92,11 +94,23 @@ func (s *ServiceDiscoveryClient) IPs(infrastructureName string) ([]string, error
 		return []string{}, err
 	}
 
-	len := len(serverResponse.Hosts)
-	ips := make([]string, len, len)
+	numHosts := len(serverResponse.Hosts)
+	ips := make([]string, numHosts, numHosts)
 	for i, host := range serverResponse.Hosts {
 		ips[i] = host.IPAddress
 	}
 
+	shuffle(ips)
+
 	return ips, nil
+}
+
+func shuffle(vals []string) {
+	r := rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
+	for len(vals) > 0 {
+		n := len(vals)
+		randIndex := r.Intn(n)
+		vals[n-1], vals[randIndex] = vals[randIndex], vals[n-1]
+		vals = vals[:n-1]
+	}
 }

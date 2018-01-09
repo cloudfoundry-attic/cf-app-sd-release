@@ -129,7 +129,56 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 				actualIPs, err := client.IPs("app-id.apps.internal.")
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(actualIPs).To(Equal([]string{"192.168.0.1", "192.168.0.2"}))
+				Expect(actualIPs).To(ConsistOf("192.168.0.1", "192.168.0.2"))
+			})
+
+		})
+
+		Context("returned ips order", func() {
+			BeforeEach(func() {
+				fakeServer.RouteToHandler("GET", "/v1/registration/app-id.apps.internal.", func(writer http.ResponseWriter, request *http.Request) {
+					_, err := writer.Write([]byte(`{
+							"env": "",
+							"Hosts": [
+							{
+								"ip_address": "192.168.0.1",
+								"last_check_in": "",
+								"port": 0,
+								"revision": "",
+								"service": "",
+								"service_repo_name": "",
+								"tags": {}
+							},
+							{
+								"ip_address": "192.168.0.2",
+								"last_check_in": "",
+								"port": 0,
+								"revision": "",
+								"service": "",
+								"service_repo_name": "",
+								"tags": {}
+							},
+							{
+								"ip_address": "192.168.0.3",
+								"last_check_in": "",
+								"port": 0,
+								"revision": "",
+								"service": "",
+								"service_repo_name": "",
+								"tags": {}
+							}],
+							"service": ""
+						}`))
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+
+			It("shuffles them to return them in random order", func() {
+				Eventually(func() []string {
+					ips, err := client.IPs("app-id.apps.internal.")
+					Expect(err).ToNot(HaveOccurred())
+					return ips
+				}).Should(Equal([]string{"192.168.0.3", "192.168.0.1", "192.168.0.2"}))
 			})
 		})
 
@@ -191,7 +240,7 @@ var _ = Describe("ServiceDiscoveryClient", func() {
 				actualIPs, err := client.IPs("app-id.apps.internal.")
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(actualIPs).To(Equal([]string{"192.168.0.1", "192.168.0.2"}))
+				Expect(actualIPs).To(ConsistOf("192.168.0.1", "192.168.0.2"))
 			})
 		})
 
