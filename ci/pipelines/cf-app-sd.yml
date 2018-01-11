@@ -164,6 +164,9 @@ jobs:
             passed: [ushanka-deploy]
             trigger: true
           - get: cf-app-sd-ci
+          - get: cf-deployment
+            passed: [ushanka-deploy]
+            trigger: true
       - task: ushanka-acceptance-tests
         privileged: true
         file: cf-app-sd-ci/ci/tasks/test-acceptance.yml
@@ -186,6 +189,9 @@ jobs:
             passed: [ushanka-deploy]
             trigger: true
           - get: cf-app-sd-ci
+          - get: cf-deployment
+            passed: [ushanka-deploy]
+            trigger: true
       - task: ushanka-smoke-tests
         privileged: true
         file: cf-app-sd-ci/ci/tasks/smoke-tests.yml
@@ -211,6 +217,11 @@ jobs:
             - ushanka-acceptance-tests
             trigger: true
           - get: cf-app-sd-ci
+          - get: cf-deployment
+            passed:
+            - ushanka-smoke-tests
+            - ushanka-acceptance-tests
+            trigger: true
       - task: ushanka-perf-tests
         privileged: true
         file: cf-app-sd-ci/ci/tasks/test-nats-performance.yml
@@ -505,6 +516,9 @@ jobs:
           - get: cf-deployment-concourse-tasks
           - get: cf-networking-deployments
           - get: cf-deployment
+            passed:
+            - ushanka-smoke-tests
+            - ushanka-acceptance-tests
             trigger: true
           - get: cf-networking-master
             passed:
