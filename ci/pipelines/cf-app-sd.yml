@@ -84,11 +84,6 @@ resources:
       ignore_paths:
         - docs
       private_key: {{cf-networking-deploy-key}}
-  - name: bosh-dns-cf-networking
-    type: git
-    source:
-      uri: https://github.com/cf-container-networking/bosh-dns-release
-      branch: master
   - name: capi-cf-networking
     type: git
     source:
@@ -345,7 +340,6 @@ jobs:
           - get: cf-app-sd-release
             trigger: true
             passed: [unit-tests]
-          - get: bosh-dns-cf-networking
           - get: cf-app-sd-ci
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
@@ -533,7 +527,6 @@ jobs:
           - get: version
             params:
               pre: rc
-          - get: bosh-dns-cf-networking
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -554,7 +547,6 @@ jobs:
           local-release: cf-app-sd-release
         params:
           BBL_STATE_DIR: environments/beret/
-
       - task: deploy-cf
         file: cf-deployment-concourse-tasks/bosh-deploy-with-created-release/task.yml
         params:
