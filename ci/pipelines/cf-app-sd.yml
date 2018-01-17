@@ -316,7 +316,6 @@ jobs:
           local-release: cf-app-sd-release
         params:
           BBL_STATE_DIR: environments/ushanka/
-
       - task: deploy-cf
         file: cf-deployment-concourse-tasks/bosh-deploy-with-created-release/task.yml
         params:
@@ -338,7 +337,6 @@ jobs:
         file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
         params:
           BBL_STATE_DIR: environments/ushanka/
-          CLEAN_ALL: false
         input_mapping:
           env-repo: cf-networking-deployments
 
@@ -507,7 +505,6 @@ jobs:
         file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
         params:
           BBL_STATE_DIR: environments/beret/
-          CLEAN_ALL: false
         input_mapping:
           env-repo: cf-networking-deployments
 
