@@ -57,7 +57,7 @@ curl "$SERVER_HOSTNAME.apps.internal:8080"
 
 ### Experimental Ops File for cf-deployment
 
-See [opsfile](opsfiles/enable-service-discovery.yml) and our [pipeline](ci/pipelines/cf-app-sd.yml) that uses this opsfile.
+See [opsfile](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml) and our [pipeline](ci/pipelines/cf-app-sd.yml) that uses this opsfile.
 
 ### Deploying to BOSH-lite
 Run the [`scripts/deploy-to-bosh-lite`](scripts/deploy-to-bosh-lite) script. Note this requires [cf-networking-release](https://github.com/cloudfoundry/cf-networking-release), [bosh-deployment](https://github.com/cloudfoundry/bosh-deployment), and [cf-deployment](https://github.com/cloudfoundry/cf-deployment)
