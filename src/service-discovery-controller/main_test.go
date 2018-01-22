@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -75,7 +76,7 @@ var _ = Describe("Service Discovery Controller process", func() {
 			"log_level_port": %d,
 			"metron_port": %d,
 			"metrics_emit_seconds": 2,
-			"resume_pruning_delay_seconds": 0,
+			"resume_pruning_delay_seconds": 1,
 			"warm_duration_seconds": 0
 		}`,
 			port, caFile, serverCert, serverKey, natsServerPort, stalenessThresholdSeconds, pruningIntervalSeconds, logLevelEndpointAddress, logLevelEndpointPort, fakeMetron.Port()))
@@ -162,6 +163,37 @@ var _ = Describe("Service Discovery Controller process", func() {
 
 			sessionContents := string(session.Out.Contents())
 			Expect(sessionContents).To(MatchRegexp(`HTTPServer access.*\"ip_address\\":\\"192.168.0.2\\".*\"serviceKey\":\"app-id.internal.local.\"`))
+		})
+
+		Context("when the route emitter greets the service discovery controller", func() {
+			var greetMessageReply string
+			BeforeEach(func() {
+				greetMessageReply = "route-emitter-reply"
+			})
+			JustBeforeEach(func() {
+				Expect(routeEmitter.PublishMsg(&nats.Msg{
+					Subject: "service-discovery.greet",
+					Reply:   greetMessageReply,
+					Data:    []byte{},
+				})).NotTo(HaveOccurred())
+			})
+			It("tells the route-emitter the minimum register interval as resume_pruning_delay_seconds", func(done Done) {
+				routeEmitter.Subscribe(greetMessageReply, nats.MsgHandler(func(greetMsg *nats.Msg) {
+					defer GinkgoRecover()
+					msg := *greetMsg
+					Expect(msg.Subject).To(Equal(greetMessageReply))
+					subscriberOpts := struct {
+						ID                               string
+						MinimumRegisterIntervalInSeconds int
+						PruneThresholdInSeconds          int
+						AcceptTLS                        bool
+					}{}
+					Expect(json.Unmarshal(msg.Data, &subscriberOpts)).To(Succeed())
+					Expect(subscriberOpts.MinimumRegisterIntervalInSeconds).To(Equal(1))
+					Expect(subscriberOpts.PruneThresholdInSeconds).To(Equal(120))
+					close(done)
+				}))
+			}, 5 /* <-- overall spec timeout in seconds */)
 		})
 
 		It("should return a http app json", func() {

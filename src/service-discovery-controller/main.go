@@ -142,7 +142,7 @@ func buildSubscriber(config *config.Config, addressTable *addresstable.AddressTa
 
 	subOpts := mbus.SubscriberOpts{
 		ID: subscriberID,
-		MinimumRegisterIntervalInSeconds: 60,
+		MinimumRegisterIntervalInSeconds: config.ResumePruningDelaySeconds,
 		PruneThresholdInSeconds:          120,
 	}
 
