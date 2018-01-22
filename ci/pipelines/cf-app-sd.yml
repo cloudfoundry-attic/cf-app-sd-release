@@ -584,10 +584,13 @@ jobs:
       - put: cf-app-sd-tarball
         params:
           file: final-release/cf-app-sd-*.tgz
+      - task: build-release-notes
+        file: cf-app-sd-ci/ci/tasks/build-release-notes.yml
       - put: cf-app-sd-github-release
         params:
           name: version/number
           tag: version/number
+          body: release-notes/notes.md
           tag_prefix: v
           globs:
           - final-release/cf-app-sd-*.tgz
