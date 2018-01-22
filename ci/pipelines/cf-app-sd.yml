@@ -162,6 +162,9 @@ jobs:
           - get: cf-deployment
             passed: [ushanka-deploy]
             trigger: true
+          - get: capi-ci-passed
+            passed: [ushanka-deploy]
+            trigger: true
       - task: ushanka-acceptance-tests
         privileged: true
         file: cf-app-sd-ci/ci/tasks/test-acceptance.yml
@@ -185,6 +188,9 @@ jobs:
             trigger: true
           - get: cf-app-sd-ci
           - get: cf-deployment
+            passed: [ushanka-deploy]
+            trigger: true
+          - get: capi-ci-passed
             passed: [ushanka-deploy]
             trigger: true
       - task: ushanka-smoke-tests
@@ -297,7 +303,7 @@ jobs:
       - task: upload-capi-release
         file: capi-ci/ci/bosh/upload-release.yml
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
           release-tarball: created-capi-release
         params:
           BBL_STATE_DIR: environments/ushanka/
@@ -347,6 +353,7 @@ jobs:
           - get: cf-app-sd-ci
           - get: capi-ci-passed
             passed: [ushanka-update-capi]
+            trigger: true
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -463,6 +470,7 @@ jobs:
       - aggregate:
           - get: cf-networking-deployments
           - get: capi-ci-passed
+            passed: [ushanka-smoke-tests, ushanka-acceptance-tests]
             trigger: true
           - get: capi-ci
           - get: capi-version
@@ -475,7 +483,7 @@ jobs:
       - task: upload-capi-release
         file: capi-ci/ci/bosh/upload-release.yml
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
           release-tarball: created-capi-release
         params:
           BBL_STATE_DIR: environments/beret/
@@ -537,6 +545,7 @@ jobs:
               pre: rc
           - get: capi-ci-passed
             passed: [beret-update-capi]
+            trigger: true
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
