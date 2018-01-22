@@ -5,8 +5,10 @@ groups:
   - ushanka-acceptance-tests
   - ushanka-smoke-tests
   - ushanka-perf-tests
+  - ushanka-update-capi
   - ushanka-deploy
   - ushanka-deploy-firehose-nozzle
+  - beret-update-capi
   - beret-deploy
   - beret-deploy-firehose-nozzle
   - ship-what
@@ -16,6 +18,7 @@ groups:
   jobs:
   - ushanka-bbl-up
   - ushanka-bbl-destroy
+  - ushanka-update-capi
   - ushanka-deploy
   - ushanka-deploy-firehose-nozzle
   - ushanka-acceptance-tests
@@ -26,6 +29,7 @@ groups:
   jobs:
   - beret-bbl-up
   - beret-bbl-destroy
+  - beret-update-capi
   - beret-deploy
   - beret-deploy-firehose-nozzle
   - delete-beret-deployment
@@ -80,6 +84,22 @@ resources:
       ignore_paths:
         - docs
       private_key: {{cf-networking-deploy-key}}
+  - name: capi-ci-passed
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/capi-release
+      branch: ci-passed
+  - name: capi-ci
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/capi-ci
+      branch: master
+  - name: capi-version
+    type: staticfile
+    source:
+      files:
+      - filename: version
+        data: capi-ci-passed-9.99.9
   - name: datadog-firehose-nozzle-release
     type: bosh-io-release
     source:
@@ -259,6 +279,29 @@ jobs:
             repository: updated-env-repo
             rebase: true
 
+  - name: ushanka-update-capi
+    serial_groups: [ushanka-deploy-group]
+    plan:
+      - aggregate:
+          - get: cf-networking-deployments
+          - get: capi-ci-passed
+            trigger: true
+          - get: capi-ci
+          - get: capi-version
+      - task: create-capi-release
+        file: capi-ci/ci/bosh/create_capi_release.yml
+        input_mapping:
+          capi-release: capi-ci-passed
+          version: capi-version
+          cloud_controller_ng: capi-version # does not matter, we won't use this
+      - task: upload-capi-release
+        file: capi-ci/ci/bosh/upload-release.yml
+        input_mapping:
+          env-repo: cf-networking-deployments
+          release-tarball: created-capi-release
+        params:
+          BBL_STATE_DIR: environments/ushanka/
+
   - name: ushanka-deploy-firehose-nozzle
     serial_groups: [ushanka-deploy-group]
     plan:
@@ -302,6 +345,8 @@ jobs:
             trigger: true
             passed: [unit-tests]
           - get: cf-app-sd-ci
+          - get: capi-ci-passed
+            passed: [ushanka-update-capi]
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -327,7 +372,7 @@ jobs:
         params:
           BBL_STATE_DIR: environments/ushanka/
           SYSTEM_DOMAIN: ushanka.c2c.cf-app.com
-          OPS_FILES: use-compiled-releases.yml scale-to-one-az.yml smaller-footprint.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-system-domain-as-metron-deployment-name.yml enable-service-discovery.yml use-latest.yml opsfile.yml
+          OPS_FILES: use-compiled-releases.yml scale-to-one-az.yml smaller-footprint.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-latest-capi.yml use-system-domain-as-metron-deployment-name.yml enable-service-discovery.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/ushanka/vars-store.yml
         input_mapping:
           env-repo: cf-networking-deployments
@@ -412,6 +457,29 @@ jobs:
             repository: updated-env-repo
             rebase: true
 
+  - name: beret-update-capi
+    serial_groups: [beret-deploy-group]
+    plan:
+      - aggregate:
+          - get: cf-networking-deployments
+          - get: capi-ci-passed
+            trigger: true
+          - get: capi-ci
+          - get: capi-version
+      - task: create-capi-release
+        file: capi-ci/ci/bosh/create_capi_release.yml
+        input_mapping:
+          capi-release: capi-ci-passed
+          version: capi-version
+          cloud_controller_ng: capi-version # does not matter, we won't use this
+      - task: upload-capi-release
+        file: capi-ci/ci/bosh/upload-release.yml
+        input_mapping:
+          env-repo: cf-networking-deployments
+          release-tarball: created-capi-release
+        params:
+          BBL_STATE_DIR: environments/beret/
+
   - name: beret-deploy-firehose-nozzle
     serial_groups: [beret-deploy-group]
     plan:
@@ -467,6 +535,8 @@ jobs:
           - get: version
             params:
               pre: rc
+          - get: capi-ci-passed
+            passed: [beret-update-capi]
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -492,7 +562,7 @@ jobs:
         params:
           BBL_STATE_DIR: environments/beret/
           SYSTEM_DOMAIN: beret.c2c.cf-app.com
-          OPS_FILES: use-compiled-releases.yml scale-to-one-az.yml smaller-footprint.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml enable-service-discovery.yml use-system-domain-as-metron-deployment-name.yml use-latest.yml opsfile.yml
+          OPS_FILES: use-compiled-releases.yml scale-to-one-az.yml smaller-footprint.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-latest-capi.yml enable-service-discovery.yml use-system-domain-as-metron-deployment-name.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/beret/vars-store.yml
         input_mapping:
           env-repo: cf-networking-deployments

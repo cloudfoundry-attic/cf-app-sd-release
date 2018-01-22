@@ -1,0 +1,4 @@
+
+- type: replace
+  path: /releases/name=capi?/version
+  value: latest
