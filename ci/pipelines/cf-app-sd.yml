@@ -162,6 +162,8 @@ jobs:
           - get: cf-deployment
             passed: [ushanka-deploy]
             trigger: true
+          - get: capi-ci-passed
+            passed: [ushanka-deploy]
       - task: ushanka-acceptance-tests
         privileged: true
         file: cf-app-sd-ci/ci/tasks/test-acceptance.yml
@@ -187,6 +189,8 @@ jobs:
           - get: cf-deployment
             passed: [ushanka-deploy]
             trigger: true
+          - get: capi-ci-passed
+            passed: [ushanka-deploy]
       - task: ushanka-smoke-tests
         privileged: true
         file: cf-app-sd-ci/ci/tasks/smoke-tests.yml
@@ -347,6 +351,7 @@ jobs:
           - get: cf-app-sd-ci
           - get: capi-ci-passed
             passed: [ushanka-update-capi]
+            trigger: true
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -536,7 +541,8 @@ jobs:
             params:
               pre: rc
           - get: capi-ci-passed
-            passed: [beret-update-capi]
+            passed: [beret-update-capi, ushanka-smoke-tests, ushanka-acceptance-tests]
+            trigger: true
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
