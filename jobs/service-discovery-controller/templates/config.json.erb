@@ -1,6 +1,6 @@
 <%=
 
-raise 'pruning_interval_seconds value must be greater than 0' if p('pruning_interval_seconds') <= 0
+raise 'route_emitter_interval_seconds value must be greater than 0' if p('route_emitter_interval_seconds') <= 0
 
 route_emitter_interval_seconds = p('route_emitter_interval_seconds')
 staleness_threshold = p("staleness_threshold_seconds")
@@ -19,7 +19,7 @@ config = {
     'ca_cert' => '/var/vcap/jobs/service-discovery-controller/config/certs/client_ca.crt',
     'metron_port' => p('metron_port'),
     'staleness_threshold_seconds' => staleness_threshold,
-    'pruning_interval_seconds' => p('pruning_interval_seconds'),
+    'pruning_interval_seconds' => route_emitter_interval_seconds,
     'metrics_emit_seconds' => 10,
     'resume_pruning_delay_seconds' => route_emitter_interval_seconds,
     'warm_duration_seconds' => route_emitter_interval_seconds

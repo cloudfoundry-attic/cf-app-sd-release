@@ -40,16 +40,12 @@ properties:
     default: 8054
 
   staleness_threshold_seconds:
-    description: "Staleness threshold in seconds for routes. If the service-discovery-controller does not receive a message about a route within this threshold, the route will be pruned from the table. This value should be greater than the route_emitter_interval_seconds"
-    default: 120
+    description: "Staleness threshold in seconds for routes. If the service-discovery-controller does not receive a message about a route within this threshold, the route will be pruned from the table. This value is recommended to be three times the value of route_emitter_interval_seconds"
+    default: 180
 
   route_emitter_interval_seconds:
     description: "Interval in seconds for which the route emitter is told to emit all routes. This value should be less than the staleness_threshold_seconds"
     default: 60
-
-  pruning_interval_seconds:
-    description: "Interval in seconds for which the process evicts stale routes"
-    default: 20
 
   dnshttps.server.tls:
     description: "Server-side mutual TLS configuration for dns over http"
