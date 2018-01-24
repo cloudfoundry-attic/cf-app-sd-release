@@ -294,6 +294,7 @@ jobs:
             trigger: true
           - get: capi-ci
           - get: capi-version
+          - get: cf-app-sd-ci
       - task: create-capi-release
         file: capi-ci/ci/bosh/create_capi_release.yml
         input_mapping:
@@ -301,12 +302,12 @@ jobs:
           version: capi-version
           cloud_controller_ng: capi-version # does not matter, we won't use this
       - task: upload-capi-release
-        file: capi-ci/ci/bosh/upload-release.yml
+        file: cf-app-sd-ci/ci/tasks/upload-release-tarball.yml
         input_mapping:
-          bbl-state: cf-networking-deployments
-          release-tarball: created-capi-release
+          tarballs: created-capi-release
+          deployments-repo: cf-networking-deployments
         params:
-          BBL_STATE_DIR: environments/ushanka/
+          ENVIRONMENT_NAME: ushanka
 
   - name: ushanka-deploy-firehose-nozzle
     serial_groups: [ushanka-deploy-group]
@@ -474,6 +475,7 @@ jobs:
             trigger: true
           - get: capi-ci
           - get: capi-version
+          - get: cf-app-sd-ci
       - task: create-capi-release
         file: capi-ci/ci/bosh/create_capi_release.yml
         input_mapping:
@@ -481,12 +483,12 @@ jobs:
           version: capi-version
           cloud_controller_ng: capi-version # does not matter, we won't use this
       - task: upload-capi-release
-        file: capi-ci/ci/bosh/upload-release.yml
+        file: cf-app-sd-ci/ci/tasks/upload-release-tarball.yml
         input_mapping:
-          bbl-state: cf-networking-deployments
-          release-tarball: created-capi-release
+          tarballs: created-capi-release
+          deployments-repo: cf-networking-deployments
         params:
-          BBL_STATE_DIR: environments/beret/
+          ENVIRONMENT_NAME: beret
 
   - name: beret-deploy-firehose-nozzle
     serial_groups: [beret-deploy-group]
