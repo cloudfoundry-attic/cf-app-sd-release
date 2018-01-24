@@ -87,6 +87,10 @@ func main() {
 		dnsRequestSource,
 	)
 
+	metricsSender := &metrics.MetricsSender{
+		Logger: logger.Session("time-metric-emitter"),
+	}
+
 	logLevelServer := lagerlevel.NewServer(
 		config.LogLevelAddress,
 		config.LogLevelPort,
@@ -98,6 +102,7 @@ func main() {
 		addressTable,
 		config,
 		dnsRequestRecorder,
+		metricsSender,
 		logger.Session("routes-server"),
 	)
 

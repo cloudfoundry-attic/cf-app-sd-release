@@ -22,6 +22,7 @@ type Server struct {
 	logger             lager.Logger
 	addressTable       AddressTable
 	dnsRequestRecorder DNSRequestRecorder
+	metricsSender      MetricsSender
 }
 
 type host struct {
@@ -56,16 +57,22 @@ type AddressTable interface {
 	IsWarm() bool
 }
 
+//go:generate counterfeiter -o fakes/metrics_sender.go --fake-name MetricsSender . MetricsSender
+type MetricsSender interface {
+	SendDuration(string, time.Duration)
+}
+
 //go:generate counterfeiter -o fakes/dns_request_recorder.go --fake-name DNSRequestRecorder . DNSRequestRecorder
 type DNSRequestRecorder interface {
 	RecordRequest()
 }
 
-func NewServer(addressTable AddressTable, config *config.Config, dnsRequestRecorder DNSRequestRecorder, logger lager.Logger) *Server {
+func NewServer(addressTable AddressTable, config *config.Config, dnsRequestRecorder DNSRequestRecorder, metricsSender MetricsSender, logger lager.Logger) *Server {
 	return &Server{
 		addressTable:       addressTable,
 		config:             config,
 		dnsRequestRecorder: dnsRequestRecorder,
+		metricsSender:      metricsSender,
 		logger:             logger,
 	}
 }
@@ -152,7 +159,10 @@ func (s *Server) handleRegistrationRequest(resp http.ResponseWriter, req *http.R
 		return
 	}
 
+	lookupStartTime := time.Now()
 	ips := s.addressTable.Lookup(serviceKey)
+	lookupDuration := time.Now().Sub(lookupStartTime)
+	s.metricsSender.SendDuration("addressTableLookupTime", lookupDuration)
 	hosts := []host{}
 	for _, ip := range ips {
 		hosts = append(hosts, host{

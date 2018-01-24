@@ -27,6 +27,7 @@ var _ = Describe("Server", func() {
 	var (
 		addressTable       *fakes.AddressTable
 		dnsRequestRecorder *fakes.DNSRequestRecorder
+		metricsSender      *fakes.MetricsSender
 		clientCert         tls.Certificate
 		caFile             string
 		serverCert         string
@@ -52,7 +53,8 @@ var _ = Describe("Server", func() {
 		}
 		addressTable = &fakes.AddressTable{}
 		dnsRequestRecorder = &fakes.DNSRequestRecorder{}
-		server = NewServer(addressTable, config, dnsRequestRecorder, testLogger)
+		metricsSender = &fakes.MetricsSender{}
+		server = NewServer(addressTable, config, dnsRequestRecorder, metricsSender, testLogger)
 	})
 
 	Context("when the lookup succeeds", func() {
@@ -100,6 +102,13 @@ var _ = Describe("Server", func() {
 
 		It("invokes the dns request recorder", func() {
 			Expect(dnsRequestRecorder.RecordRequestCallCount()).To(Equal(1))
+		})
+
+		It("invokes our metrics sender", func() {
+			Expect(metricsSender.SendDurationCallCount()).To(Equal(1))
+			name, time := metricsSender.SendDurationArgsForCall(0)
+			Expect(name).To(Equal("addressTableLookupTime"))
+			Expect(time.String()).ToNot(Equal("0s"))
 		})
 	})
 

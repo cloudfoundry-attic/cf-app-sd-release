@@ -545,6 +545,13 @@ var _ = Describe("Service Discovery Controller process", func() {
 					)))
 				})
 
+				It("emits a lookup duration", func() {
+					Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+						withName("addressTableLookupTime"),
+						withOrigin("service-discovery-controller"),
+					)))
+				})
+
 			})
 		})
 
