@@ -375,10 +375,21 @@ var _ = Describe("Service Discovery Controller process", func() {
 		})
 
 		Context("when we hit the /routes endpoint", func() {
-			It("should return a map of all hostnames to ips", func() {
+			var (
+				resp *http.Response
+			)
+			JustBeforeEach(func() {
+				var err error
 				url := fmt.Sprintf("https://127.0.0.1:%d/routes", port)
-				resp, err := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
+				resp, err = testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert).Get(url)
 				Expect(err).ToNot(HaveOccurred())
+			})
+			It("emits a metric for the handler time", func() {
+				Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(
+					HaveName("RoutesRequestTime"),
+				))
+			})
+			It("should return a map of all hostnames to ips", func() {
 				respBody, err := ioutil.ReadAll(resp.Body)
 				Expect(err).ToNot(HaveOccurred())
 

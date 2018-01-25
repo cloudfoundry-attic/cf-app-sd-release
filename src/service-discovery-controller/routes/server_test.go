@@ -112,6 +112,37 @@ var _ = Describe("Server", func() {
 		})
 	})
 
+	Context("when the routes endpoint is called", func() {
+		var respBody string
+		BeforeEach(func() {
+			serverProc = ifrit.Invoke(server)
+			addressTable.GetAllAddressesReturns(map[string][]string{
+				"route1": []string{"address1", "address1b"},
+				"route2": []string{"address2", "address2b"},
+			})
+
+			client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
+			resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/routes", port))
+			Expect(err).ToNot(HaveOccurred())
+
+			respBodyBytes, err := ioutil.ReadAll(resp.Body)
+			Expect(err).ToNot(HaveOccurred())
+			respBody = string(respBodyBytes)
+		})
+		AfterEach(func() {
+			serverProc.Signal(os.Interrupt)
+			Eventually(serverProc.Wait()).Should(Receive())
+		})
+		It("returns all the addresses", func() {
+			Expect(string(respBody)).To(MatchJSON(`{
+				"addresses": [
+				{ "hostname": "route1", "ips": ["address1", "address1b"] },
+				{ "hostname": "route2", "ips": ["address2", "address2b"] }
+				]
+			}`))
+		})
+	})
+
 	Context("when the address table is not warm", func() {
 		var (
 			resp *http.Response
