@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"time"
 )
@@ -51,8 +53,20 @@ func NewServiceDiscoveryClient(serverURL, caPath, clientCertPath, clientKeyPath 
 
 	tr := &http.Transport{
 		TLSClientConfig: tlsConfig,
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		IdleConnTimeout:       90 * time.Second,
+		MaxIdleConns:          100,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
-	client := &http.Client{Transport: tr}
+
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   time.Second * 10,
+	}
 
 	return &ServiceDiscoveryClient{
 		serverURL: serverURL,
@@ -76,6 +90,11 @@ func (s *ServiceDiscoveryClient) IPs(infrastructureName string) ([]string, error
 
 		if httpResp.StatusCode == http.StatusOK {
 			break
+		} else {
+			defer func(httpResp *http.Response) {
+				io.Copy(ioutil.Discard, httpResp.Body)
+				httpResp.Body.Close()
+			}(httpResp)
 		}
 	}
 
@@ -84,6 +103,7 @@ func (s *ServiceDiscoveryClient) IPs(infrastructureName string) ([]string, error
 	}
 
 	bytes, err := ioutil.ReadAll(httpResp.Body)
+	httpResp.Body.Close()
 	if err != nil {
 		return []string{}, err
 	}

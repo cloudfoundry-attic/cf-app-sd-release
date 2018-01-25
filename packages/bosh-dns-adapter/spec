@@ -10,6 +10,7 @@ files:
   - bosh-dns-adapter/sdcclient/*.go # gosub
   - code.cloudfoundry.org/cf-networking-helpers/lagerlevel/*.go # gosub
   - code.cloudfoundry.org/cf-networking-helpers/metrics/*.go # gosub
+  - code.cloudfoundry.org/cf-networking-helpers/middleware/*.go # gosub
   - code.cloudfoundry.org/lager/*.go # gosub
   - github.com/cloudfoundry/dropsonde/*.go # gosub
   - github.com/cloudfoundry/dropsonde/emitter/*.go # gosub

@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path"
 	"service-discovery-controller/config"
 
+	"code.cloudfoundry.org/cf-networking-helpers/metrics"
+	"code.cloudfoundry.org/cf-networking-helpers/middleware"
 	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
 
@@ -79,7 +82,20 @@ func NewServer(addressTable AddressTable, config *config.Config, dnsRequestRecor
 
 func (s *Server) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/registration/", s.handleRegistrationRequest)
+
+	metricSender := metrics.MetricsSender{
+		Logger: lager.NewLogger("bosh-dns-adapter"),
+	}
+
+	metricsWrap := func(name string, handler http.Handler) http.Handler {
+		metricsWrapper := middleware.MetricWrapper{
+			Name:          name,
+			MetricsSender: &metricSender,
+		}
+		return metricsWrapper.Wrap(handler)
+	}
+
+	mux.HandleFunc("/v1/registration/", metricsWrap("Registration", http.HandlerFunc(s.handleRegistrationRequest)).ServeHTTP)
 	mux.HandleFunc("/routes", s.handleRoutesRequest)
 
 	tlsConfig, err := s.buildTLSServerConfig()
@@ -93,8 +109,6 @@ func (s *Server) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		Handler:   mux,
 		TLSConfig: tlsConfig,
 	}
-
-	httpServer.SetKeepAlivesEnabled(false)
 
 	exited := make(chan error)
 	go func() {
@@ -163,12 +177,12 @@ func (s *Server) handleRegistrationRequest(resp http.ResponseWriter, req *http.R
 	ips := s.addressTable.Lookup(serviceKey)
 	lookupDuration := time.Now().Sub(lookupStartTime)
 	s.metricsSender.SendDuration("addressTableLookupTime", lookupDuration)
-	hosts := []host{}
-	for _, ip := range ips {
-		hosts = append(hosts, host{
+	hosts := make([]host, cap(ips))
+	for index, ip := range ips {
+		hosts[index] = host{
 			IPAddress: ip,
 			Tags:      make(map[string]interface{}),
-		})
+		}
 	}
 
 	var err error
