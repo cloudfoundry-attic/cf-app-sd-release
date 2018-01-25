@@ -19,6 +19,7 @@ import (
 
 	"code.cloudfoundry.org/cf-networking-helpers/lagerlevel"
 	"code.cloudfoundry.org/cf-networking-helpers/metrics"
+	"code.cloudfoundry.org/cf-networking-helpers/middleware"
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/tedsuo/ifrit"
@@ -83,8 +84,16 @@ func main() {
 		Logger: logger.Session("bosh-dns-adapter"),
 	}
 
+	metricsWrap := func(name string, handler http.Handler) http.Handler {
+		metricsWrapper := middleware.MetricWrapper{
+			Name:          name,
+			MetricsSender: &metricSender,
+		}
+		return metricsWrapper.Wrap(handler)
+	}
+
 	go func() {
-		http.Serve(l, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		http.Serve(l, metricsWrap("GetIPs", http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 			dnsType := getQueryParam(req, "type", "1")
 			name := getQueryParam(req, "name", "")
 
@@ -127,7 +136,7 @@ func main() {
 				"ips":          strings.Join(ips, ","),
 				"service-name": name,
 			})
-		}))
+		})))
 	}()
 
 	uptimeSource := metrics.NewUptimeSource()
