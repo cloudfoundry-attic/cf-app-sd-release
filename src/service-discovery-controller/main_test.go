@@ -170,13 +170,6 @@ var _ = Describe("Service Discovery Controller process", func() {
 			BeforeEach(func() {
 				greetMessageReply = "route-emitter-reply"
 			})
-			JustBeforeEach(func() {
-				Expect(routeEmitter.PublishMsg(&nats.Msg{
-					Subject: "service-discovery.greet",
-					Reply:   greetMessageReply,
-					Data:    []byte{},
-				})).NotTo(HaveOccurred())
-			})
 			It("tells the route-emitter the minimum register interval as resume_pruning_delay_seconds", func(done Done) {
 				routeEmitter.Subscribe(greetMessageReply, nats.MsgHandler(func(greetMsg *nats.Msg) {
 					defer GinkgoRecover()
@@ -193,6 +186,11 @@ var _ = Describe("Service Discovery Controller process", func() {
 					Expect(subscriberOpts.PruneThresholdInSeconds).To(Equal(120))
 					close(done)
 				}))
+				Expect(routeEmitter.PublishMsg(&nats.Msg{
+					Subject: "service-discovery.greet",
+					Reply:   greetMessageReply,
+					Data:    []byte{},
+				})).NotTo(HaveOccurred())
 			}, 5 /* <-- overall spec timeout in seconds */)
 		})
 
