@@ -12,6 +12,8 @@ import (
 	"path"
 	"service-discovery-controller/config"
 
+	"code.cloudfoundry.org/cf-networking-helpers/metrics"
+	"code.cloudfoundry.org/cf-networking-helpers/middleware"
 	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf/paraphernalia/secure/tlsconfig"
 
@@ -73,7 +75,20 @@ func NewServer(addressTable AddressTable, config *config.Config, dnsRequestRecor
 
 func (s *Server) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/registration/", s.handleRegistrationRequest)
+
+	metricSender := metrics.MetricsSender{
+		Logger: lager.NewLogger("bosh-dns-adapter"),
+	}
+
+	metricsWrap := func(name string, handler http.Handler) http.Handler {
+		metricsWrapper := middleware.MetricWrapper{
+			Name:          name,
+			MetricsSender: &metricSender,
+		}
+		return metricsWrapper.Wrap(handler)
+	}
+
+	mux.HandleFunc("/v1/registration/", metricsWrap("Registration", http.HandlerFunc(s.handleRegistrationRequest)).ServeHTTP)
 	mux.HandleFunc("/routes", s.handleRoutesRequest)
 
 	tlsConfig, err := s.buildTLSServerConfig()
