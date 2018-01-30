@@ -53,7 +53,6 @@ upload_cloud_config() {
 deploy_cf() {
   bosh deploy --no-redact -n ~/workspace/cf-deployment/cf-deployment.yml \
   -o ~/workspace/cf-deployment/operations/use-compiled-releases.yml \
-  -o ~/workspace/cf-networking-release/manifest-generation/opsfiles/cf-networking.yml \
   -o ~/workspace/cf-deployment/operations/bosh-lite.yml \
   -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns-for-containers.yml \
   -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns.yml \
