@@ -55,9 +55,37 @@ curl "$SERVER_HOSTNAME.apps.internal:8080"
 
 ## How To Deploy
 
+To deploy you will need [cf-networking-release](https://github.com/cloudfoundry/cf-networking-release), [bosh-deployment](https://github.com/cloudfoundry/bosh-deployment), and [cf-deployment](https://github.com/cloudfoundry/cf-deployment).
+
 ### Experimental Ops File for cf-deployment
+
+**NOTE** 
+
+Pending the merge of [#391](https://github.com/cloudfoundry/cf-deployment/pull/391) the final `replace` block of the [enable-service-discovery.yml](https://github.com/cloudfoundry/cf-deployment/blob/master/operations/experimental/enable-service-discovery.yml) will need to be manually updated with:
+
+```
+- type: replace
+  path: /releases/-
+  value:
+    name: cf-app-sd
+    sha1: 0f906c66d0f092ca1078757dbdd495ddd069806f
+    url: https://bosh.io/d/github.com/cloudfoundry/cf-app-sd-release?v=0.3.0
+    version: 0.3.0                                 
+```
+
+* Pull down your current manifest with 
+```bosh manifest > /tmp/{env}-manifest.yml```
+* Update your deployment with the ops files 
+``` bash
+bosh deploy /tmp/{env}-manifest.yml \
+  -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns-for-containers.yml \
+  -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns.yml \
+  -o ~/workspace/cf-deployment/operations/experimental/enable-service-discovery.yml \
+  --vars-store ~/workspace/cf-networking-deployments/environments/{env}/vars-store.yml
+```
 
 See [opsfile](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml) and our [pipeline](ci/pipelines/cf-app-sd.yml) that uses this opsfile.
 
 ### Deploying to BOSH-lite
-Run the [`scripts/deploy-to-bosh-lite`](scripts/deploy-to-bosh-lite) script. Note this requires [cf-networking-release](https://github.com/cloudfoundry/cf-networking-release), [bosh-deployment](https://github.com/cloudfoundry/bosh-deployment), and [cf-deployment](https://github.com/cloudfoundry/cf-deployment)
+
+Run the [`scripts/deploy-to-bosh-lite`](scripts/deploy-to-bosh-lite) script.
