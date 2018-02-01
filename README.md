@@ -55,7 +55,10 @@ curl "$SERVER_HOSTNAME.apps.internal:8080"
 
 ## How To Deploy
 
-To deploy you will need [cf-networking-release](https://github.com/cloudfoundry/cf-networking-release), [bosh-deployment](https://github.com/cloudfoundry/bosh-deployment), and [cf-deployment](https://github.com/cloudfoundry/cf-deployment).
+To add service discovery to cf-deployment, include the following experimental ops-files:
+- [Service Discovery ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml)
+- [BOSH DNS ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/use-bosh-dns.yml)
+- [BOSH DNS for containers ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/use-bosh-dns-for-containers.yml)
 
 ### Experimental Ops File for cf-deployment
 
@@ -74,7 +77,10 @@ Pending the merge of [#391](https://github.com/cloudfoundry/cf-deployment/pull/3
 ```
 
 * Pull down your current manifest with 
-```bosh manifest > /tmp/{env}-manifest.yml```
+```
+bosh manifest > /tmp/{env}-manifest.yml
+```
+
 * Update your deployment with the ops files 
 ``` bash
 bosh deploy /tmp/{env}-manifest.yml \
@@ -86,6 +92,32 @@ bosh deploy /tmp/{env}-manifest.yml \
 
 See [opsfile](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml) and our [pipeline](ci/pipelines/cf-app-sd.yml) that uses this opsfile.
 
+### Debugging problems
+
+* To change logging for service-discovery-controller, ssh onto the VM holding the service-discovery-controller and make a request to the log-level server:
+```bash
+curl -X POST -d 'debug' localhost:8055/log-level
+```
+where `8055` is the default value of `service-discovery-controller.log_level_port`.
+
+To switch back to `info` logging:
+```bash
+curl -X POST -d 'info' localhost:8055/log-level
+```
+
+* To change logging for bosh-dns-adapter, ssh onto the VM holding the bosh-dns-adapter and make a request to the log-level server:
+```bash
+curl -X POST -d 'debug' localhost:8066/log-level
+```
+
+To switch back to `info` logging:
+```bash
+curl -X POST -d 'info' localhost:8066/log-level
+```
+
+
 ### Deploying to BOSH-lite
 
 Run the [`scripts/deploy-to-bosh-lite`](scripts/deploy-to-bosh-lite) script.
+
+To deploy you will need [cf-networking-release](https://github.com/cloudfoundry/cf-networking-release), [bosh-deployment](https://github.com/cloudfoundry/bosh-deployment), and [cf-deployment](https://github.com/cloudfoundry/cf-deployment).
