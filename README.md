@@ -55,6 +55,8 @@ curl "$SERVER_HOSTNAME.apps.internal:8080"
 
 ## How To Deploy
 
+Enable local DNS on your `bosh` director as specified [here](https://bosh.io/docs/dns.html).
+
 To add service discovery to cf-deployment, include the following experimental ops-files:
 - [Service Discovery ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml)
 - [BOSH DNS ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/use-bosh-dns.yml)
