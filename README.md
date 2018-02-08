@@ -5,9 +5,9 @@
 
 ### Problem we are trying to solve
 Application Developers who want to use container to container networking today are required to bring their own service discovery. While we have provided examples with Eureka and Amalgam8, we have received user feedback that usage of c2c is very difficult, with some common themes emerging:
-Polyglot microservices written in languages/frameworks other than Java/Spring cannot easily use Eureka
-Clustering applications have a requirement to address individual instances
-Additional VMs need to be deployed and managed to provide external service discovery
+* Polyglot microservices written in languages/frameworks other than Java/Spring cannot easily use Eureka
+* Clustering applications have a requirement to address individual instances
+* Additional VMs need to be deployed and managed to provide external service discovery
 
 In order to support all types of apps, languages and frameworks, we plan to build service discovery for c2c into the platform. With this feature, users will no longer have to bring their own service discovery. 
 
