@@ -76,7 +76,7 @@ main() {
     set_bosh_env
 
     if [ "$(uname)" == "Linux" ]; then
-      sudo route add -net "$ips" gw "$gw"
+      sudo ip route add "$ips" via "$gw"
     fi
 
     if [ "$upload_stemcell" == true ]; then
