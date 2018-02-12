@@ -1,3 +1,4 @@
+<% unless p("cf_app_sd_disable") %>
 <%=
 require 'json'
 config = {
@@ -16,3 +17,4 @@ config = {
 
 JSON.dump(config)
 %>
+<% end %>

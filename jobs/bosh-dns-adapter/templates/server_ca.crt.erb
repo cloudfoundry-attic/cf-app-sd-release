@@ -1,1 +1,3 @@
-<%= p('dnshttps.server.ca') %>
+<% unless p("cf_app_sd_disable") %>
+    <%= p('dnshttps.server.ca') %>
+<% end %>

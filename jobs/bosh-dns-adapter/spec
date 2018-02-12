@@ -21,6 +21,9 @@ consumes:
 
 
 properties:
+  cf_app_sd_disable:
+    description: "Disable c2c service discovery for apps."
+    default: false
 
   address:
     description: "Address which bosh-dns-adapter will listen on."

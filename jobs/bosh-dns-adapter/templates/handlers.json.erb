@@ -1,3 +1,12 @@
+<% if p("cf_app_sd_disable") %>
+<%=
+
+  config = []
+
+require 'json'
+JSON.dump(config)
+%>
+<% else %>
  <%=
 
 config = [
@@ -14,3 +23,5 @@ config = [
 require 'json'
 JSON.dump(config)
 %>
+
+<% end %>

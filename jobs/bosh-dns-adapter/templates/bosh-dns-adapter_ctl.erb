@@ -1,5 +1,6 @@
 #!/bin/bash -eu
 
+<% unless p("cf_app_sd_disable") %>
 source /var/vcap/packages/sd-ctl-utils/ctl_util.sh
 
 export RUN_DIR=/var/vcap/sys/run/bosh-dns-adapter
@@ -44,4 +45,4 @@ case $1 in
     ;;
 
 esac
-
+<% end %>
