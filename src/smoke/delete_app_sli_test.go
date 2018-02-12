@@ -28,12 +28,19 @@ var _ = Describe("Delete App Smoke", func() {
 		deletedAppName = prefix + "proxyToDelete"
 		queryAppName = prefix + "proxyToQuery"
 
-		orgName = prefix + "org" // cf-pusher expects this name
-		Expect(cf.Cf("create-org", orgName).Wait(Timeout_Cf)).To(gexec.Exit(0))
+		if config.SmokeOrg == "" {
+			orgName = prefix + "org" // cf-pusher expects this name
+			Expect(cf.Cf("create-org", orgName).Wait(Timeout_Cf)).To(gexec.Exit(0))
+		} else {
+			orgName = config.SmokeOrg
+		}
 		Expect(cf.Cf("target", "-o", orgName).Wait(Timeout_Cf)).To(gexec.Exit(0))
 
-		spaceName := prefix + "space" // cf-pusher expects this name
-		Expect(cf.Cf("create-space", spaceName, "-o", orgName).Wait(Timeout_Cf)).To(gexec.Exit(0))
+		spaceName := config.SmokeSpace
+		if spaceName == "" {
+			spaceName = prefix + "space" // cf-pusher expects this name
+			Expect(cf.Cf("create-space", spaceName, "-o", orgName).Wait(Timeout_Cf)).To(gexec.Exit(0))
+		}
 		Expect(cf.Cf("target", "-o", orgName, "-s", spaceName).Wait(Timeout_Cf)).To(gexec.Exit(0))
 
 		By("pushing the app")
@@ -71,7 +78,9 @@ var _ = Describe("Delete App Smoke", func() {
 	})
 
 	AfterEach(func() {
-		Expect(cf.Cf("delete-org", orgName, "-f").Wait(Timeout_Cf)).To(gexec.Exit(0))
+		if config.SmokeOrg == "" {
+			Expect(cf.Cf("delete-org", orgName, "-f").Wait(Timeout_Cf)).To(gexec.Exit(0))
+		}
 	})
 
 	Describe("when performing a dns lookup for a domain configured to point to the bosh adapter", func() {

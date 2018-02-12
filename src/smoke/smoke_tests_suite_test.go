@@ -37,6 +37,8 @@ type SmokeConfig struct {
 	AdminUser     string `json:"admin_user"`
 	AdminPassword string `json:"admin_password"`
 	Prefix        string `json:"prefix"`
+	SmokeOrg      string `json:"smoke_org"`
+	SmokeSpace    string `json:"smoke_space"`
 }
 
 var _ = BeforeSuite(func() {
