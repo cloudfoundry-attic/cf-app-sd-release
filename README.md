@@ -45,7 +45,7 @@ You can run `cf add-network-policy` even after both apps are started, and you do
 
 From consumer-app, the following will work:
 ```
-curl "$SERVER_HOSTNAME.apps.internal:8080"
+curl "$SERVER_HOSTNAME:8080"
 ```
 
 ## Architecture
