@@ -53,7 +53,7 @@ curl "$SERVER_HOSTNAME:8080"
 ### Architecture Diagram
 ![](architecture-diagram.png)
 
-## How To Deploy
+## Deployment Instructions
 
 Enable local DNS on your `bosh` director as specified [here](https://bosh.io/docs/dns.html).
 
@@ -80,6 +80,18 @@ bosh deploy /tmp/{env}-manifest.yml \
 
 See [opsfile](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml) and our [pipeline](ci/pipelines/cf-app-sd.yml) that uses this opsfile.
 
+
+### BOSH-lite
+
+Run the [`scripts/deploy-to-bosh-lite`](scripts/deploy-to-bosh-lite) script.
+
+To deploy you will need [cf-networking-release](https://github.com/cloudfoundry/cf-networking-release), [bosh-deployment](https://github.com/cloudfoundry/bosh-deployment), and [cf-deployment](https://github.com/cloudfoundry/cf-deployment).
+
+### All other platforms
+
+
+## Logging
+
 ### Debugging problems
 
 * To change logging for service-discovery-controller, ssh onto the VM holding the service-discovery-controller and make a request to the log-level server:
@@ -104,8 +116,34 @@ curl -X POST -d 'info' localhost:8066/log-level
 ```
 
 
-### Deploying to BOSH-lite
+## Metrics
 
-Run the [`scripts/deploy-to-bosh-lite`](scripts/deploy-to-bosh-lite) script.
+`bosh_dns_adapter.GetIPsRequestTime` - duration of get ip request in nanoseconds
+`bosh_dns_adapter.GetIPsRequestCount` - number of get ip requests
+`service_discovery_controller.RegistrationRequestTime` - duration of registration request in nanoseconds
+`service_discovery_controller.RegistrationRequestCount` - number of registration requests
+`service_discovery_controller.addressTableLookupTime` - duration of looking up address table in nanoseconds
 
-To deploy you will need [cf-networking-release](https://github.com/cloudfoundry/cf-networking-release), [bosh-deployment](https://github.com/cloudfoundry/bosh-deployment), and [cf-deployment](https://github.com/cloudfoundry/cf-deployment).
+To deploy a firehose nozzle to see the metrics, upload the
+[datadog-firehose-nozzle-release](http://bosh.io/releases/github.com/DataDog/datadog-firehose-nozzle-release)
+and follow the instructions
+[here](https://github.com/DataDog/datadog-firehose-nozzle-release) to deploy.
+
+## Tests
+
+### Units
+```bash
+./scripts/docker-test
+```
+
+### Running the full acceptance test on bosh-lite
+```bash
+cd src/test/acceptance
+./run-locally.sh
+```
+
+### Smoke
+
+### Acceptance
+
+
