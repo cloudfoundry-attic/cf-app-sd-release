@@ -172,11 +172,50 @@ var _ = Describe("Main", func() {
 	})
 
 	Describe("emitting metrics", func() {
-		It("emits an uptime metric", func() {
-			Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
-				metricWithName("uptime"),
-				metricWithOrigin("bosh-dns-adapter"),
-			)))
+		Context("when things are going well", func() {
+			JustBeforeEach(func() {
+				Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
+
+				url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
+				makeDNSRequest(url, http.StatusOK)
+			})
+
+			It("emits an uptime metric", func() {
+				Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+					metricWithName("uptime"),
+					metricWithOrigin("bosh-dns-adapter"),
+				)))
+			})
+
+			It("emits an request metrics", func() {
+				Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+					metricWithName("GetIPsRequestTime"),
+					metricWithOrigin("bosh-dns-adapter"),
+				)))
+
+				Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+					metricWithName("GetIPsRequestCount"),
+					metricWithOrigin("bosh-dns-adapter"),
+				)))
+			})
+		})
+
+		Context("when things don't go well", func() {
+			JustBeforeEach(func() {
+				Eventually(session).Should(gbytes.Say("bosh-dns-adapter.server-started"))
+
+				fakeServiceDiscoveryControllerServer.Close()
+
+				url := fmt.Sprintf("http://127.0.0.1:%s?type=1&name=app-id.internal.local.", dnsAdapterPort)
+				makeDNSRequest(url, http.StatusInternalServerError)
+			})
+
+			It("emits failed request metrics", func() {
+				Eventually(fakeMetron.AllEvents, "5s").Should(ContainElement(SatisfyAll(
+					metricWithName("DNSRequestFailures"),
+					metricWithOrigin("bosh-dns-adapter"),
+				)))
+			})
 		})
 	})
 
