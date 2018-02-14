@@ -8,9 +8,8 @@
 - [Architecture](#architecture)
     - [Architecture Diagram](#architecture-diagram)
 - [Deployment Instructions](#deployment-instructions)
-    - [Experimental Ops File for cf-deployment](#experimental-ops-file-for-cf-deployment)
     - [BOSH-lite](#bosh-lite)
-    - [All other platforms](#all-other-platforms)
+    - [Experimental Ops File for cf-deployment](#experimental-ops-file-for-cf-deployment)
 - [Logging](#logging)
     - [Debugging problems](#debugging-problems)
 - [Metrics](#metrics)
@@ -70,30 +69,6 @@ curl "$SERVER_HOSTNAME:8080"
 
 Enable local DNS on your `bosh` director as specified [here](https://bosh.io/docs/dns.html).
 
-To add service discovery to cf-deployment, include the following experimental ops-files:
-- [Service Discovery ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml)
-- [BOSH DNS ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/use-bosh-dns.yml)
-- [BOSH DNS for containers ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/use-bosh-dns-for-containers.yml)
-
-### Experimental Ops File for cf-deployment
-
-* Pull down your current manifest with 
-```
-bosh manifest > /tmp/{env}-manifest.yml
-```
-
-* Update your deployment with the ops files 
-``` bash
-bosh deploy /tmp/{env}-manifest.yml \
-  -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns-for-containers.yml \
-  -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns.yml \
-  -o ~/workspace/cf-deployment/operations/experimental/enable-service-discovery.yml \
-  --vars-store ~/workspace/cf-networking-deployments/environments/{env}/vars-store.yml
-```
-
-See [opsfile](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml) and our [pipeline](ci/pipelines/cf-app-sd.yml) that uses this opsfile.
-
-
 ### BOSH-lite
 
 Run the [`scripts/deploy-to-bosh-lite`](scripts/deploy-to-bosh-lite) script.
@@ -102,6 +77,29 @@ To deploy you will need [cf-networking-release](https://github.com/cloudfoundry/
 
 ### All other platforms
 
+To add service discovery to cf-deployment, include the following experimental ops-files:
+- [Service Discovery ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/enable-service-discovery.yml)
+- [BOSH DNS ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/use-bosh-dns.yml)
+- [BOSH DNS for containers ops file](https://github.com/cloudfoundry/cf-deployment/blob/release-candidate/operations/experimental/use-bosh-dns-for-containers.yml)
+
+#### Example steps 
+***Assumes you're running a recent environment from cf-deployment***
+* Pull down your current manifest with 
+```
+bosh manifest > /tmp/cf-manifest.yml
+```
+
+* Update your deployment with the ops files 
+``` bash
+bosh deploy /tmp/cf-manifest.yml \
+  -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns-for-containers.yml \
+  -o ~/workspace/cf-deployment/operations/experimental/use-bosh-dns.yml \
+  -o ~/workspace/cf-deployment/operations/experimental/enable-service-discovery.yml \
+  --vars-store path/to/vars-store.yml
+  # The --var-store flag will cause cli variable generation, and
+  # your secrets will be stored in the supplied file path. This is probably not what you 
+  # want. Read more here: https://bosh.io/docs/cli-int.html#vars-store
+```
 
 ## Logging
 
