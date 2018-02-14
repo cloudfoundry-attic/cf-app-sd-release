@@ -2,5 +2,5 @@
 set -e -u
 
 cd "$(dirname "$0")"
-./docker-shell ./cf-app-sd-release/scripts/unit-tests.sh "$@"
+./docker-shell ./cf-app-sd-release/scripts/test-unit "$@"
 

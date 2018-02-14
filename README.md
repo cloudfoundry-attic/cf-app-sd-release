@@ -152,7 +152,7 @@ and follow the instructions
 ### Unit
 Unit tests should be run if making a PR or changes to the repo.
 ```bash
-./scripts/docker-test
+./scripts/test-unit
 ```
 
 ### Smoke
