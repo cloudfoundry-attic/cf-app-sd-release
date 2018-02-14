@@ -18,14 +18,7 @@ echo '
 "admin_password": "{{admin-password}}",
 "admin_secret": "{{admin-secret}}",
 "apps_domain": "bosh-lite.com",
-"default_security_groups": [ "dns", "public_networks", "load_balancer" ],
-"skip_ssl_validation": true,
-"test_app_instances": 2,
-"test_applications": 2,
-"proxy_instances": 1,
-"proxy_applications": 1,
-"extra_listen_ports": 2,
-"prefix":"cf-app-sd-test-"
+"skip_ssl_validation": true
 }
 ' > ${CONFIG}
 

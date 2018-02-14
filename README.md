@@ -126,19 +126,111 @@ and follow the instructions
 
 ## Tests
 
-### Units
+### Unit
+Unit tests should be run if making a PR or changes to the repo.
 ```bash
 ./scripts/docker-test
 ```
 
-### Running the full acceptance test on bosh-lite
+### Smoke
+Smoke tests can be run periodically against live environments to check basic service discovery remains functional.
+
+You must set the environment variable `$CONFIG`
+which points to a JSON file
+that contains several pieces of data
+that will be used to configure the acceptance tests,
+e.g. telling the tests how to target
+your running Cloud Foundry deployment
+and what tests to run.
+
+The following can be pasted into a terminal
+and will set up a sufficient `$CONFIG`
+to run the core test suites
+against a [BOSH-Lite](https://github.com/cloudfoundry/bosh-lite)
+deployment of CF.
+
 ```bash
-cd src/test/acceptance
-./run-locally.sh
+cat > integration_config.json <<EOF
+{
+  "api": "api.bosh-lite.com",
+  "apps_domain": "bosh-lite.com",
+  "admin_user": "admin",
+  "admin_password": "admin",
+  "prefix": "smoke-test-",
+  "smoke_org": "smoke_org",
+  "smoke_space": "smoke_space"
+}
+EOF
+export CONFIG=$PWD/integration_config.json
 ```
 
-### Smoke
+#### The full set of config parameters is explained below:
+##### Required parameters:
+* `api`: Cloud Controller API endpoint.
+* `admin_user`: Name of a user in your CF instance with admin credentials.  This admin user must have the `network.admin` scope.
+* `admin_password`: Password of the admin user above.
+* `prefix`: Prefix for apps, orgs, and spaces created as part of the smoke tests
+
+##### Optional parameters:
+* `smoke_org`: Name of pre-existing org for smoke test
+* `smoke_space`: Name of pre-existing space for smoke test
+
+Once the config is set, to run the smoke tests do the following
+```bash
+ginkgo -r /src/smoke
+```
 
 ### Acceptance
+Acceptance tests should be run to see that service discovery is still functional at a CF level.
+
+#### Running the full acceptance test on bosh-lite
+```bash
+./scripts/run-locally.sh
+```
+
+#### Running the full acceptance test on specific env
+You must set the environment variable `$CONFIG`
+which points to a JSON file
+that contains several pieces of data
+that will be used to configure the acceptance tests,
+e.g. telling the tests how to target
+your running Cloud Foundry deployment
+and what tests to run.
+
+The following can be pasted into a terminal
+and will set up a sufficient `$CONFIG`
+to run the core test suites
+against a [BOSH-Lite](https://github.com/cloudfoundry/bosh-lite)
+deployment of CF. `admin-password` and `admin-secret` need to be replaced
+with proper values.
+
+```bash
+cat > integration_config.json <<EOF
+{
+  "api": "api.bosh-lite.com",
+  "admin_user": "admin",
+  "admin_password": "{{admin-password}}",
+  "admin_secret": "{{admin-secret}}",
+  "apps_domain": "bosh-lite.com",
+  "skip_ssl_validation": true,
+}
+EOF
+export CONFIG=$PWD/integration_config.json
+```
+
+#### The full set of config parameters is explained below:
+##### Required parameters:
+* `api`: Cloud Controller API endpoint.
+* `admin_user`: Name of a user in your CF instance with admin credentials.  This admin user must have the `network.admin` scope.
+* `admin_password`: Password of the admin user above.
+* `admin_secret`: Secret of the admin user above.
+* `apps_domain`:  A shared domain that tests can use to create subdomains that will route to applications also created in the tests.
+* `skip_ssl_validation`:  Set to true if using an invalid (e.g. self-signed) cert for traffic routes to your CF instances;
+this is generally always true for BOSH-Lite deployments of CF.
+
+Once the config is set, to run the acceptance tests do the following
+```bash
+ginkgo -r /src/acceptance
+```
 
 
