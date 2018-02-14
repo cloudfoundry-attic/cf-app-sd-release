@@ -95,11 +95,15 @@ resources:
       uri: https://github.com/cloudfoundry/capi-ci
       branch: master
   - name: capi-version
-    type: staticfile
+    type: semver
     source:
-      files:
-      - filename: version
-        data: capi-ci-passed-9.99.9
+      driver: s3
+      region_name: us-west-2
+      bucket: capi-ci-passed-fake-versions
+      key: version
+      access_key_id: {{aws-access-key-id}}
+      secret_access_key: {{aws-secret-access-key}}
+
   - name: datadog-firehose-nozzle-release
     type: bosh-io-release
     source:
@@ -294,6 +298,7 @@ jobs:
             trigger: true
           - get: capi-ci
           - get: capi-version
+            params: {bump: patch}
           - get: cf-app-sd-ci
       - task: create-capi-release
         file: capi-ci/ci/bosh/create_capi_release.yml
@@ -308,6 +313,8 @@ jobs:
           deployments-repo: cf-networking-deployments
         params:
           ENVIRONMENT_NAME: ushanka
+      - put: capi-version
+        params: {file: capi-version/version}
 
   - name: ushanka-deploy-firehose-nozzle
     serial_groups: [ushanka-deploy-group]
@@ -475,13 +482,14 @@ jobs:
             trigger: true
           - get: capi-ci
           - get: capi-version
+            params: {bump: patch}
           - get: cf-app-sd-ci
       - task: create-capi-release
         file: capi-ci/ci/bosh/create_capi_release.yml
         input_mapping:
           capi-release: capi-ci-passed
           version: capi-version
-          cloud_controller_ng: capi-version # does not matter, we won't use this
+          cloud_controller_ng: capi-version
       - task: upload-capi-release
         file: cf-app-sd-ci/ci/tasks/upload-release-tarball.yml
         input_mapping:
@@ -489,6 +497,8 @@ jobs:
           deployments-repo: cf-networking-deployments
         params:
           ENVIRONMENT_NAME: beret
+      - put: capi-version
+        params: {file: capi-version/version}
 
   - name: beret-deploy-firehose-nozzle
     serial_groups: [beret-deploy-group]
