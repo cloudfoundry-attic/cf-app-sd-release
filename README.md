@@ -13,17 +13,9 @@ In order to support all types of apps, languages and frameworks, we plan to buil
 
 ### App Developer Experience
 
-When a user pushes an app, their app is automatically given an internal DNS entry, e.g.
-```
-app-guid.apps.internal
-```
-This DNS entry will automatically load balance between all instances of this app. For the time being, your tld will always be `apps.internal`.
+With capi-release version greater than 1.49.0:
 
-Each instance of the application also receives a specific DNS entry, e.g.
-```
-instance-index.app-guid.apps.internal
-```
-that you can use to access one instance of the app, so it will not load balance between all instances.
+The internal domain `apps.internal` is automatically created for you. You can run `map-route` with the internal domain to create and map an internal route for your app.
 
 ### Interaction with Policy
 
@@ -35,14 +27,17 @@ By default, apps cannot talk to each other over cf networking. In order for an a
 cf push consumer-app --no-start
 cf push server-app
 
+export INTERNAL_HOSTNAME=test
+cf map-route server-app apps.internal --hostname $INTERNAL_HOSTNAME
+
 cf add-network-policy consumer-app --destination-app server-app --port 8080 --protocol tcp
 
-cf set-env consumer SERVER_HOSTNAME "$(cf app --guid server-app).apps.internal"
+cf set-env consumer SERVER_HOSTNAME "$INTERNAL_HOSTNAME.apps.internal"
 cf start consumer-app
 ```
 
 You can run `cf add-network-policy` even after both apps are started, and you don't need to restart the apps for the policy to start working.
-
+You can map an internal route to an app even after policy is created.
 From consumer-app, the following will work:
 ```
 curl "$SERVER_HOSTNAME:8080"
