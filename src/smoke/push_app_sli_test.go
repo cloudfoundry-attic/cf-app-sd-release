@@ -17,11 +17,13 @@ import (
 )
 
 const Timeout_Cf = 2 * time.Minute
+const domain = "apps.internal"
 
 var (
-	prefix  string
-	orgName string
-	appName string
+	prefix   string
+	orgName  string
+	appName  string
+	hostname string
 )
 
 var _ = Describe("Push App Smoke", func() {
@@ -45,6 +47,7 @@ var _ = Describe("Push App Smoke", func() {
 		Expect(cf.Cf("target", "-o", orgName, "-s", spaceName).Wait(Timeout_Cf)).To(gexec.Exit(0))
 
 		appName = prefix + "proxy"
+		hostname = "app-smoke"
 	})
 
 	AfterEach(func() {
@@ -60,18 +63,16 @@ var _ = Describe("Push App Smoke", func() {
 				pushProxy(appName)
 			})
 
-			By("getting the app guid")
-			var proxyGuid string
-			retrieveGuidDuration := b.Time("retrieveGuid", func() {
-				session := cf.Cf("app", appName, "--guid").Wait(2 * time.Second)
-				proxyGuid = string(session.Out.Contents())
+			By("creating and mapping an internal route")
+			createRouteDuration := b.Time("createRoute", func() {
+				Expect(cf.Cf("map-route", appName, domain, "--hostname", hostname).Wait(2 * time.Second)).To(gexec.Exit(0))
 			})
 
 			By("getting an answer in the dig response within 5 seconds of app push finishing")
 			proxyIPs := []string{}
 			b.Time("digAnswer", func() {
 				Eventually(func() []string {
-					resp, err := http.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal.")
+					resp, err := http.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + hostname + "." + domain)
 
 					Expect(err).NotTo(HaveOccurred())
 					Expect(resp.StatusCode).To(Equal(http.StatusOK))
@@ -83,7 +84,7 @@ var _ = Describe("Push App Smoke", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					return proxyIPs
-				}, 5*time.Second-retrieveGuidDuration).Should(HaveLen(1))
+				}, 5*time.Second-createRouteDuration).Should(HaveLen(1))
 			})
 
 			By("asserting that the answer equals the app's internal ip")

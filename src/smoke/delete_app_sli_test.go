@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	hostName       string
-	deletedAppName string
-	queryAppName   string
+	digToDeletedAppURL string
+	deletedAppName     string
+	queryAppName       string
 )
 
 var _ = Describe("Delete App Smoke", func() {
@@ -47,16 +47,16 @@ var _ = Describe("Delete App Smoke", func() {
 		pushProxy(deletedAppName)
 		pushProxy(queryAppName)
 
-		By("getting the app guid")
-		var proxyGuid string
-		session := cf.Cf("app", deletedAppName, "--guid").Wait(2 * time.Second)
-		proxyGuid = string(session.Out.Contents())
+		deletedAppHostname := deletedAppName + "Host"
+
+		By("creating and mapping an internal route")
+		Expect(cf.Cf("map-route", deletedAppName, domain, "--hostname", deletedAppHostname).Wait(2 * time.Second)).To(gexec.Exit(0))
 
 		By("making sure the app is resolved to the correct ip")
 		proxyIPs := []string{}
-		hostName = "http://" + queryAppName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal."
+		digToDeletedAppURL = "http://" + queryAppName + "." + config.AppsDomain + "/dig/" + deletedAppHostname + "." + domain
 		Eventually(func() []string {
-			resp, err := http.Get(hostName)
+			resp, err := http.Get(digToDeletedAppURL)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
@@ -71,7 +71,7 @@ var _ = Describe("Delete App Smoke", func() {
 		}, 5*time.Second).Should(HaveLen(1))
 
 		var proxyContainerIp string
-		session = cf.Cf("ssh", deletedAppName, "-c", "echo $CF_INSTANCE_INTERNAL_IP").Wait(10 * time.Second)
+		session := cf.Cf("ssh", deletedAppName, "-c", "echo $CF_INSTANCE_INTERNAL_IP").Wait(10 * time.Second)
 		proxyContainerIp = string(session.Out.Contents())
 
 		Expect(proxyIPs).To(ConsistOf(strings.TrimSpace(proxyContainerIp)))
@@ -93,7 +93,7 @@ var _ = Describe("Delete App Smoke", func() {
 			By("asserting the dig response is a 500 status code within 5 seconds of app delete finishing")
 			b.Time("digAnswer", func() {
 				Eventually(func() int {
-					resp, err := http.Get(hostName)
+					resp, err := http.Get(digToDeletedAppURL)
 
 					Expect(err).NotTo(HaveOccurred())
 					return resp.StatusCode
