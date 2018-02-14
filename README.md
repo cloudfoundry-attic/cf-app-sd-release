@@ -1,5 +1,23 @@
 # CF App Service Discovery Release (EXPERIMENTAL)
 
+- [High Level Overview](#high-level-overview)
+    - [Problem we are trying to solve](#problem-we-are-trying-to-solve)
+    - [App Developer Experience](#app-developer-experience)
+    - [Interaction with Policy](#interaction-with-policy)
+    - [Example usage](#example-usage)
+- [Architecture](#architecture)
+    - [Architecture Diagram](#architecture-diagram)
+- [Deployment Instructions](#deployment-instructions)
+    - [Experimental Ops File for cf-deployment](#experimental-ops-file-for-cf-deployment)
+    - [BOSH-lite](#bosh-lite)
+    - [All other platforms](#all-other-platforms)
+- [Logging](#logging)
+    - [Debugging problems](#debugging-problems)
+- [Metrics](#metrics)
+- [Tests](#tests)
+    - [Unit](#unit)
+    - [Smoke](#smoke)
+    - [Acceptance](#acceptance)
 
 ## High Level Overview
 
@@ -115,9 +133,14 @@ curl -X POST -d 'info' localhost:8066/log-level
 
 `bosh_dns_adapter.GetIPsRequestTime` - duration of get ip request in nanoseconds
 `bosh_dns_adapter.GetIPsRequestCount` - number of get ip requests
+`bosh_dns_adapter.DNSRequstFailures` - number of failed requests to the Service Discovery Controller
+`bosh_dns_adapter.uptime` - process uptime, emitted on 10 second interval
 `service_discovery_controller.RegistrationRequestTime` - duration of registration request in nanoseconds
 `service_discovery_controller.RegistrationRequestCount` - number of registration requests
 `service_discovery_controller.addressTableLookupTime` - duration of looking up address table in nanoseconds
+`service_discovery_controller.uptime` - process uptime, emitted on 10 second interval
+`service_discovery_controller.dnsRequest` - count of successful dnsRequests, emitted on a 10 second interval
+`service_discovery_controller.registerMessagesReceived` - count of route register messages received via NATS from route emitter
 
 To deploy a firehose nozzle to see the metrics, upload the
 [datadog-firehose-nozzle-release](http://bosh.io/releases/github.com/DataDog/datadog-firehose-nozzle-release)
@@ -177,7 +200,7 @@ export CONFIG=$PWD/integration_config.json
 
 Once the config is set, to run the smoke tests do the following
 ```bash
-ginkgo -r /src/smoke
+ginkgo -r ./src/smoke
 ```
 
 ### Acceptance
@@ -230,7 +253,7 @@ this is generally always true for BOSH-Lite deployments of CF.
 
 Once the config is set, to run the acceptance tests do the following
 ```bash
-ginkgo -r /src/acceptance
+ginkgo -r ./src/acceptance
 ```
 
 
