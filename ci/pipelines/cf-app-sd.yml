@@ -48,6 +48,11 @@ resources:
     source:
       uri: https://github.com/cloudfoundry/cats-concourse-task
       branch: master
+  - name: cf-acceptance-tests
+    type: git
+    source:
+      branch: master
+      uri: git://github.com/cloudfoundry/cf-acceptance-tests.git
   - name: cf-app-sd-release
     type: git
     source:
@@ -219,6 +224,7 @@ jobs:
     plan:
       - aggregate:
           - get: cf-networking-deployments
+          - get: cf-acceptance-tests
           - get: cf-app-sd-ci
           - get: cats-concourse-task
           - get: cf-networking-master
@@ -240,16 +246,14 @@ jobs:
             - ushanka-smoke-tests
             - ushanka-acceptance-tests
             trigger: true
-          - task: copy-config
-            file: cf-app-sd-ci/ci/tasks/copy-config.yml
-            params:
-              ENVIRONMENT: ushanka
-            input_mapping:
-              cf-app-sd-ci: cf-app-sd-ci
-          - task: cats
-            file: cats-concourse-task/task.yml
-            params:
-              NODES: 8
+      - task: copy-config
+        file: cf-app-sd-ci/ci/tasks/copy-config.yml
+        params:
+          ENVIRONMENT: ushanka
+      - task: cats
+        file: cats-concourse-task/task.yml
+        params:
+          NODES: 8
 
   - name: ushanka-perf-tests
     serial_groups: [ushanka-deploy-group, ushanka-test-group]
