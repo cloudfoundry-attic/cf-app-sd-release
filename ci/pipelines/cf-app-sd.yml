@@ -51,8 +51,8 @@ resources:
   - name: cf-acceptance-tests
     type: git
     source:
-      branch: master
-      uri: git://github.com/cloudfoundry/cf-acceptance-tests.git
+      branch: proxy-app-service-discovery
+      uri: git://github.com/cf-container-networking/cf-acceptance-tests.git
   - name: cf-app-sd-release
     type: git
     source:
@@ -231,6 +231,7 @@ jobs:
             passed:
             - ushanka-smoke-tests
             - ushanka-acceptance-tests
+            trigger: true
           - get: cf-app-sd-release
             passed:
             - ushanka-smoke-tests
