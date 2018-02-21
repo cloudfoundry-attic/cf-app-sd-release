@@ -1,7 +1,7 @@
 package acceptance_test
 
 import (
-	"strings"
+	"time"
 
 	"github.com/cloudfoundry-incubator/cf-test-helpers/cf"
 	. "github.com/onsi/ginkgo"
@@ -30,8 +30,8 @@ var _ = Describe("Scale Acceptance", func() {
 		By("pushing the app and checking it resolves")
 		pushApp(appName, 1)
 
-		proxyGuid := getAppGUID(appName)
-		hostName = "http://" + appName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal."
+		Expect(cf.Cf("map-route", appName, domain, "--hostname", appName).Wait(2 * time.Second)).To(gexec.Exit(0))
+		hostName = "http://" + appName + "." + config.AppsDomain + "/dig/" + appName + "." + domain
 		proxyIPs := digForNumberOfIPs(hostName, 1)
 
 		Expect(proxyIPs).To(ContainElement(getInternalIP(appName, 0)))

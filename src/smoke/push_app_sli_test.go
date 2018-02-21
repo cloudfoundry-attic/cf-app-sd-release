@@ -64,7 +64,7 @@ var _ = Describe("Push App Smoke", func() {
 			})
 
 			By("creating and mapping an internal route")
-			createRouteDuration := b.Time("createRoute", func() {
+			b.Time("createRoute", func() {
 				Expect(cf.Cf("map-route", appName, domain, "--hostname", hostname).Wait(2 * time.Second)).To(gexec.Exit(0))
 			})
 
@@ -84,7 +84,7 @@ var _ = Describe("Push App Smoke", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					return proxyIPs
-				}, 5*time.Second-createRouteDuration).Should(HaveLen(1))
+				}, 5*time.Second).Should(HaveLen(1))
 			})
 
 			By("asserting that the answer equals the app's internal ip")

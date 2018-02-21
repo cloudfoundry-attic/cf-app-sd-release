@@ -3,8 +3,6 @@ package acceptance_test
 import (
 	"time"
 
-	"strings"
-
 	"github.com/cloudfoundry-incubator/cf-test-helpers/cf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,6 +10,7 @@ import (
 )
 
 const Timeout_Cf = 2 * time.Minute
+const domain = "apps.internal"
 
 var _ = Describe("Push Acceptance", func() {
 	var (
@@ -37,9 +36,9 @@ var _ = Describe("Push Acceptance", func() {
 	Describe("when performing a dns lookup for a domain configured to point to the bosh adapter", func() {
 		It("returns the result from the adapter", func() {
 			pushApp(appName, 1)
+			Expect(cf.Cf("map-route", appName, domain, "--hostname", appName).Wait(2 * time.Second)).To(gexec.Exit(0))
 
-			proxyGuid := getAppGUID(appName)
-			hostName := "http://" + appName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal."
+			hostName := "http://" + appName + "." + config.AppsDomain + "/dig/" + appName + "." + domain
 			proxyIPs := digForNumberOfIPs(hostName, 1)
 
 			Expect(proxyIPs).To(ContainElement(getInternalIP(appName, 0)))

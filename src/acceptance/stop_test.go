@@ -2,7 +2,6 @@ package acceptance_test
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/cf-test-helpers/cf"
@@ -34,8 +33,8 @@ var _ = Describe("Stop Acceptance", func() {
 		pushApp(srcAppName, 1)
 		pushApp(dstAppName, 1)
 
-		proxyGuid := getAppGUID(dstAppName)
-		hostName = "http://" + srcAppName + "." + config.AppsDomain + "/dig/" + strings.TrimSpace(proxyGuid) + ".apps.internal."
+		Expect(cf.Cf("map-route", dstAppName, domain, "--hostname", dstAppName).Wait(2 * time.Second)).To(gexec.Exit(0))
+		hostName = "http://" + srcAppName + "." + config.AppsDomain + "/dig/" + dstAppName + "." + domain
 		proxyIPs := digForNumberOfIPs(hostName, 1)
 
 		Expect(proxyIPs).To(ContainElement(getInternalIP(dstAppName, 0)))
