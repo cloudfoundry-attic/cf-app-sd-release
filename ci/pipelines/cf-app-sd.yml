@@ -709,12 +709,8 @@ jobs:
       - put: cf-app-sd-shipped-master
         params:
           repository: release/master
-      - put: cf-app-sd-shipped-master
-        params:
-          repository: cf-app-sd-release
-          tag: version/number
           tag_prefix: v
-          only_tag: true
+          tag: version/number
       - put: cf-app-sd-tarball
         params:
           file: final-release/cf-app-sd-*.tgz
