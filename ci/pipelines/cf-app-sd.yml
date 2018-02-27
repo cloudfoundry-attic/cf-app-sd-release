@@ -592,7 +592,7 @@ jobs:
           - get: cf-networking-master
             passed: [ushanka-cats]
           - get: cf-app-sd-release
-            passed: [ushanka-cats]
+            passed: [ushanka-cats, ushanka-perf-tests]
             trigger: true
           - get: cf-app-sd-ci
           - get: version
