@@ -1,6 +1,7 @@
 package addresstable
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -179,6 +180,8 @@ func (at *AddressTable) pruneStaleEntriesWithWriteLock(candidateAddresses []stri
 			for _, entry := range entries {
 				if at.clock.Since(entry.updateTime) <= at.stalenessThreshold {
 					freshEntries = append(freshEntries, entry)
+				} else {
+					at.logger.Debug(fmt.Sprintf("pruning address %s from %s", entry.ip, staleAddr))
 				}
 			}
 			at.addresses[staleAddr] = freshEntries

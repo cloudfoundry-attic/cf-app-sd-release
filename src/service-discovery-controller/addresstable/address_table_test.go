@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -161,6 +162,13 @@ var _ = Describe("AddressTable", func() {
 				Eventually(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{}))
 				Eventually(func() []string { return table.Lookup("fresh.updated.com") }).Should(Equal([]string{"192.0.0.2"}))
 				Eventually(func() []string { return table.Lookup("fresh.just.added.com") }).Should(Equal([]string{"192.0.0.3"}))
+			})
+			It("logs pruned addresses to DEBUG", func() {
+				Eventually(func() []string { return table.Lookup("stale.com") }).Should(Equal([]string{}))
+				Expect(logger.Logs()).Should(Not(BeEmpty()))
+				pruneMessage := logger.Logs()[0]
+				Expect(pruneMessage.LogLevel).To(Equal(lager.DEBUG))
+				Expect(pruneMessage.Message).To(ContainSubstring("pruning address 192.0.0.1 from stale.com"))
 			})
 		})
 	})
