@@ -92,16 +92,9 @@ instance_groups:
 
 releases:
 - name: nats
-  sha1: bdb04d0d18a71d8b3144e477c43c0f5c72c2eccb
-  stemcell:
-    os: ubuntu-trusty
-    version: latest
-  url: https://storage.googleapis.com/cf-deployment-compiled-releases/nats-22-ubuntu-trusty-3468-20171006-173847-874271262.tgz
-  version: '22'
+  version: latest
 - name: bosh-dns
-  sha1: daa521930560a5f8543823b2a2984131561362c5
-  url: https://bosh.io/d/github.com/cloudfoundry/bosh-dns-release?v=0.0.10
-  version: 0.0.10
+  version: latest
 - name: cf-app-sd
   version: latest
 stemcells:
