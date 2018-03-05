@@ -8,7 +8,12 @@ addons:
   jobs:
   - name: bosh-dns
     release: bosh-dns
-    properties: {}
+    properties:
+      api:
+        client:
+          tls: ((dns_api_client_tls))
+        server:
+          tls: ((dns_api_server_tls))
   name: bosh-dns
 
 instance_groups:
@@ -127,5 +132,24 @@ variables:
   options:
     ca: service_discovery_ca
     common_name: service-discovery-controller.service.cf.internal
+    extended_key_usage:
+    - client_auth
+- name: dns_api_tls_ca
+  options:
+    common_name: dnsApiTlsCa
+    is_ca: true
+  type: certificate
+- name: dns_api_server_tls
+  type: certificate
+  options:
+    ca: dns_api_tls_ca
+    common_name: api.bosh-dns
+    extended_key_usage:
+    - server_auth
+- name: dns_api_client_tls
+  type: certificate
+  options:
+    ca: dns_api_tls_ca
+    common_name: api.bosh-dns
     extended_key_usage:
     - client_auth
