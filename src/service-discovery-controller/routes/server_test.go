@@ -34,6 +34,7 @@ var _ = Describe("Server", func() {
 		serverKey          string
 		serverProc         ifrit.Process
 		testLogger         *lagertest.TestLogger
+		client             *http.Client
 		server             *Server
 		port               int
 	)
@@ -55,6 +56,7 @@ var _ = Describe("Server", func() {
 		dnsRequestRecorder = &fakes.DNSRequestRecorder{}
 		metricsSender = &fakes.MetricsSender{}
 		server = NewServer(addressTable, config, dnsRequestRecorder, metricsSender, testLogger)
+		client = testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 	})
 
 	Context("when the lookup succeeds", func() {
@@ -62,12 +64,21 @@ var _ = Describe("Server", func() {
 
 		BeforeEach(func() {
 			serverProc = ifrit.Invoke(server)
-			addressTable.LookupReturns([]string{"192.168.0.2"})
+			addressTable.LookupStub = func(hostname string) []string {
+				if hostname == "app-id.internal.local." {
+					return []string{"192.168.0.2"}
+				}
+				return []string{}
+			}
 			addressTable.IsWarmReturns(true)
 
-			client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
-			resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
-			Expect(err).ToNot(HaveOccurred())
+			var resp *http.Response
+			var err error
+			Eventually(func() error {
+				resp, err = client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
+				return err
+			}).Should(BeNil())
+
 			respBodyBytes, err := ioutil.ReadAll(resp.Body)
 			Expect(err).ToNot(HaveOccurred())
 			respBody = string(respBodyBytes)
@@ -95,17 +106,12 @@ var _ = Describe("Server", func() {
 			}`))
 		})
 
-		It("looks up the given host name in the address table", func() {
-			Expect(addressTable.LookupCallCount()).To(Equal(1))
-			Expect(addressTable.LookupArgsForCall(0)).To(Equal("app-id.internal.local."))
-		})
-
 		It("invokes the dns request recorder", func() {
-			Expect(dnsRequestRecorder.RecordRequestCallCount()).To(Equal(1))
+			Expect(dnsRequestRecorder.RecordRequestCallCount()).To(BeNumerically(">=", 1))
 		})
 
 		It("invokes our metrics sender", func() {
-			Expect(metricsSender.SendDurationCallCount()).To(Equal(1))
+			Expect(metricsSender.SendDurationCallCount()).To(BeNumerically(">=", 1))
 			name, time := metricsSender.SendDurationArgsForCall(0)
 			Expect(name).To(Equal("addressTableLookupTime"))
 			Expect(time.String()).ToNot(Equal("0s"))
@@ -120,10 +126,11 @@ var _ = Describe("Server", func() {
 			serverProc = ifrit.Invoke(server)
 			addressTable.IsWarmReturns(false)
 
-			client := testhelpers.NewClient(testhelpers.CertPool(caFile), clientCert)
 			var err error
-			resp, err = client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
-			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() error {
+				resp, err = client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
+				return err
+			}).Should(BeNil())
 		})
 
 		It("returns an internal server error", func() {
@@ -152,7 +159,10 @@ var _ = Describe("Server", func() {
 		It("shuts down", func() {
 			serverProc = ifrit.Invoke(server)
 
-			Eventually(testLogger.LogMessages).Should(ContainElement("test.server-started"))
+			Eventually(func() error {
+				_, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/v1/registration/app-id.internal.local.", port))
+				return err
+			}).Should(BeNil())
 
 			serverProc.Signal(os.Interrupt)
 			Eventually(serverProc.Wait()).Should(Receive())
