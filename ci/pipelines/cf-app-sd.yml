@@ -702,6 +702,8 @@ jobs:
           passed: [ship-what]
         - get: cf-app-sd-shipped-master
         - get: cf-networking-deployments
+        - get: cf-deployment
+          passed: [ship-what]
       - task: ship-it
         file: cf-app-sd-ci/ci/tasks/ship-it.yml
       - put: version

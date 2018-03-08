@@ -23,6 +23,14 @@ done < $tmp_dir/stories.raw > $tmp_dir/stories.json
 
 cat $tmp_dir/stories.json | jq -r '"- ["+.name+"]("+.url+")"' > $OUTPUT_DIR/notes.md
 
+set +e
+diego_version="$(bosh int cf-deployment/cf-deployment.yml --path /releases/name=diego/version)"
+capi_version="$(bosh int cf-deployment/cf-deployment.yml --path /releases/name=capi/version)"
+bosh_dns_version="$(bosh int cf-deployment/cf-deployment.yml -o cf-deployment/operations/experimental/use-bosh-dns.yml --path /releases/name=bosh-dns/version)"
+set -e
+
+echo "Tested with CAPI: $capi_version, BOSH DNS: $bosh_dns_version, Diego: $diego_version" >> $OUTPUT_DIR/notes.md
+
 echo "built: "
 cat $OUTPUT_DIR/notes.md
 
