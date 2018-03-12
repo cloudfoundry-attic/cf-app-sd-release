@@ -271,7 +271,7 @@ jobs:
           BBL_ENV_NAME: ushanka
           OPS_FILES: local-dns.yml
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
           ops-files: cf-networking-deployments
         ensure:
           put: cf-networking-deployments
@@ -290,14 +290,14 @@ jobs:
         params:
           BBL_STATE_DIR: environments/ushanka/
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
       - task: bbl-destroy
         file: cf-deployment-concourse-tasks/bbl-destroy/task.yml
         params:
           BBL_STATE_DIR: environments/ushanka/
           BBL_GCP_SERVICE_ACCOUNT_KEY: environments/gcp/service-account.key.json
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
         ensure:
           put: cf-networking-deployments
           params:
@@ -324,7 +324,7 @@ jobs:
       input_mapping:
         cf-deployment: cf-networking-deployments
         vars-store: cf-networking-deployments
-        env-repo: cf-networking-deployments
+        bbl-state: cf-networking-deployments
         vars-files: cf-networking-deployments
         ops-files: cf-networking-deployments
       params:
@@ -352,7 +352,7 @@ jobs:
         params:
           BBL_STATE_DIR: environments/ushanka/
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
       - task: collect-ops-files
         file: cf-app-sd-ci/ci/tasks/collect-ops-files.yml
         params:
@@ -363,7 +363,7 @@ jobs:
       - task: upload-local-cf-app-sd-releases
         file: cf-app-sd-ci/ci/tasks/upload-local-release.yml
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
           local-release: cf-app-sd-release
         params:
           BBL_STATE_DIR: environments/ushanka/
@@ -375,7 +375,7 @@ jobs:
           OPS_FILES: use-compiled-releases.yml scale-to-one-az.yml smaller-footprint.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml use-system-domain-as-metron-deployment-name.yml enable-service-discovery.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/ushanka/vars-store.yml
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
           release: cf-app-sd-release
           vars-files: cf-networking-deployments
           vars-store: cf-networking-deployments
@@ -389,7 +389,7 @@ jobs:
         params:
           BBL_STATE_DIR: environments/ushanka/
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
 
   - name: delete-ushanka-deployment
     serial_groups: [ushanka-deploy-group, ushanka-test-group]
@@ -402,7 +402,7 @@ jobs:
       params:
         BBL_STATE_DIR: environments/ushanka/
       input_mapping:
-        env-repo: cf-networking-deployments
+        bbl-state: cf-networking-deployments
 
   - name: beret-bbl-up
     serial_groups: [beret-deploy-group]
@@ -424,7 +424,7 @@ jobs:
           BBL_ENV_NAME: beret
           OPS_FILES: local-dns.yml
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
           ops-files: cf-networking-deployments
         ensure:
           put: cf-networking-deployments
@@ -443,14 +443,14 @@ jobs:
         params:
           BBL_STATE_DIR: environments/beret/
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
       - task: bbl-destroy
         file: cf-deployment-concourse-tasks/bbl-destroy/task.yml
         params:
           BBL_STATE_DIR: environments/beret/
           BBL_GCP_SERVICE_ACCOUNT_KEY: environments/gcp/service-account.key.json
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
         ensure:
           put: cf-networking-deployments
           params:
@@ -477,7 +477,7 @@ jobs:
       input_mapping:
         cf-deployment: cf-networking-deployments
         vars-store: cf-networking-deployments
-        env-repo: cf-networking-deployments
+        bbl-state: cf-networking-deployments
         vars-files: cf-networking-deployments
         ops-files: cf-networking-deployments
       params:
@@ -511,7 +511,7 @@ jobs:
         params:
           BBL_STATE_DIR: environments/beret/
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
       - task: collect-ops-files
         file: cf-app-sd-ci/ci/tasks/collect-ops-files.yml
         params:
@@ -522,7 +522,7 @@ jobs:
       - task: upload-local-cf-app-sd-releases
         file: cf-app-sd-ci/ci/tasks/upload-local-release.yml
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
           local-release: cf-app-sd-release
         params:
           BBL_STATE_DIR: environments/beret/
@@ -534,7 +534,7 @@ jobs:
           OPS_FILES: use-compiled-releases.yml scale-to-one-az.yml smaller-footprint.yml datadog.yml use-bosh-dns-for-containers.yml use-bosh-dns.yml enable-service-discovery.yml use-system-domain-as-metron-deployment-name.yml use-latest.yml opsfile.yml
           VARS_STORE_FILE: environments/beret/vars-store.yml
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
           release: cf-app-sd-release
           vars-files: cf-networking-deployments
           vars-store: cf-networking-deployments
@@ -557,7 +557,7 @@ jobs:
         params:
           BBL_STATE_DIR: environments/beret/
         input_mapping:
-          env-repo: cf-networking-deployments
+          bbl-state: cf-networking-deployments
 
   - name: delete-beret-deployment
     serial_groups: [beret-deploy-group, beret-test-group]
@@ -570,7 +570,7 @@ jobs:
       params:
         BBL_STATE_DIR: environments/beret/
       input_mapping:
-        env-repo: cf-networking-deployments
+        bbl-state: cf-networking-deployments
 
   - name: ship-what
     serial_groups: [version]
