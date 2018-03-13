@@ -40,25 +40,7 @@ By default, apps cannot talk to each other over cf networking. In order for an a
 
 ### Example usage
 
-```
-cf push consumer-app --no-start
-cf push server-app
-
-export INTERNAL_HOSTNAME=test
-cf map-route server-app apps.internal --hostname $INTERNAL_HOSTNAME
-
-cf add-network-policy consumer-app --destination-app server-app --port 8080 --protocol tcp
-
-cf set-env consumer SERVER_HOSTNAME "$INTERNAL_HOSTNAME.apps.internal"
-cf start consumer-app
-```
-
-You can run `cf add-network-policy` even after both apps are started, and you don't need to restart the apps for the policy to start working.
-You can map an internal route to an app even after policy is created.
-From consumer-app, the following will work:
-```
-curl "$SERVER_HOSTNAME:8080"
-```
+For example usage, please reference our [repo of example apps](https://github.com/cloudfoundry/cf-networking-examples).
 
 ## Architecture
 
