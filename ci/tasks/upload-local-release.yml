@@ -11,9 +11,10 @@ inputs:
   - name: bbl-state
   - name: cf-deployment-concourse-tasks
   - name: local-release
+  - name: cf-app-sd-ci
 
 run:
-  path: cf-app-sd-release/ci/tasks/upload-local-release
+  path: cf-app-sd-ci/ci/tasks/upload-local-release
 
 params:
   BBL_STATE_DIR:
