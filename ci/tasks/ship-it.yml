@@ -9,12 +9,6 @@ inputs:
   - name: version
   - name: cf-app-sd-ci
   - name: cf-networking-deployments
-  - name: cf-app-sd-tarball
-  - name: cf-app-sd-shipped-master
-
-outputs:
-  - name: final-release
-  - name: release
 
 run:
   path: cf-app-sd-ci/ci/tasks/ship-it

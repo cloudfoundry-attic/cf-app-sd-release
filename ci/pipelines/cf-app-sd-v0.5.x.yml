@@ -6,7 +6,6 @@ groups:
   - salakot-acceptance-tests
   - salakot-smoke-tests
   - salakot-perf-tests
-  - salakot-update-capi
   - salakot-deploy
   - ship-what
   - ship-it
@@ -15,7 +14,6 @@ groups:
   jobs:
   - salakot-bbl-up
   - salakot-bbl-destroy
-  - salakot-update-capi
   - salakot-deploy
   - salakot-acceptance-tests
   - salakot-smoke-tests
@@ -23,47 +21,31 @@ groups:
   - salakot-cats
   - delete-salakot-deployment
 
-resource_types:
-- name: staticfile
-  type: docker-image
-  source:
-    repository: czero/staticfile-resource
-
 resources:
-  - name: cats-concourse-task
-    type: git
-    source:
-      uri: https://github.com/cloudfoundry/cats-concourse-task
-      branch: master
   - name: cf-acceptance-tests
     type: git
     source:
-      branch: proxy-app-service-discovery
-      uri: git://github.com/cf-container-networking/cf-acceptance-tests.git
-  - name: cf-app-sd-release
+      branch: cf1.15
+      uri: git://github.com/cloudfoundry/cf-acceptance-tests.git
+  - name: cf-app-sd-v0.5.x
     type: git
     source:
       uri: https://github.com/cloudfoundry/cf-app-sd-release
-      branch: master
+      private_key: {{cf-app-sd-deployments-push-key}}
+      branch: v0.5.x
   - name: cf-app-sd-ci
     type: git
     source:
       uri: https://github.com/cloudfoundry/cf-app-sd-release
-      branch: master
+      branch: v0.5.x
       paths:
       - ci
-  - name: cf-app-sd-shipped-master
-    type: git
-    source:
-      uri: "git@github.com:cloudfoundry/cf-app-sd-release.git"
-      private_key: {{cf-app-sd-deployments-push-key}}
-      branch: master
   - name: cf-deployment-concourse-tasks
     type: git
     source:
       uri: https://github.com/cloudfoundry/cf-deployment-concourse-tasks
       branch: master
-      tag_filter: "v*"
+      tag_filter: v6.1
   - name: cf-networking-deployments
     type: git
     source:
@@ -73,74 +55,26 @@ resources:
   - name: cf-deployment
     type: git
     source:
-      branch: release-candidate
+      branch: master
       uri: https://github.com/cloudfoundry/cf-deployment.git
-  - name: cf-networking-master
-    type: git
-    source:
-      uri: git@github.com:cloudfoundry/cf-networking-release.git
-      branch: master
-      ignore_paths:
-        - docs
-      private_key: {{cf-networking-deploy-key}}
-  - name: capi-ci-passed
-    type: git
-    source:
-      uri: https://github.com/cloudfoundry/capi-release
-      branch: ci-passed
-  - name: capi-ci
-    type: git
-    source:
-      uri: https://github.com/cloudfoundry/capi-ci
-      branch: master
-  - name: capi-version
-    type: semver
-    source:
-      driver: s3
-      region_name: us-west-2
-      bucket: capi-ci-passed-fake-versions
-      key: version
-      access_key_id: {{aws-access-key-id}}
-      secret_access_key: {{aws-secret-access-key}}
+      tag_filter: v1.15.0
 
-  ####### Timers
-  - name: every-fifteen-minutes
-    type: time
-    source:
-      interval: 15m
   ####### Release management
   - name: version
     type: semver
     source:
-      bucket: {{cf-app-sd-v0.5.x-s3-bucket}}
+      bucket: {{cf-app-sd-s3-bucket}}
       region_name: us-west-2
-      initial_version: 0.1.0-rc.1
-      key: releases/current-version
+      initial_version: 0.5.1
+      key: releases/current-version-v0.5.x
       access_key_id: {{aws-access-key-id}}
       secret_access_key: {{aws-secret-access-key}}
-  - name: cf-app-sd-tarball
-    type: s3
-    source:
-      bucket: {{cf-app-sd-candidate-s3-bucket}}
-      region_name: us-west-2
-      regexp: releases/cf-app-sd-(.*).tgz
-      key: releases/current-version
-      access_key_id: {{aws-access-key-id}}
-      secret_access_key: {{aws-secret-access-key}}
-
-  - name: cf-app-sd-github-release
-    type: github-release
-    source:
-      user: cloudfoundry
-      repository: cf-app-sd-release
-      access_token: {{github-access-token}}
-
 
 jobs:
   - name: unit-tests
     plan:
       - aggregate:
-          - get: cf-app-sd-release
+          - get: cf-app-sd-v0.5.x
             trigger: true
           - get: cf-app-sd-ci
       - task: unit-tests
@@ -151,16 +85,12 @@ jobs:
     plan:
       - aggregate:
           - get: cf-networking-deployments
-          - get: cf-networking-master
-            passed: [salakot-deploy]
-          - get: cf-app-sd-release
+          - get: cf-app-sd-v0.5.x
             passed: [salakot-deploy]
             trigger: true
           - get: cf-app-sd-ci
           - get: cf-deployment
-            passed: [salakot-deploy]
-            trigger: true
-          - get: capi-ci-passed
+            version: {ref: v1.15.0}
             passed: [salakot-deploy]
             trigger: true
       - task: salakot-acceptance-tests
@@ -176,19 +106,13 @@ jobs:
     serial_groups: [salakot-deploy-group, salakot-test-group]
     plan:
       - aggregate:
-          - get: every-fifteen-minutes
-            trigger: true
-          - get: cf-networking-master
-            passed: [salakot-deploy]
           - get: cf-networking-deployments
-          - get: cf-app-sd-release
+          - get: cf-app-sd-v0.5.x
             passed: [salakot-deploy]
             trigger: true
           - get: cf-app-sd-ci
           - get: cf-deployment
-            passed: [salakot-deploy]
-            trigger: true
-          - get: capi-ci-passed
+            version: {ref: v1.15.0}
             passed: [salakot-deploy]
             trigger: true
       - task: salakot-smoke-tests
@@ -199,7 +123,6 @@ jobs:
         params:
           ENVIRONMENT_NAME: salakot
           ENVIRONMENT_TAG: salakot.c2c.cf-app.com
-          DATADOG_API_KEY: {{datadog_api_key}}
 
   - name: salakot-cats
     serial_groups: [salakot-deploy-group, salakot-test-group]
@@ -208,23 +131,15 @@ jobs:
           - get: cf-networking-deployments
           - get: cf-acceptance-tests
           - get: cf-app-sd-ci
-          - get: cats-concourse-task
-          - get: cf-networking-master
+          - get: cf-app-sd-v0.5.x
             passed:
             - salakot-smoke-tests
             - salakot-acceptance-tests
             trigger: true
-          - get: cf-app-sd-release
-            passed:
-            - salakot-smoke-tests
-            - salakot-acceptance-tests
-            trigger: true
+          - get: cf-deployment-concourse-tasks
+            version: {ref: v6.1}
           - get: cf-deployment
-            passed:
-            - salakot-smoke-tests
-            - salakot-acceptance-tests
-            trigger: true
-          - get: capi-ci-passed
+            version: {ref: v1.15.0}
             passed:
             - salakot-smoke-tests
             - salakot-acceptance-tests
@@ -234,7 +149,7 @@ jobs:
         params:
           ENVIRONMENT: salakot
       - task: cats
-        file: cats-concourse-task/task.yml
+        file: cf-deployment-concourse-tasks/run-cats/task.yml
         params:
           NODES: 8
 
@@ -242,18 +157,15 @@ jobs:
     serial_groups: [salakot-deploy-group, salakot-test-group]
     plan:
       - aggregate:
-          - get: cf-networking-master
-            passed:
-            - salakot-smoke-tests
-            - salakot-acceptance-tests
           - get: cf-networking-deployments
-          - get: cf-app-sd-release
+          - get: cf-app-sd-v0.5.x
             passed:
             - salakot-smoke-tests
             - salakot-acceptance-tests
             trigger: true
           - get: cf-app-sd-ci
           - get: cf-deployment
+            version: {ref: v1.15.0}
             passed:
             - salakot-smoke-tests
             - salakot-acceptance-tests
@@ -272,6 +184,7 @@ jobs:
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: {ref: v6.1}
             trigger: true
           - get: cf-networking-deployments
       - task: bbl-up
@@ -300,6 +213,7 @@ jobs:
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: {ref: v6.1}
           - get: cf-networking-deployments
       - task: bosh-cleanup
         file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
@@ -320,49 +234,20 @@ jobs:
             repository: updated-env-repo
             rebase: true
 
-  - name: salakot-update-capi
-    serial_groups: [salakot-deploy-group]
-    plan:
-      - aggregate:
-          - get: cf-networking-deployments
-          - get: capi-ci-passed
-            trigger: true
-          - get: capi-ci
-          - get: capi-version
-            params: {bump: patch}
-          - get: cf-app-sd-ci
-      - task: create-capi-release
-        file: capi-ci/ci/bosh/create_capi_release.yml
-        input_mapping:
-          capi-release: capi-ci-passed
-          version: capi-version
-          cloud_controller_ng: capi-version # does not matter, we won't use this
-      - task: upload-capi-release
-        file: cf-app-sd-ci/ci/tasks/upload-release-tarball.yml
-        input_mapping:
-          tarballs: created-capi-release
-          deployments-repo: cf-networking-deployments
-        params:
-          ENVIRONMENT_NAME: salakot
-      - put: capi-version
-        params: {file: capi-version/version}
-
   - name: salakot-deploy
     serial_groups: [salakot-deploy-group]
     plan:
       - aggregate:
           - get: cf-deployment-concourse-tasks
+            version: {ref: v6.1}
           - get: cf-networking-deployments
           - get: cf-deployment
+            version: {ref: v1.15.0}
             trigger: true
-          - get: cf-networking-master
-          - get: cf-app-sd-release
+          - get: cf-app-sd-v0.5.x
             trigger: true
             passed: [unit-tests]
           - get: cf-app-sd-ci
-          - get: capi-ci-passed
-            passed: [salakot-update-capi]
-            trigger: true
       - task: upload-stemcell
         file: cf-deployment-concourse-tasks/bosh-upload-stemcell-from-cf-deployment/task.yml
         params:
@@ -374,13 +259,12 @@ jobs:
         params:
           ENVIRONMENT_NAME: salakot
         input_mapping:
-          cf-networking-release: cf-networking-master
           deployments-repo: cf-networking-deployments
       - task: upload-local-cf-app-sd-releases
         file: cf-app-sd-ci/ci/tasks/upload-local-release.yml
         input_mapping:
           env-repo: cf-networking-deployments
-          local-release: cf-app-sd-release
+          local-release: cf-app-sd-v0.5.x
         params:
           BBL_STATE_DIR: environments/salakot/
       - task: deploy-cf
@@ -392,7 +276,7 @@ jobs:
           VARS_STORE_FILE: environments/salakot/vars-store.yml
         input_mapping:
           env-repo: cf-networking-deployments
-          release: cf-app-sd-release
+          release: cf-app-sd-v0.5.x
           vars-files: cf-networking-deployments
           vars-store: cf-networking-deployments
         ensure:
@@ -412,6 +296,7 @@ jobs:
     plan:
     - aggregate:
       - get: cf-networking-deployments
+        version: {ref: v6.1}
       - get: cf-deployment-concourse-tasks
     - task: delete-deployment
       file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
@@ -426,18 +311,12 @@ jobs:
     - do:
       - aggregate:
         - get: version
-          passed: [salakot-deploy]
-        - get: cf-networking-master
-          params:
-            submodules: none
-          passed: [salakot-deploy]
-        - get: cf-app-sd-release
-          passed: [salakot-deploy]
+        - get: cf-app-sd-v0.5.x
+          passed: [salakot-cats, salakot-perf-tests, salakot-smoke-tests, salakot-acceptance-tests]
           trigger: true
         - get: cf-deployment
-          passed: [salakot-deploy]
-        - get: cf-app-sd-tarball
-          passed: [salakot-deploy]
+          version: {ref: v1.15.0}
+          passed: [salakot-cats, salakot-perf-tests, salakot-smoke-tests, salakot-acceptance-tests]
 
   - name: ship-it
     serial_groups: [version]
@@ -448,23 +327,17 @@ jobs:
           params:
             bump: final
           passed: [ship-what]
-        - get: cf-app-sd-tarball
-          passed: [ship-what]
         - get: cf-app-sd-ci
-        - get: cf-app-sd-release
+        - get: cf-app-sd-v0.5.x
           passed: [ship-what]
-        - get: cf-app-sd-shipped-master
         - get: cf-networking-deployments
       - task: ship-it
         file: cf-app-sd-ci/ci/tasks/ship-it.yml
       - put: version
         params: {file: version/number}
-      - put: cf-app-sd-shipped-master
+      - put: cf-app-sd-v0.5.x
         params:
-          repository: release/master
-      - put: cf-app-sd-shipped-master
-        params:
-          repository: cf-app-sd-release
+          repository: cf-app-sd-v0.5.x
           tag: version/number
           tag_prefix: v
           only_tag: true
@@ -476,6 +349,6 @@ jobs:
     - get: version
       trigger: true
       passed: [ship-it]
-      params: {bump: patch, pre: rc}
+      params: {bump: patch}
     - put: version
       params: {file: version/number}
