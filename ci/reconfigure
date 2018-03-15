@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e -u
-export PIPELINE=cf-app-sd
+export PIPELINE="cf-app-sd-v0.5.x"
 export TARGET=c2c
 
 fly -t $TARGET \
