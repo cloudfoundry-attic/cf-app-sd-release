@@ -303,8 +303,8 @@ jobs:
     plan:
     - aggregate:
       - get: cf-networking-deployments
-        version: {ref: v6.1}
       - get: cf-deployment-concourse-tasks
+        version: {ref: v6.1}
     - task: delete-deployment
       file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
       params:
