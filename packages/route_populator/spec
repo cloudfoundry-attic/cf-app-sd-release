@@ -1,7 +1,9 @@
 ---
 name: route_populator
+
 dependencies:
-  - golang
+  - golang-1.10-linux
+
 files:
   - route_populator/*.go # gosub
   - route_populator/publisher/*.go # gosub

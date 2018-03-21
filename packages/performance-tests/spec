@@ -1,9 +1,6 @@
 ---
 name: performance-tests
 
-dependencies:
-  - golang
-
 files:
   - github.com/cloudfoundry-incubator/cf-test-helpers/config/*.go # gosub
   - github.com/montanaflynn/stats/*.go # gosub

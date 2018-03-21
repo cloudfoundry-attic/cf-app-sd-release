@@ -28,9 +28,9 @@ instance_groups:
   lifecycle: errand
   name: performance
   networks:
-  - name: private
+  - name: default
   stemcell: default
-  vm_type: m3.medium
+  vm_type: default
 
 - azs:
   - z1
