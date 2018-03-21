@@ -9,6 +9,6 @@ docker run \
    -v ${PWD}:/cf-app-sd-release \
    -e GOPATH=/cf-app-sd-release \
    -w / \
-   golang:1.9 \
+   golang:1.10 \
    /bin/bash "$@"
 

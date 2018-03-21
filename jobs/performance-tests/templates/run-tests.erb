@@ -3,9 +3,10 @@
 set -exu
 set -o pipefail
 
-export GOROOT=$(readlink -nf /var/vcap/packages/golang)
-export GOPATH=/var/vcap/packages/performance-tests
-export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+
+pushd /var/vcap/packages/performance-tests > /dev/null
+  source /var/vcap/packages/golang-1.10-linux/bosh/compile.env
+popd > /dev/null
 
 DATA_DIR=/var/vcap/data/performance-tests
 export CF_HOME=$DATA_DIR/cf-home
