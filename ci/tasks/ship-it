@@ -13,7 +13,6 @@ cp cf-networking-deployments/cf-app-sd/config/private.yml cf-app-sd-shipped-mast
 CANDIDATE_DIR=$PWD/cf-app-sd-tarball
 cd cf-app-sd-shipped-master
 
-git fetch --tags
 if [[ -n "$(git tag | grep -E "^${VERSION}$")" ]]; then
   echo "git tag ${VERSION} already exists. Nothing has been tagged or commited. Fast failing..."
   exit 1
