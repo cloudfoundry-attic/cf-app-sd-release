@@ -1,0 +1,59 @@
+name: cf-app-sd
+version: 0.6.0
+commit_hash: 962cca6
+uncommitted_changes: false
+jobs:
+- name: bosh-dns-adapter
+  version: 0764a7bd74b048809ed293752b4238838e1762fe
+  fingerprint: 0764a7bd74b048809ed293752b4238838e1762fe
+  sha1: 2fdfcd62405e57b0fc5a9722703b842a4a337156
+- name: performance-tests
+  version: 9bb54fec6a98a5946bbe489cc65850b5b8f5c82d
+  fingerprint: 9bb54fec6a98a5946bbe489cc65850b5b8f5c82d
+  sha1: c8da8609d1a71ea5e6d3cfda2fea756b7a8936f5
+- name: route_populator
+  version: ee978c58120b58c4b99c2d8543e4d769a257d7a4
+  fingerprint: ee978c58120b58c4b99c2d8543e4d769a257d7a4
+  sha1: 36ad2731c921bcc6b078bc76c486cbb5bd30dc4c
+- name: service-discovery-controller
+  version: 7ffa934d934c8b8aa94cbf797a5a53800665eefb
+  fingerprint: 7ffa934d934c8b8aa94cbf797a5a53800665eefb
+  sha1: 1cbd0ba18a00e7889600b4ff9efb805b9f16c7a7
+packages:
+- name: bosh-dns-adapter
+  version: b9c996670cf819079f4565b78a41d8747b9c7c12
+  fingerprint: b9c996670cf819079f4565b78a41d8747b9c7c12
+  sha1: 868a7e64a7ed4a47b594d5f1b6a136a3711ccf6d
+  dependencies:
+  - golang-1.10-linux
+- name: golang-1.10-linux
+  version: 48c842421b6f05acf88dc6ec17f7574dade28a86
+  fingerprint: 48c842421b6f05acf88dc6ec17f7574dade28a86
+  sha1: e9a18aebf2c407ce17423c22c913b6612cf4b75f
+  dependencies: []
+- name: performance-tests
+  version: ad4cd1e379c44ea3eb1d1d9de3c2599b811074bb
+  fingerprint: ad4cd1e379c44ea3eb1d1d9de3c2599b811074bb
+  sha1: 809868a55cddc99e6e4717f70c5df043641a62ae
+  dependencies: []
+- name: route_populator
+  version: 2e58a130a06291e7ad921b96f6cccb55d44cd13b
+  fingerprint: 2e58a130a06291e7ad921b96f6cccb55d44cd13b
+  sha1: 4d249721c913e75475c390bf4b13efe5ba49ac9e
+  dependencies:
+  - golang-1.10-linux
+- name: sd-ctl-utils
+  version: b80e568e3292c40bb8a75997ce69c43cfa78cf76
+  fingerprint: b80e568e3292c40bb8a75997ce69c43cfa78cf76
+  sha1: 26c704abab337441b83ddb7455a098c153b58cc2
+  dependencies: []
+- name: service-discovery-controller
+  version: 578ae85f35d90196101d0214fe8d251c79d007bc
+  fingerprint: 578ae85f35d90196101d0214fe8d251c79d007bc
+  sha1: 46374cde90fc734974031c3396ab75386822bf64
+  dependencies:
+  - golang-1.10-linux
+license:
+  version: e4a51be8a0562047e07fe410b5118c3cde60c458
+  fingerprint: e4a51be8a0562047e07fe410b5118c3cde60c458
+  sha1: 2cc7f10d89178d97ef751c98a7a714ca64bd03dd
