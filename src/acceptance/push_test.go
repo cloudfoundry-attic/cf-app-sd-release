@@ -36,7 +36,7 @@ var _ = Describe("Push Acceptance", func() {
 	Describe("when performing a dns lookup for a domain configured to point to the bosh adapter", func() {
 		It("returns the result from the adapter", func() {
 			pushApp(appName, 1)
-			Expect(cf.Cf("map-route", appName, domain, "--hostname", appName).Wait(2 * time.Second)).To(gexec.Exit(0))
+			Expect(cf.Cf("map-route", appName, domain, "--hostname", appName).Wait(10 * time.Second)).To(gexec.Exit(0))
 
 			hostName := "http://" + appName + "." + config.AppsDomain + "/dig/" + appName + "." + domain
 			proxyIPs := digForNumberOfIPs(hostName, 1)

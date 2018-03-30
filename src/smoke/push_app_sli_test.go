@@ -65,7 +65,7 @@ var _ = Describe("Push App Smoke", func() {
 
 			By("creating and mapping an internal route")
 			b.Time("createRoute", func() {
-				Expect(cf.Cf("map-route", appName, domain, "--hostname", hostname).Wait(5 * time.Second)).To(gexec.Exit(0))
+				Expect(cf.Cf("map-route", appName, domain, "--hostname", hostname).Wait(10 * time.Second)).To(gexec.Exit(0))
 			})
 
 			By("getting an answer in the dig response within 5 seconds of app push finishing")
