@@ -50,7 +50,7 @@ var _ = Describe("Delete App Smoke", func() {
 		deletedAppHostname := deletedAppName + "Host"
 
 		By("creating and mapping an internal route")
-		Expect(cf.Cf("map-route", deletedAppName, domain, "--hostname", deletedAppHostname).Wait(2 * time.Second)).To(gexec.Exit(0))
+		Expect(cf.Cf("map-route", deletedAppName, domain, "--hostname", deletedAppHostname).Wait(10 * time.Second)).To(gexec.Exit(0))
 
 		By("making sure the app is resolved to the correct ip")
 		proxyIPs := []string{}
