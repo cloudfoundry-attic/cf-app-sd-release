@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"encoding/json"
+	"fmt"
+	"os"
 )
 
 type DigHandler struct {
@@ -16,7 +18,8 @@ func (h *DigHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	ips, err := net.LookupIP(destination)
 	if err != nil {
-		handleError(err, destination, resp)
+		handleDigError(err, destination, resp)
+		return
 	}
 
 	var ip4s []string
@@ -27,8 +30,17 @@ func (h *DigHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	ip4Json, err := json.Marshal(ip4s)
 	if err != nil {
-		handleError(err, destination, resp)
+		handleDigError(err, destination, resp)
+		return
 	}
 
 	resp.Write(ip4Json)
+}
+
+
+func handleDigError(err error, destination string, resp http.ResponseWriter) {
+	msg := fmt.Sprintf("Failed to dig: %s: %s", destination, err)
+	fmt.Fprintf(os.Stderr, msg)
+	resp.WriteHeader(http.StatusInternalServerError)
+	resp.Write([]byte(msg))
 }
