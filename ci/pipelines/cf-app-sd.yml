@@ -116,6 +116,7 @@ resources:
       user: cloudfoundry
       repository: cf-app-sd-release
       access_token: {{github-access-token}}
+      drafts: true
 
 
 jobs:
