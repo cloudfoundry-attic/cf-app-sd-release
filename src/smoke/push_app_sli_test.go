@@ -16,7 +16,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-const Timeout_Cf = 2 * time.Minute
+const Timeout_Cf = 4 * time.Minute
 const domain = "apps.internal"
 
 var (
@@ -75,7 +75,9 @@ var _ = Describe("Push App Smoke", func() {
 					resp, err := http.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + hostname + "." + domain)
 
 					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.StatusCode).To(Equal(http.StatusOK))
+					if resp.StatusCode != http.StatusOK {
+						return []string{}
+					}
 
 					ipsJson, err := ioutil.ReadAll(resp.Body)
 					Expect(err).NotTo(HaveOccurred())

@@ -59,7 +59,9 @@ var _ = Describe("Delete App Smoke", func() {
 			resp, err := http.Get(digToDeletedAppURL)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			if resp.StatusCode != http.StatusOK {
+				return []string{}
+			}
 
 			ipsJson, err := ioutil.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
