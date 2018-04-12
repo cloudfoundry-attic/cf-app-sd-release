@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"math/rand"
+	"net"
+	"net/http"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -79,4 +81,15 @@ func Auth(username, password string) {
 	sess, err := gexec.Start(cmd, nil, nil)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess.Wait(Timeout_Short)).Should(gexec.Exit(0))
+}
+
+func NewClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout: 500 * time.Millisecond,
+			}).DialContext,
+		},
+		Timeout: 500 * time.Millisecond,
+	}
 }

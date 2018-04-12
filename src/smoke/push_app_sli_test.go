@@ -70,9 +70,11 @@ var _ = Describe("Push App Smoke", func() {
 
 			By("getting an answer in the dig response within 5 seconds of app push finishing")
 			proxyIPs := []string{}
+
+			httpClient := NewClient()
 			b.Time("digAnswer", func() {
 				Eventually(func() []string {
-					resp, err := http.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + hostname + "." + domain)
+					resp, err := httpClient.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + hostname + "." + domain)
 
 					Expect(err).NotTo(HaveOccurred())
 					if resp.StatusCode != http.StatusOK {
