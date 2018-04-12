@@ -42,8 +42,8 @@ resources:
   - name: cf-acceptance-tests
     type: git
     source:
-      branch: task-asg-#155800937
-      uri: https://github.com/cf-container-networking/cf-acceptance-tests
+      branch: master
+      uri: https://github.com/cloudfoundry/cf-acceptance-tests
   - name: cf-app-sd-release
     type: git
     source:
