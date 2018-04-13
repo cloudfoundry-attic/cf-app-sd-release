@@ -58,9 +58,7 @@ var _ = Describe("Delete App Smoke", func() {
 		httpClient := NewClient()
 		Eventually(func() []string {
 			resp, err := httpClient.Get(digToDeletedAppURL)
-
-			Expect(err).NotTo(HaveOccurred())
-			if resp.StatusCode != http.StatusOK {
+			if err != nil || resp.StatusCode != http.StatusOK {
 				return []string{}
 			}
 

@@ -75,9 +75,7 @@ var _ = Describe("Push App Smoke", func() {
 			b.Time("digAnswer", func() {
 				Eventually(func() []string {
 					resp, err := httpClient.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + hostname + "." + domain)
-
-					Expect(err).NotTo(HaveOccurred())
-					if resp.StatusCode != http.StatusOK {
+					if err != nil || resp.StatusCode != http.StatusOK {
 						return []string{}
 					}
 
