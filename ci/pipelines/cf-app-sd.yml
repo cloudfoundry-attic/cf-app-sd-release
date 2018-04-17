@@ -152,6 +152,7 @@ jobs:
 
   - name: ushanka-smoke-tests
     serial_groups: [ushanka-deploy-group, ushanka-test-group]
+    build_logs_to_retain: 2000
     plan:
       - aggregate:
           - get: every-fifteen-minutes
