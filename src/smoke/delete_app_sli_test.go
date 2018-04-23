@@ -19,6 +19,7 @@ var (
 	digToDeletedAppURL string
 	deletedAppName     string
 	queryAppName       string
+	httpClient         *http.Client
 )
 
 var _ = Describe("Delete App Smoke", func() {
@@ -55,7 +56,7 @@ var _ = Describe("Delete App Smoke", func() {
 		By("making sure the app is resolved to the correct ip")
 		proxyIPs := []string{}
 		digToDeletedAppURL = "http://" + queryAppName + "." + config.AppsDomain + "/dig/" + deletedAppHostname + "." + domain
-		httpClient := NewClient()
+		httpClient = NewClient()
 		Eventually(func() []string {
 			resp, err := httpClient.Get(digToDeletedAppURL)
 			if err != nil || resp.StatusCode != http.StatusOK {
@@ -94,7 +95,7 @@ var _ = Describe("Delete App Smoke", func() {
 			By("asserting the dig response is a 500 status code within 5 seconds of app delete finishing")
 			b.Time("digAnswer", func() {
 				Eventually(func() int {
-					resp, err := http.Get(digToDeletedAppURL)
+					resp, err := httpClient.Get(digToDeletedAppURL)
 
 					Expect(err).NotTo(HaveOccurred())
 					return resp.StatusCode
