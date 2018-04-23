@@ -29,46 +29,37 @@ import (
 )
 
 func main() {
+	err := mainWithError()
+	if err != nil {
+		os.Exit(2)
+	}
+}
+
+func mainWithError() error {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGTERM, os.Interrupt)
 	configPath := flag.String("c", "", "path to config file")
 	flag.Parse()
 
-	logger := lager.NewLogger("service-discovery-controller")
-	writerSink := lager.NewWriterSink(os.Stdout, lager.DEBUG)
-	sink := lager.NewReconfigurableSink(writerSink, lager.INFO)
-	logger.RegisterSink(sink)
-
-	var err error
-	bytes, err := ioutil.ReadFile(*configPath)
+	logger, sink := buildLogger()
+	conf, err := readConfig(configPath, logger)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Could not read config file at path '%s'", *configPath), err)
-		os.Exit(2)
+		return err
 	}
 
-	config, err := config.NewConfig(bytes)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Could not parse config file at path '%s'", *configPath), err)
-		os.Exit(2)
-	}
+	addressTable := buildAddressTable(conf, logger)
 
-	addressTable := addresstable.NewAddressTable(
-		time.Duration(config.StalenessThresholdSeconds)*time.Second,
-		time.Duration(config.PruningIntervalSeconds)*time.Second,
-		time.Duration(config.ResumePruningDelaySeconds)*time.Second,
-		clock.NewClock(),
-		logger.Session("address-table"))
-
-	metronAddress := fmt.Sprintf("127.0.0.1:%d", config.MetronPort)
+	metronAddress := fmt.Sprintf("127.0.0.1:%d", conf.MetronPort)
 	err = dropsonde.Initialize(metronAddress, "service-discovery-controller")
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to build subscriber", err)
+		return err
 	}
 
-	subscriber, err := buildSubscriber(config, addressTable, logger)
+	subscriber, err := buildSubscriber(conf, addressTable, logger)
 	if err != nil {
 		logger.Error("Failed to build subscriber", err)
-		os.Exit(2)
+		return err
 	}
 
 	dnsRequestRecorder := &routes.MetricsRecorder{}
@@ -79,11 +70,10 @@ func main() {
 		Getter: dnsRequestRecorder.Getter,
 	}
 
-	uptimeSource := metrics.NewUptimeSource()
 	metricsEmitter := metrics.NewMetricsEmitter(
 		logger,
-		time.Duration(config.MetricsEmitSeconds)*time.Second,
-		uptimeSource,
+		time.Duration(conf.MetricsEmitSeconds)*time.Second,
+		metrics.NewUptimeSource(),
 		dnsRequestSource,
 	)
 
@@ -92,15 +82,15 @@ func main() {
 	}
 
 	logLevelServer := lagerlevel.NewServer(
-		config.LogLevelAddress,
-		config.LogLevelPort,
+		conf.LogLevelAddress,
+		conf.LogLevelPort,
 		sink,
 		logger.Session("log-level-server"),
 	)
 
 	routesServer := routes.NewServer(
 		addressTable,
-		config,
+		conf,
 		dnsRequestRecorder,
 		metricsSender,
 		logger.Session("routes-server"),
@@ -117,7 +107,7 @@ func main() {
 	monitor := ifrit.Invoke(sigmon.New(group))
 
 	go func() {
-		err = <-monitor.Wait()
+		err := <-monitor.Wait()
 		if err != nil {
 			logger.Fatal("ifrit-failure", err)
 		}
@@ -131,11 +121,41 @@ func main() {
 		addressTable.Shutdown()
 		monitor.Signal(signal)
 		logger.Info("server-stopped")
-		return
+		return nil
 	}
 }
+func buildAddressTable(conf *config.Config, logger lager.Logger) *addresstable.AddressTable {
+	return addresstable.NewAddressTable(
+		time.Duration(conf.StalenessThresholdSeconds)*time.Second,
+		time.Duration(conf.PruningIntervalSeconds)*time.Second,
+		time.Duration(conf.ResumePruningDelaySeconds)*time.Second,
+		clock.NewClock(),
+		logger.Session("address-table"))
+}
+func buildLogger() (lager.Logger, *lager.ReconfigurableSink) {
+	logger := lager.NewLogger("service-discovery-controller")
+	writerSink := lager.NewWriterSink(os.Stdout, lager.DEBUG)
+	sink := lager.NewReconfigurableSink(writerSink, lager.INFO)
+	logger.RegisterSink(sink)
+	return logger, sink
+}
 
-func buildSubscriber(config *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) (*mbus.Subscriber, error) {
+func readConfig(configPath *string, logger lager.Logger) (*config.Config, error) {
+	var err error
+	bytes, err := ioutil.ReadFile(*configPath)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Could not read config file at path '%s'", *configPath), err)
+		return nil, err
+	}
+	conf, err := config.NewConfig(bytes)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Could not parse config file at path '%s'", *configPath), err)
+		return nil, err
+	}
+	return conf, nil
+}
+
+func buildSubscriber(conf *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) (*mbus.Subscriber, error) {
 	uuidGenerator := adapter.UUIDAdapter{}
 
 	uuid, err := uuidGenerator.GenerateUUID()
@@ -143,16 +163,16 @@ func buildSubscriber(config *config.Config, addressTable *addresstable.AddressTa
 		return &mbus.Subscriber{}, err
 	}
 
-	subscriberID := fmt.Sprintf("%s-%s", config.Index, uuid)
+	subscriberID := fmt.Sprintf("%s-%s", conf.Index, uuid)
 
 	subOpts := mbus.SubscriberOpts{
 		ID: subscriberID,
-		MinimumRegisterIntervalInSeconds: config.ResumePruningDelaySeconds,
+		MinimumRegisterIntervalInSeconds: conf.ResumePruningDelaySeconds,
 		PruneThresholdInSeconds:          120,
 	}
 
 	provider := &mbus.NatsConnWithUrlProvider{
-		Url: strings.Join(config.NatsServers(), ","),
+		Url: strings.Join(conf.NatsServers(), ","),
 	}
 
 	localIP, err := localip.LocalIP()
@@ -165,7 +185,7 @@ func buildSubscriber(config *config.Config, addressTable *addresstable.AddressTa
 	}
 
 	clock := clock.NewClock()
-	warmDuration := time.Duration(config.WarmDurationSeconds) * time.Second
+	warmDuration := time.Duration(conf.WarmDurationSeconds) * time.Second
 
 	subscriber := mbus.NewSubscriber(provider, subOpts, warmDuration, addressTable,
 		localIP, logger.Session("mbus"), metricsSender, clock)
