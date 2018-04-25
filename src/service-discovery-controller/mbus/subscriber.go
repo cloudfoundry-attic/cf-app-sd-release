@@ -37,8 +37,9 @@ type SubscriberOpts struct {
 }
 
 type RegistryMessage struct {
-	IP         string   `json:"host"`
-	InfraNames []string `json:"uris"`
+	IP                string   `json:"host"`
+	InfraNames        []string `json:"uris"`
+	EndpointUpdatedAt int64    `json:"endpoint_updated_at_ns"`
 }
 
 //go:generate counterfeiter -o fakes/address_table.go --fake-name AddressTable . AddressTable
@@ -56,6 +57,7 @@ type Subscriber struct {
 	warmingDuration  time.Duration
 	table            AddressTable
 	logger           lager.Logger
+	recorder         routeMessageRecorder
 	localIP          string
 	natsClient       NatsConn
 	once             sync.Once
@@ -79,8 +81,12 @@ type NatsConnProvider interface {
 
 //go:generate counterfeiter -o fakes/metrics_sender.go --fake-name MetricsSender . metricsSender
 type metricsSender interface {
-	SendDuration(string, time.Duration)
 	IncrementCounter(string)
+}
+
+//go:generate counterfeiter -o fakes/route_message_recorder.go --fake-name RouteMessageRecorder . routeMessageRecorder
+type routeMessageRecorder interface {
+	RecordMessageTransitTime(time int64)
 }
 
 func NewSubscriber(
@@ -89,6 +95,7 @@ func NewSubscriber(
 	warmingDuration time.Duration,
 	table AddressTable,
 	localIP string,
+	recorder routeMessageRecorder,
 	logger lager.Logger,
 	metricsSender metricsSender,
 	clock clock.Clock,
@@ -98,6 +105,7 @@ func NewSubscriber(
 		subOpts:          subOpts,
 		warmingDuration:  warmingDuration,
 		table:            table,
+		recorder:         recorder,
 		logger:           logger,
 		localIP:          localIP,
 		metricsSender:    metricsSender,
@@ -268,7 +276,10 @@ func (s *Subscriber) setupAddressMessageHandler() error {
 			}))
 			return
 		}
+
+		s.recorder.RecordMessageTransitTime(registryMessage.EndpointUpdatedAt)
 		s.metricsSender.IncrementCounter(registerMessagesReceived)
+
 		s.logger.Debug("AddressMessageHandler register msg received", lager.Data(map[string]interface{}{
 			"msgJson": string(msg.Data),
 		}))

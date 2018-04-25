@@ -59,7 +59,7 @@ var _ = Describe("MetricsRecorder", func() {
 				count, err := metricsRecorder.Getter()
 				Expect(err).ToNot(HaveOccurred())
 				return count
-			}).Should(Equal(float64(2)))
+			}, "2s").Should(Equal(float64(2)))
 		})
 	})
 

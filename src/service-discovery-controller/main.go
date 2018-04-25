@@ -56,7 +56,9 @@ func mainWithError() error {
 		return err
 	}
 
-	subscriber, err := buildSubscriber(conf, addressTable, logger)
+	routeMessageRecorder := mbus.NewMetricsRecorder(clock.NewClock())
+
+	subscriber, err := buildSubscriber(conf, addressTable, routeMessageRecorder, logger)
 	if err != nil {
 		logger.Error("Failed to build subscriber", err)
 		return err
@@ -70,11 +72,18 @@ func mainWithError() error {
 		Getter: dnsRequestRecorder.Getter,
 	}
 
+	routeMessageSource := metrics.MetricSource{
+		Name:   "maxRouteMessageTimePerInterval",
+		Unit:   "ns",
+		Getter: routeMessageRecorder.GetMaxSinceLastInterval,
+	}
+
 	metricsEmitter := metrics.NewMetricsEmitter(
 		logger,
 		time.Duration(conf.MetricsEmitSeconds)*time.Second,
 		metrics.NewUptimeSource(),
 		dnsRequestSource,
+		routeMessageSource,
 	)
 
 	metricsSender := &metrics.MetricsSender{
@@ -124,6 +133,7 @@ func mainWithError() error {
 		return nil
 	}
 }
+
 func buildAddressTable(conf *config.Config, logger lager.Logger) *addresstable.AddressTable {
 	return addresstable.NewAddressTable(
 		time.Duration(conf.StalenessThresholdSeconds)*time.Second,
@@ -132,6 +142,7 @@ func buildAddressTable(conf *config.Config, logger lager.Logger) *addresstable.A
 		clock.NewClock(),
 		logger.Session("address-table"))
 }
+
 func buildLogger() (lager.Logger, *lager.ReconfigurableSink) {
 	logger := lager.NewLogger("service-discovery-controller")
 	writerSink := lager.NewWriterSink(os.Stdout, lager.DEBUG)
@@ -155,7 +166,8 @@ func readConfig(configPath *string, logger lager.Logger) (*config.Config, error)
 	return conf, nil
 }
 
-func buildSubscriber(conf *config.Config, addressTable *addresstable.AddressTable, logger lager.Logger) (*mbus.Subscriber, error) {
+func buildSubscriber(conf *config.Config, addressTable *addresstable.AddressTable,
+	routeMessageRecorder *mbus.MetricsRecorder, logger lager.Logger) (*mbus.Subscriber, error) {
 	uuidGenerator := adapter.UUIDAdapter{}
 
 	uuid, err := uuidGenerator.GenerateUUID()
@@ -188,6 +200,6 @@ func buildSubscriber(conf *config.Config, addressTable *addresstable.AddressTabl
 	warmDuration := time.Duration(conf.WarmDurationSeconds) * time.Second
 
 	subscriber := mbus.NewSubscriber(provider, subOpts, warmDuration, addressTable,
-		localIP, logger.Session("mbus"), metricsSender, clock)
+		localIP, routeMessageRecorder, logger.Session("mbus"), metricsSender, clock)
 	return subscriber, nil
 }

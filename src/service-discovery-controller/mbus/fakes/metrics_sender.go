@@ -3,16 +3,9 @@ package fakes
 
 import (
 	"sync"
-	"time"
 )
 
 type MetricsSender struct {
-	SendDurationStub        func(string, time.Duration)
-	sendDurationMutex       sync.RWMutex
-	sendDurationArgsForCall []struct {
-		arg1 string
-		arg2 time.Duration
-	}
 	IncrementCounterStub        func(string)
 	incrementCounterMutex       sync.RWMutex
 	incrementCounterArgsForCall []struct {
@@ -20,31 +13,6 @@ type MetricsSender struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *MetricsSender) SendDuration(arg1 string, arg2 time.Duration) {
-	fake.sendDurationMutex.Lock()
-	fake.sendDurationArgsForCall = append(fake.sendDurationArgsForCall, struct {
-		arg1 string
-		arg2 time.Duration
-	}{arg1, arg2})
-	fake.recordInvocation("SendDuration", []interface{}{arg1, arg2})
-	fake.sendDurationMutex.Unlock()
-	if fake.SendDurationStub != nil {
-		fake.SendDurationStub(arg1, arg2)
-	}
-}
-
-func (fake *MetricsSender) SendDurationCallCount() int {
-	fake.sendDurationMutex.RLock()
-	defer fake.sendDurationMutex.RUnlock()
-	return len(fake.sendDurationArgsForCall)
-}
-
-func (fake *MetricsSender) SendDurationArgsForCall(i int) (string, time.Duration) {
-	fake.sendDurationMutex.RLock()
-	defer fake.sendDurationMutex.RUnlock()
-	return fake.sendDurationArgsForCall[i].arg1, fake.sendDurationArgsForCall[i].arg2
 }
 
 func (fake *MetricsSender) IncrementCounter(arg1 string) {
@@ -74,8 +42,6 @@ func (fake *MetricsSender) IncrementCounterArgsForCall(i int) string {
 func (fake *MetricsSender) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.sendDurationMutex.RLock()
-	defer fake.sendDurationMutex.RUnlock()
 	fake.incrementCounterMutex.RLock()
 	defer fake.incrementCounterMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
