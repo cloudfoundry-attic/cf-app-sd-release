@@ -28,6 +28,10 @@ func (r *MetricsRecorder) GetMaxSinceLastInterval() (float64, error) {
 }
 
 func (r *MetricsRecorder) RecordMessageTransitTime(unixTimeNS int64) {
+	if unixTimeNS == 0 {
+		return
+	}
+
 	r.Lock()
 	diff := r.Clock.Now().Sub(time.Unix(0, unixTimeNS))
 	if diff > r.currentMax {

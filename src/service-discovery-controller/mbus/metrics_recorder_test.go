@@ -10,13 +10,19 @@ import (
 )
 
 var _ = Describe("MetricsRecorder", func() {
-	It("should return the highest value since the last time it was asked", func() {
+	var (
+		recorder *mbus.MetricsRecorder
+	)
+
+	BeforeEach(func() {
 		currentSystemTime := time.Unix(0, 150)
 		fakeClock := fakeclock.NewFakeClock(currentSystemTime)
-		recorder := &mbus.MetricsRecorder{
+		recorder = &mbus.MetricsRecorder{
 			Clock: fakeClock,
 		}
+	})
 
+	It("should return the highest value since the last time it was asked", func() {
 		recorder.RecordMessageTransitTime(120)
 		recorder.RecordMessageTransitTime(130)
 		recorder.RecordMessageTransitTime(125)
@@ -24,5 +30,13 @@ var _ = Describe("MetricsRecorder", func() {
 		time, err := recorder.GetMaxSinceLastInterval()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(time).To(Equal(float64(30)))
+	})
+
+	It("should not record zero unix times", func() {
+		recorder.RecordMessageTransitTime(0)
+
+		time, err := recorder.GetMaxSinceLastInterval()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(time).To(Equal(float64(0)))
 	})
 })
