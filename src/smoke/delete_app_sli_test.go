@@ -18,7 +18,6 @@ import (
 var (
 	digToDeletedAppURL string
 	deletedAppName     string
-	queryAppName       string
 	httpClient         *http.Client
 )
 
@@ -45,17 +44,12 @@ var _ = Describe("Delete App Smoke", func() {
 		Expect(cf.Cf("target", "-o", orgName, "-s", spaceName).Wait(Timeout_Cf)).To(gexec.Exit(0))
 
 		By("pushing the app")
-		pushProxy(deletedAppName)
+		pushProxyWithInternalRoute(deletedAppName)
 		pushProxy(queryAppName)
-
-		deletedAppHostname := deletedAppName + "Host"
-
-		By("creating and mapping an internal route")
-		Expect(cf.Cf("map-route", deletedAppName, domain, "--hostname", deletedAppHostname).Wait(10 * time.Second)).To(gexec.Exit(0))
 
 		By("making sure the app is resolved to the correct ip")
 		proxyIPs := []string{}
-		digToDeletedAppURL = "http://" + queryAppName + "." + config.AppsDomain + "/dig/" + deletedAppHostname + "." + domain
+		digToDeletedAppURL = "http://" + queryAppName + "." + config.AppsDomain + "/dig/app-smoke.apps.internal"
 		httpClient = NewClient()
 		Eventually(func() []string {
 			resp, err := httpClient.Get(digToDeletedAppURL)
@@ -103,7 +97,6 @@ var _ = Describe("Delete App Smoke", func() {
 			})
 		}, 1)
 	})
-
 })
 
 func deleteProxy(appName string) {

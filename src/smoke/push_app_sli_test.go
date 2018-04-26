@@ -17,13 +17,12 @@ import (
 )
 
 const Timeout_Cf = 4 * time.Minute
-const domain = "apps.internal"
 
 var (
-	prefix   string
-	orgName  string
-	appName  string
-	hostname string
+	prefix       string
+	orgName      string
+	appName      string
+	queryAppName string
 )
 
 var _ = Describe("Push App Smoke", func() {
@@ -47,7 +46,10 @@ var _ = Describe("Push App Smoke", func() {
 		Expect(cf.Cf("target", "-o", orgName, "-s", spaceName).Wait(Timeout_Cf)).To(gexec.Exit(0))
 
 		appName = prefix + "proxy"
-		hostname = "app-smoke"
+		queryAppName = prefix + "queryProxy"
+
+		By("pushing query app")
+		pushProxy(queryAppName)
 	})
 
 	AfterEach(func() {
@@ -60,12 +62,7 @@ var _ = Describe("Push App Smoke", func() {
 		Measure("resolves its infrastructure name within 5 seconds after push", func(b Benchmarker) {
 			By("pushing the app")
 			b.Time("push", func() {
-				pushProxy(appName)
-			})
-
-			By("creating and mapping an internal route")
-			b.Time("createRoute", func() {
-				Expect(cf.Cf("map-route", appName, domain, "--hostname", hostname).Wait(10 * time.Second)).To(gexec.Exit(0))
+				pushProxyWithInternalRoute(appName)
 			})
 
 			By("getting an answer in the dig response within 5 seconds of app push finishing")
@@ -74,7 +71,7 @@ var _ = Describe("Push App Smoke", func() {
 			httpClient := NewClient()
 			b.Time("digAnswer", func() {
 				Eventually(func() []string {
-					resp, err := httpClient.Get("http://" + appName + "." + config.AppsDomain + "/dig/" + hostname + "." + domain)
+					resp, err := httpClient.Get("http://" + queryAppName + "." + config.AppsDomain + "/dig/app-smoke.apps.internal")
 					if err != nil || resp.StatusCode != http.StatusOK {
 						return []string{}
 					}
@@ -113,6 +110,18 @@ func pushProxy(appName string) {
 	).Wait(Timeout_Cf)).To(gexec.Exit(0))
 }
 
+func pushProxyWithInternalRoute(appName string) {
+	Expect(cf.Cf(
+		"push", appName,
+		"-p", appDir("proxy"),
+		"-f", internalRouteManifest("proxy"),
+	).Wait(Timeout_Cf)).To(gexec.Exit(0))
+}
+
 func defaultManifest(appType string) string {
 	return filepath.Join(appDir(appType), "manifest.yml")
+}
+
+func internalRouteManifest(appType string) string {
+	return filepath.Join(appDir(appType), "internal-route-manifest.yml")
 }
