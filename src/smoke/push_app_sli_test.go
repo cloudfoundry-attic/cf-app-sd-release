@@ -53,6 +53,9 @@ var _ = Describe("Push App Smoke", func() {
 	})
 
 	AfterEach(func() {
+		Expect(cf.Cf("delete", appName, "-f").Wait(Timeout_Cf))
+		Expect(cf.Cf("delete", queryAppName, "-f").Wait(Timeout_Cf))
+
 		if config.SmokeOrg == "" {
 			Expect(cf.Cf("delete-org", orgName, "-f").Wait(Timeout_Cf)).To(gexec.Exit(0))
 		}
