@@ -74,7 +74,7 @@ func mainWithError() error {
 
 	routeMessageSource := metrics.MetricSource{
 		Name:   "maxRouteMessageTimePerInterval",
-		Unit:   "ns",
+		Unit:   "ms",
 		Getter: routeMessageRecorder.GetMaxSinceLastInterval,
 	}
 

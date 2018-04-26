@@ -15,7 +15,7 @@ var _ = Describe("MetricsRecorder", func() {
 	)
 
 	BeforeEach(func() {
-		currentSystemTime := time.Unix(0, 150)
+		currentSystemTime := time.Unix(0, secondToNanosecond(810))
 		fakeClock := fakeclock.NewFakeClock(currentSystemTime)
 		recorder = &mbus.MetricsRecorder{
 			Clock: fakeClock,
@@ -23,13 +23,13 @@ var _ = Describe("MetricsRecorder", func() {
 	})
 
 	It("should return the highest value since the last time it was asked", func() {
-		recorder.RecordMessageTransitTime(120)
-		recorder.RecordMessageTransitTime(130)
-		recorder.RecordMessageTransitTime(125)
+		recorder.RecordMessageTransitTime(secondToNanosecond(807))
+		recorder.RecordMessageTransitTime(secondToNanosecond(809))
+		recorder.RecordMessageTransitTime(secondToNanosecond(808))
 
-		time, err := recorder.GetMaxSinceLastInterval()
+		maxTime, err := recorder.GetMaxSinceLastInterval()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(time).To(Equal(float64(30)))
+		Expect(maxTime).To(Equal(float64(3000)))
 	})
 
 	It("should not record zero unix times", func() {
@@ -40,3 +40,8 @@ var _ = Describe("MetricsRecorder", func() {
 		Expect(time).To(Equal(float64(0)))
 	})
 })
+
+func secondToNanosecond(sec int) int64 {
+	duration := time.Duration(sec) * time.Second
+	return duration.Nanoseconds()
+}

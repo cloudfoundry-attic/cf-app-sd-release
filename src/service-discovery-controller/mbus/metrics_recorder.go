@@ -24,7 +24,7 @@ func (r *MetricsRecorder) GetMaxSinceLastInterval() (float64, error) {
 	duration := r.currentMax
 	r.currentMax = 0
 	r.Unlock()
-	return float64(duration.Nanoseconds()), nil
+	return float64(duration.Nanoseconds()) / float64(time.Millisecond), nil
 }
 
 func (r *MetricsRecorder) RecordMessageTransitTime(unixTimeNS int64) {
