@@ -1,5 +1,10 @@
 # CF App Service Discovery Release (EXPERIMENTAL)
 
+### DEPRECATED
+This release has been deprecated. All of jobs in this release have been moved into
+[CF-Networking-Release](https://github.com/cloudfoundry/cf-networking-release).
+
+### Table of Contents
 - [High Level Overview](#high-level-overview)
     - [Problem we are trying to solve](#problem-we-are-trying-to-solve)
     - [App Developer Experience](#app-developer-experience)
