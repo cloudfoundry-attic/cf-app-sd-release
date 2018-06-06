@@ -31,7 +31,7 @@ resources:
     type: git
     source:
       uri: https://github.com/cloudfoundry/cf-app-sd-release
-      private_key: {{cf-app-sd-deployments-push-key}}
+      private_key: ((cf-app-sd-deployments-push-key.private_key))
       branch: v0.5.x
   - name: cf-app-sd-ci
     type: git
@@ -51,7 +51,7 @@ resources:
     source:
       uri: "git@github.com:cloudfoundry/cf-networking-deployments.git"
       branch: master
-      private_key: {{cf-networking-deployments-push-key}}
+      private_key: ((cf-networking-deployments-push-key.private_key))
   - name: cf-deployment
     type: git
     source:
@@ -63,12 +63,12 @@ resources:
   - name: version
     type: semver
     source:
-      bucket: {{cf-app-sd-s3-bucket}}
+      bucket: ((cf-app-sd-s3-bucket))
       region_name: us-west-2
       initial_version: 0.5.1
       key: releases/current-version-v0.5.x
-      access_key_id: {{aws-access-key-id}}
-      secret_access_key: {{aws-secret-access-key}}
+      access_key_id: ((aws-access-key-id))
+      secret_access_key: ((aws-secret-access-key))
 
 jobs:
   - name: unit-tests
@@ -199,8 +199,8 @@ jobs:
           BBL_GCP_REGION: us-east1
           BBL_STATE_DIR: environments/salakot/
           BBL_IAAS: gcp
-          BBL_LB_CERT: {{salakot-lb-cert}}
-          BBL_LB_KEY: {{salakot-lb-key}}
+          BBL_LB_CERT: ((salakot-lb-cert.certificate))
+          BBL_LB_KEY: ((salakot-lb-key.private_key))
           LB_DOMAIN: salakot.c2c.cf-app.com
           BBL_ENV_NAME: salakot
           OPS_FILES: local-dns.yml
