@@ -1,4 +1,4 @@
-# CF App Service Discovery Release (EXPERIMENTAL)
+# CF App Service Discovery Release - DEPRECATED
 
 ### DEPRECATED
 This release has been deprecated. All of jobs in this release have been moved into
